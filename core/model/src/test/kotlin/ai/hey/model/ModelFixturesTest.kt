@@ -69,7 +69,7 @@ class ModelFixturesTest {
 
     @Test fun clientEnvelopesRoundTrip() {
         val list = HeyJson.parseToJsonElement(fixture("envelopes.json")).jsonObject.getValue("clientToServer").jsonArray
-        assertEquals(19, list.size)
+        assertEquals(20, list.size)
         for (envelope in list) {
             val obj = envelope.jsonObject
             val data = obj.getValue("data")
@@ -86,7 +86,7 @@ class ModelFixturesTest {
                 "reply.send" -> roundTrip<ReplySendData>(data)
                 "driving.state" -> roundTrip<DrivingStateData>(data)
                 "card.recheck", "trip.arrive", "trip.end", "trip.leave" -> assertEquals(JsonObject(emptyMap()), data)
-                "dropoff.respond", "request.send" -> assertNotNull(data) // passenger-only, not modelled on the car
+                "dropoff.respond", "request.send", "device.lang" -> assertNotNull(data) // passenger-only, not modelled on the car
                 else -> error("fixture message type not covered: $type")
             }
         }
