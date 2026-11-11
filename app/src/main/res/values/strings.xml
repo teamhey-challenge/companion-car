@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">HEY</string>
-    <string name="status_parked">정차 중</string>
+    <string name="service_channel_name">승객과 연결</string>
+    <string name="service_notification_title">HEY가 승객 요청을 기다리고 있어요</string>
+    <string name="service_notification_text">눌러서 화면을 열 수 있어요</string>
 </resources>

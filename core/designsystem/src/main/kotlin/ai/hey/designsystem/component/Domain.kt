@@ -115,7 +115,9 @@ fun KoreanSummary(
         VStack(gap = HeyGap.G8) {
             HeyText(destinationKo, variant = HeyTextVariant.Hero, maxLines = 2)
             HeyText(addressKo, variant = HeyTextVariant.Heading, tone = HeyTone.Muted, maxLines = 2)
-            HeyText(nameLocal, variant = HeyTextVariant.Caption, tone = HeyTone.Subtle, maxLines = 1)
+            if (nameLocal.isNotBlank() && nameLocal != destinationKo) {
+                HeyText(nameLocal, variant = HeyTextVariant.Caption, tone = HeyTone.Subtle, maxLines = 1)
+            }
         }
         if (conditions.isNotEmpty()) {
             VStack(gap = HeyGap.G8) { conditions.forEach { ConditionLineRow(it, Modifier.fillMaxWidth()) } }
@@ -252,6 +254,8 @@ fun QuickReplyGrid(
     onReply: (QuickReplyUi) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** The reply that was just sent shows its spinner; every other button is disabled until the answer arrives. */
+    loadingId: String? = null,
 ) {
     VStack(gap = HeyGap.G16, modifier = modifier) {
         replies.chunked(3).forEach { row ->
@@ -263,7 +267,8 @@ fun QuickReplyGrid(
                         Modifier.grow(),
                         variant = HeyButtonVariant.Secondary,
                         size = HeyButtonSize.Large,
-                        enabled = enabled,
+                        enabled = enabled && loadingId == null,
+                        loading = loadingId == reply.id,
                     )
                 }
                 repeat(3 - row.size) { Box(Modifier.grow()) }

@@ -415,6 +415,31 @@ object Stories {
                 DropoffCandidateRow("3번 출구 앞", true, {}, Modifier.fillMaxWidth(), distanceText = "40m")
             }
         })
+        add(part("text-field") {
+            VStack(HeyGap.G16) {
+                ai.hey.designsystem.component.HeyTextField("차량 번호 뒤 4자리", "1234", {}, Modifier.fillMaxWidth())
+                ai.hey.designsystem.component.HeyTextField("중계 서버 주소", "", {}, Modifier.fillMaxWidth(), placeholder = "http://10.0.2.2:8787")
+                ai.hey.designsystem.component.HeyTextField("차량 번호 뒤 4자리", "12가34567890", {}, Modifier.fillMaxWidth(), error = "글자나 숫자 1~8자로 써 주세요")
+                ai.hey.designsystem.component.HeyTextField("차량 번호 뒤 4자리", "1234", {}, Modifier.fillMaxWidth(), enabled = false)
+                ai.hey.designsystem.component.HeyTextField("중계 서버 주소", GalleryData.LONG_ADDRESS_KO + GalleryData.LONG_ADDRESS_KO, {}, Modifier.fillMaxWidth())
+            }
+        })
+        add(part("qr-block") { ai.hey.designsystem.component.QrBlock(GalleryData.QR_URL) })
+        add(part("quick-replies-loading") {
+            QuickReplyGrid(
+                listOf("네", "잠시만요", "5분 걸려요", "여기서 세울게요", "카드 돼요", "어려워요").map { QuickReplyUi(it, it) },
+                {}, Modifier.fillMaxWidth(), loadingId = "잠시만요",
+            )
+        })
+        add(part("layered-dialog") {
+            ai.hey.designsystem.component.HeyLayered(
+                Modifier.width(PartWidth).height(320.dp),
+                overlay = {
+                    HeyDialog("운행을 끝낼까요", "끝내면 승객 화면도 닫혀요", HeyDialogAction("끝내기") {}, HeyDialogAction("취소") {}, Modifier.fillMaxSize())
+                },
+                notice = { HeyNotice("운행 끝내기를 먼저 눌러 주세요", HeyStatusTone.Info) },
+            ) { VStack(HeyGap.G16, modifier = Modifier.padding(32.dp)) { HeyText("뒤에 있는 화면"); HeyText("뒤에 있는 화면 글자", tone = HeyTone.Muted) } }
+        })
     }
 
     val screens: List<Story> = buildList {

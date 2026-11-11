@@ -1,3 +1,120 @@
 <resources>
-    <string name="trip_empty_title">승객을 기다리고 있어요</string>
+    <!-- status strip -->
+    <string name="trip_status_parked">정차 중</string>
+    <string name="trip_status_route_started">경로 시작됨</string>
+    <string name="trip_status_driving">주행 중 · 음성으로 알려 드려요</string>
+
+    <!-- D1 waiting -->
+    <string name="trip_waiting_title">QR을 찍어 주세요</string>
+    <string name="trip_waiting_plate_label">차량 번호</string>
+    <string name="trip_waiting_hint">승객이 QR을 찍으면 여기로 요청이 와요</string>
+    <string name="trip_waiting_connected">연결됨</string>
+    <string name="trip_waiting_offline">인터넷 연결 없음</string>
+    <string name="trip_waiting_server_error">서버에 연결할 수 없어요. 다시 연결하는 중</string>
+    <string name="trip_waiting_registering">차량을 등록하고 있어요</string>
+    <string name="trip_waiting_register_failed_title">차량을 등록하지 못했어요</string>
+    <string name="trip_waiting_register_failed_message">인터넷을 확인한 뒤 앱을 다시 열어 주세요</string>
+    <string name="trip_greeting_en">Scan the QR code to ride with HEY</string>
+    <string name="trip_greeting_ja">QRコードを読み取ってください</string>
+    <string name="trip_greeting_zh">请扫描二维码</string>
+    <string name="trip_greeting_ko">QR을 찍어 주세요</string>
+    <string name="trip_settings">설정</string>
+
+    <!-- D2 join -->
+    <string name="trip_join_title">연결을 요청한 승객이 있어요</string>
+    <string name="trip_join_hint">언어와 인원을 보고 승인해 주세요</string>
+    <string name="trip_join_error">승인을 보내지 못했어요. 다시 눌러 주세요</string>
+
+    <!-- D3 card -->
+    <string name="trip_card_checking">카드 확인 중</string>
+    <string name="trip_card_route_started">경로 시작됨</string>
+    <string name="trip_card_waiting_title">승객이 카드를 쓰고 있어요</string>
+    <string name="trip_card_waiting_message">보내면 목적지를 읽어 드려요</string>
+    <string name="trip_card_start_route">경로 시작</string>
+    <string name="trip_card_restart_route">경로 다시 시작</string>
+    <string name="trip_card_propose">내릴 곳 제안하기</string>
+    <string name="trip_card_recheck">다시 확인 요청</string>
+    <string name="trip_card_replay">다시 듣기</string>
+    <string name="trip_card_replay_hint">다시 듣기를 누르면 목적지를 다시 읽어 드려요</string>
+    <string name="trip_card_replay_text">목적지: %1$s.</string>
+    <string name="trip_card_route_failed">경로를 시작하지 못했어요</string>
+    <string name="trip_card_retry">다시 시도</string>
+    <string name="trip_card_route_stale">내비 목적지와 합의한 내릴 곳이 달라요</string>
+    <string name="trip_card_route_stale_message">경로 다시 시작을 눌러 주세요</string>
+    <string name="trip_card_arrived">도착했어요</string>
+    <string name="trip_condition_detail">%1$s: %2$s</string>
+    <string name="trip_condition_label_luggage">짐 있음</string>
+    <string name="trip_condition_label_less_walking">덜 걷기</string>
+    <string name="trip_condition_label_meet_entrance">만나기로 한 입구</string>
+    <string name="trip_condition_label_temperature">실내 온도</string>
+    <string name="trip_temperature_cooler">시원하게</string>
+    <string name="trip_temperature_warmer">따뜻하게</string>
+
+    <!-- D4 dropoff -->
+    <string name="trip_dropoff_title">어디서 내리면 좋을까요</string>
+    <string name="trip_dropoff_subtitle">목적지 근처 출입구예요</string>
+    <string name="trip_dropoff_default_place">목적지 기본 위치</string>
+    <string name="trip_dropoff_reasons_title">이유</string>
+    <string name="trip_dropoff_send">제안 보내기</string>
+    <string name="trip_dropoff_close">닫기</string>
+    <string name="trip_dropoff_loading">출입구를 찾고 있어요</string>
+    <string name="trip_dropoff_none_title">출입구 정보가 없어요</string>
+    <string name="trip_dropoff_none_message">목적지 기본 위치로 제안할 수 있어요</string>
+    <string name="trip_dropoff_offline">연결되면 제안을 보낼 수 있어요</string>
+    <string name="trip_reason_front_no_stop">정문 앞은 정차할 수 없어요</string>
+    <string name="trip_reason_side_closer">옆 출입구가 더 가까워요</string>
+    <string name="trip_reason_luggage_easier">짐 내리기 편해요</string>
+    <string name="trip_reason_parking_entrance">주차장 입구예요</string>
+    <string name="trip_reason_across_safer">건너편이 더 안전해요</string>
+    <string name="trip_reason_construction">공사 중이라 앞까지 못 가요</string>
+
+    <!-- D5 driving -->
+    <string name="trip_driving_empty_title">주행 중이에요</string>
+    <string name="trip_driving_empty_message">정차하면 알려 드려요</string>
+    <string name="trip_driving_eta_at_start">출발할 때 %1$s</string>
+
+    <!-- D6 requests -->
+    <string name="trip_requests_title">정차 중이에요. 답할 것이 있어요</string>
+    <string name="trip_requests_subtitle">요청을 눌러 다시 들을 수 있어요</string>
+    <string name="trip_requests_close">닫기</string>
+    <string name="trip_requests_arrive">도착했어요</string>
+    <string name="trip_requests_offline">연결되면 답장을 보낼 수 있어요</string>
+    <string name="trip_reply_yes">네</string>
+    <string name="trip_reply_moment">잠시만요</string>
+    <string name="trip_reply_five_min">5분 걸려요</string>
+    <string name="trip_reply_stop_here">여기서 세울게요</string>
+    <string name="trip_reply_card_ok">카드 돼요</string>
+    <string name="trip_reply_cannot">어려워요</string>
+
+    <!-- D7 arrived -->
+    <string name="trip_arrived_title">도착했어요</string>
+    <string name="trip_arrived_agreed">합의한 곳에서 내려 드렸어요</string>
+    <string name="trip_arrived_navi_differs">내비 목적지와 내린 곳이 달라요</string>
+    <string name="trip_arrived_offline">연결되면 끝낼 수 있어요</string>
+    <string name="trip_arrived_end">운행 끝내기</string>
+    <string name="trip_arrived_next">다음 승객</string>
+    <string name="trip_arrived_next_hint">운행 끝내기를 먼저 눌러 주세요</string>
+    <string name="trip_arrived_row_destination">목적지</string>
+    <string name="trip_arrived_row_dropoff">내린 곳</string>
+    <string name="trip_arrived_row_duration">걸린 시간</string>
+    <string name="trip_arrived_row_distance">거리</string>
+    <string name="trip_arrived_row_requests">요청</string>
+    <string name="trip_arrived_row_replies">답장</string>
+    <string name="trip_arrived_none">없음</string>
+    <string name="trip_end_dialog_title">운행을 끝낼까요</string>
+    <string name="trip_end_dialog_message">끝내면 승객 화면도 닫혀요</string>
+    <string name="trip_end_dialog_confirm">끝내기</string>
+    <string name="trip_end_dialog_cancel">취소</string>
+
+    <!-- shared formats -->
+    <string name="trip_format_minutes">%1$d분</string>
+    <string name="trip_format_hours_minutes">%1$d시간 %2$d분</string>
+    <string name="trip_format_km">%1$s km</string>
+    <string name="trip_format_meters">%1$d m</string>
+    <string name="trip_format_count">%1$d건</string>
+
+    <!-- errors (code -> what the driver can do) -->
+    <string name="trip_error_generic">처리하지 못했어요. 잠시 뒤 다시 눌러 주세요</string>
+    <string name="trip_error_stale">승객 화면이 바뀌었어요. 다시 확인해 주세요</string>
+    <string name="trip_error_ended">이미 끝난 운행이에요</string>
 </resources>

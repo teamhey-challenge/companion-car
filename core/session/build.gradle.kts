@@ -18,6 +18,9 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 
 dependencies {
     api(project(":core:model"))
+    api(project(":core:vehicle"))
     api(libs.kotlinx.coroutines.core)
-    implementation(libs.okhttp)
+    api(libs.okhttp)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

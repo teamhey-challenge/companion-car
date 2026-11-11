@@ -13,12 +13,18 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
+        // Non-secret default relay; the emulator reaches the host at 10.0.2.2. Override: -PrelayUrl=https://...
+        val relay = providers.gradleProperty("relayUrl").getOrElse("http://10.0.2.2:8787")
+        buildConfigField("String", "RELAY_URL", "\"$relay\"")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 }
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }

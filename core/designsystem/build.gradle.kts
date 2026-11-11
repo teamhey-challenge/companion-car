@@ -17,6 +17,9 @@ android {
     testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
+// The gallery (stories) lives in the debug source set; Paparazzi renders the debug variant only.
+androidComponents { beforeVariants(selector().withBuildType("release")) { it.enableUnitTest = false } }
+
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 
 dependencies {
