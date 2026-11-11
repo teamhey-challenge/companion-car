@@ -62,7 +62,7 @@ class ModelFixturesTest {
         )
         val sent = HeyJson.encodeToJsonElement(DropoffProposeData.serializer(), DropoffProposeData.of(candidate, DropoffReasonId.SideCloser))
         val expected = HeyJson.parseToJsonElement(
-            """{"point":{"lat":37.5649,"lng":126.9803},"label":"을지로 쪽 옆 출입구","kind":"entrance","entranceType":"side","ref":"3","street":{"ko":"을지로","latin":"Eulji-ro"},"reasonId":"sideCloser"}""",
+            """{"point":{"lat":37.5649,"lng":126.9803},"label":"을지로 쪽 옆 출입구","kind":"entrance","entranceType":"side","ref":"3","street":{"ko":"을지로","latin":"Eulji-ro"},"reasonId":"sideCloser","candidateId":"c1"}""",
         )
         assertEquals(expected, sent)
     }
@@ -102,12 +102,15 @@ class ModelFixturesTest {
     @Test fun serverEnvelopesParse() {
         val list = HeyJson.parseToJsonElement(fixture("envelopes.json")).jsonObject.getValue("serverToClient").jsonArray
         val parsed = list.map { parseServerMessage(it.toString()) }
-        assertEquals(4, parsed.size)
+        assertEquals(5, parsed.size)
         assertEquals(SpeechPriority.Normal, (parsed[0] as ServerMessage.Say).data.priority)
         assertEquals(SpeechPriority.High, (parsed[1] as ServerMessage.Say).data.priority)
         assertEquals(NoticeKind.DropoffProposed, (parsed[2] as ServerMessage.Notice).data.kind)
         assertEquals(ErrorCode.STALE_VERSION, (parsed[3] as ServerMessage.Error).data.code)
         assertEquals("e10", (parsed[3] as ServerMessage.Error).data.ref)
+        val limited = (parsed[4] as ServerMessage.Error).data
+        assertEquals(ErrorCode.RATE_LIMITED, limited.code)
+        assertEquals("out_2", limited.clientRef)
         assertEquals(ServerMessage.Ack("e1"), parseServerMessage("""{"type":"ack","id":"e1"}"""))
     }
 

@@ -230,6 +230,8 @@ data class RequestItem(
     val replyId: QuickReplyId? = null,
     val replyText: String? = null,
     val ts: Long,
+    /** Passenger-only echo of the sender's id; never present in the car's snapshot. */
+    val clientRef: String? = null,
 )
 
 @Serializable
@@ -346,7 +348,7 @@ data class SayData(val speechId: String, val textKo: String, val priority: Speec
 data class NoticeData(val noticeId: String, val kind: NoticeKind)
 
 @Serializable
-data class ErrorData(val code: ErrorCode, val ref: String? = null)
+data class ErrorData(val code: ErrorCode, val ref: String? = null, val clientRef: String? = null)
 
 @Serializable
 data class CreateCarRequest(val plateSuffix: String)

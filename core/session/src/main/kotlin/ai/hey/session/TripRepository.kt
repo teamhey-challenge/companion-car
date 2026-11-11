@@ -284,12 +284,11 @@ class TripRepository(
 
     /** Sends a command; [busyKey] keeps its button loading until a snapshot shows the effect or the relay refuses it. */
     private fun sendCommand(type: String, data: JsonElement, busyKey: String? = null) {
+        val id = java.util.UUID.randomUUID().toString()
         if (busyKey != null) {
-            _state.update { it.copy(busy = it.busy + busyKey, error = null) }
-        }
-        val id = link.send(type, data)
-        if (busyKey != null) {
+            // Registered before the send: the relay's refusal can come back before send() returns.
             busyByEnvelope[id] = busyKey
+            _state.update { it.copy(busy = it.busy + busyKey, error = null) }
             scope.launch {
                 // Safety net only: a lost answer must not leave a button spinning for good.
                 delay(BUSY_GUARD_MS)
@@ -297,6 +296,7 @@ class TripRepository(
                 _state.update { it.copy(busy = it.busy - busyKey) }
             }
         }
+        link.send(type, data, id = id)
     }
 
     private val empty: JsonElement get() = HeyJson.encodeToJsonElement(EmptyData.serializer(), EmptyData())

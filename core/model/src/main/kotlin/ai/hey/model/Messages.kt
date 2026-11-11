@@ -32,10 +32,13 @@ data class DropoffProposeData(
     val ref: String? = null,
     val street: StreetName? = null,
     val reasonId: DropoffReasonId? = null,
+    /** Id of the chosen entry of the relay's candidate list, so the relay can use its own structure for the point. */
+    val candidateId: String? = null,
 ) {
     companion object {
         /** The structured fields of a candidate go back to the relay unchanged so passengers get localized labels. */
         fun of(candidate: DropoffCandidate, reasonId: DropoffReasonId?) = DropoffProposeData(
+            candidateId = candidate.candidateId,
             point = candidate.point,
             label = candidate.label,
             kind = candidate.kind,

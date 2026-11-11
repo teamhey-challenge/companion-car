@@ -105,8 +105,7 @@ class RelayLink(
      * Queues an envelope. [supersedeKey]: an unacked envelope with the same key is replaced (only the last
      * driving.state matters). Returns the envelope id.
      */
-    fun send(type: String, data: JsonElement, supersedeKey: String? = null): String {
-        val id = UUID.randomUUID().toString()
+    fun send(type: String, data: JsonElement, supersedeKey: String? = null, id: String = UUID.randomUUID().toString()): String {
         val json = envelopeJson(type, id, clock(), data)
         val ws: WebSocket?
         synchronized(lock) {

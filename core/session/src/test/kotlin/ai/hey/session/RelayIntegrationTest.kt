@@ -227,4 +227,25 @@ class RelayIntegrationTest {
         assertTrue(!online.qrUrl!!.contains("ZZZZZZZZ"))
         repo.stop()
     }
+
+    /**
+     * The relay answers BAD_REQUEST with the envelope's ref when it refuses join.approve (here: a join request it no longer
+     * has; the same answer it gives while it believes the car is driving). The car must release the button and show the error.
+     */
+    @Test fun aRefusedApproveReleasesTheButtonAndShowsAnError() = runBlocking {
+        val vehicle = FakeVehicleGateway(scope)
+        val storage = InMemoryCarStorage(ai.hey.model.CarSettings(plateSuffix = "4321", relayUrl = base))
+        val repo = TripRepository(scope, vehicle, storage, http = http, progressPollMs = 3_600_000)
+        repo.start()
+        eventually("online") { repo.state.value.takeIf { it.online && it.view?.state == TripState.IDLE } }
+        val registration = storage.loadRegistration(base)!!
+        post("/v1/c/${registration.carCode}/join", """{"lang":"en","partySize":1}""")
+        eventually("REQUESTED") { repo.state.value.takeIf { it.view?.state == TripState.REQUESTED } }
+
+        repo.approveJoin("jr_does_not_exist")
+        val refused = eventually("error shown") { repo.state.value.takeIf { it.error != null } }
+        assertEquals(ai.hey.model.ErrorCode.BAD_REQUEST, refused.error)
+        assertTrue("the join button must be released", !refused.isBusy(Busy.JOIN))
+        repo.stop()
+    }
 }
