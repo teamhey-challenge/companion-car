@@ -6,6 +6,13 @@
 
     <!-- D1 waiting -->
     <string name="trip_waiting_title">QR을 찍어 주세요</string>
+    <string name="trip_waiting_rejected_title">이 차량 등록이 서버에 없어요</string>
+    <string name="trip_waiting_rejected_message">새로 등록하면 QR 스티커도 새 것으로 바꿔야 해요</string>
+    <string name="trip_waiting_reregister">다시 등록하기</string>
+    <string name="trip_lang_en">English</string>
+    <string name="trip_lang_ja">日本語</string>
+    <string name="trip_lang_zh">简体中文</string>
+    <string name="trip_lang_ko">한국어</string>
     <string name="trip_waiting_plate_label">차량 번호</string>
     <string name="trip_waiting_hint">승객이 QR을 찍으면 여기로 요청이 와요</string>
     <string name="trip_waiting_connected">연결됨</string>
@@ -92,8 +99,6 @@
     <string name="trip_arrived_navi_differs">내비 목적지와 내린 곳이 달라요</string>
     <string name="trip_arrived_offline">연결되면 끝낼 수 있어요</string>
     <string name="trip_arrived_end">운행 끝내기</string>
-    <string name="trip_arrived_next">다음 승객</string>
-    <string name="trip_arrived_next_hint">운행 끝내기를 먼저 눌러 주세요</string>
     <string name="trip_arrived_row_destination">목적지</string>
     <string name="trip_arrived_row_dropoff">내린 곳</string>
     <string name="trip_arrived_row_duration">걸린 시간</string>

@@ -69,6 +69,10 @@ class RelayLink(
     interface Listener {
         /** Called on every connect (true) and loss (false). */
         fun onConnection(connected: Boolean)
+
+        /** The relay answered 401 on upgrade: the stored registration is no longer valid. Reconnecting stops. */
+        fun onTokenRejected()
+
         fun onMessage(message: ServerMessage)
     }
 
@@ -78,6 +82,8 @@ class RelayLink(
     private val outbox = LinkedHashMap<String, Outgoing>()
     private val seen = LinkedHashSet<String>()
     private var socket: WebSocket? = null
+
+    @Volatile private var tokenRejected = false
     private var job: Job? = null
 
     /** Opens (or reopens with new coordinates) the connection. */
@@ -126,12 +132,13 @@ class RelayLink(
         var failures = 0
         while (scope.isActive) {
             val closed = CompletableDeferred<Unit>()
-            var opened = false
+            val opened = java.util.concurrent.atomic.AtomicBoolean(false)
+            tokenRejected = false
             val ws = http.newWebSocket(
                 Request.Builder().url(url).build(),
                 object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
-                        opened = true
+                        opened.set(true)
                         synchronized(lock) {
                             socket = webSocket
                             // Everything unacked goes out again on a fresh socket.
@@ -152,6 +159,7 @@ class RelayLink(
 
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                         HeyLog.w(TAG, "socket failure: ${t.javaClass.simpleName}")
+                        if (response?.code == 401) tokenRejected = true
                         closed.complete(Unit)
                     }
                 },
@@ -167,7 +175,12 @@ class RelayLink(
                     ws.cancel()
                 }
             }
-            if (opened) {
+            if (tokenRejected) {
+                // The relay does not know this token (data wiped, car removed): retrying cannot help.
+                listener.onTokenRejected()
+                return
+            }
+            if (opened.get()) {
                 failures = 0
                 listener.onConnection(false)
             }

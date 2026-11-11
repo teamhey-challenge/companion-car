@@ -28,6 +28,8 @@ import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTone
 import ai.hey.model.CarCardView
 import ai.hey.model.ConditionId
+import ai.hey.model.DropoffCandidate
+import ai.hey.model.DropoffKind
 import ai.hey.model.DropoffReasonId
 import ai.hey.model.LatLng
 import ai.hey.model.Temperature
@@ -87,7 +89,7 @@ internal fun CardScreen(state: CarUiState, commands: CarCommands, nowMillis: Lon
                     size = HeyButtonSize.Large,
                     icon = HeyIcons.Refresh,
                     enabled = parked && card != null && state.online,
-                    loading = Busy.RECHECK in state.busy,
+                    loading = state.isBusy(Busy.RECHECK),
                 )
                 HeyButton(
                     stringResource(R.string.trip_card_propose),
@@ -114,6 +116,17 @@ internal fun CardScreen(state: CarUiState, commands: CarCommands, nowMillis: Lon
                     enabled = parked && card != null,
                     loading = state.routeStarting,
                 )
+                if (view?.state == TripState.IN_TRIP) {
+                    HeyButton(
+                        stringResource(R.string.trip_card_arrived),
+                        commands::arrive,
+                        variant = HeyButtonVariant.Secondary,
+                        size = HeyButtonSize.Large,
+                        icon = HeyIcons.Flag,
+                        enabled = parked && state.online,
+                        loading = state.isBusy(Busy.ARRIVE),
+                    )
+                }
             }
         },
     ) {
@@ -183,14 +196,24 @@ internal fun DropoffScreen(state: CarUiState, commands: CarCommands, nowMillis: 
     val candidates = state.candidates
     val reasons = reasonLabels()
     val default = stringResource(R.string.trip_dropoff_default_place)
-    val items = if (candidates.items.isNotEmpty()) {
-        candidates.items.map { Triple(it.candidateId, it.label, it.point to it.distanceM) }
+    // Without a candidate list (relay failed or empty) the destination itself is the one fallback candidate.
+    val items: List<DropoffCandidate> = if (candidates.items.isNotEmpty()) {
+        candidates.items
     } else if (card != null && !candidates.loading) {
-        listOf(Triple("default", default, LatLng(card.destination.lat, card.destination.lng) to 0.0))
+        listOf(
+            DropoffCandidate(
+                candidateId = "default",
+                kind = DropoffKind.Default,
+                label = default,
+                labelLocal = default,
+                point = LatLng(card.destination.lat, card.destination.lng),
+                distanceM = 0.0,
+            ),
+        )
     } else {
         emptyList()
     }
-    val selected = items.firstOrNull { it.first == draft.candidateId }
+    val selected = items.firstOrNull { it.candidateId == draft.candidateId }
     val proposal = view?.dropoff
     val parked = state.parked
     val pin = view?.pendingPins?.firstOrNull()
@@ -211,14 +234,14 @@ internal fun DropoffScreen(state: CarUiState, commands: CarCommands, nowMillis: 
                     {
                         if (selected != null) {
                             val reason = draft.reasonIndex?.let { DropoffReasonId.entries.getOrNull(it) }
-                            commands.proposeDropoff(selected.third.first, selected.second, reason)
+                            commands.proposeDropoff(selected, reason)
                         }
                     },
                     Modifier.grow(),
                     size = HeyButtonSize.Large,
                     icon = HeyIcons.Send,
                     enabled = parked && selected != null && state.online,
-                    loading = Busy.PROPOSE in state.busy,
+                    loading = state.isBusy(Busy.PROPOSE),
                 )
             }
         },
@@ -244,13 +267,13 @@ internal fun DropoffScreen(state: CarUiState, commands: CarCommands, nowMillis: 
                             modifier = Modifier.fillWidth(),
                         )
                     }
-                    items.forEach { (id, label, geo) ->
+                    items.forEach { candidate ->
                         DropoffCandidateRow(
-                            label = label,
-                            selected = id == draft.candidateId,
-                            onSelect = { commands.selectCandidate(id) },
+                            label = candidate.label,
+                            selected = candidate.candidateId == draft.candidateId,
+                            onSelect = { commands.selectCandidate(candidate.candidateId) },
                             modifier = Modifier.fillWidth(),
-                            distanceText = geo.second.takeIf { it > 0 }?.let { distanceText(it.toInt()) },
+                            distanceText = candidate.distanceM.takeIf { it > 0 }?.let { distanceText(it.toInt()) },
                         )
                     }
                 }

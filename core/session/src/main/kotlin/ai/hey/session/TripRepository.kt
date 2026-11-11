@@ -5,26 +5,26 @@ import ai.hey.model.CarSettings
 import ai.hey.model.CarView
 import ai.hey.model.ClientType
 import ai.hey.model.ConditionId
+import ai.hey.model.DriverDecision
 import ai.hey.model.DrivingState
 import ai.hey.model.DrivingStateData
-import ai.hey.model.DropoffBy
 import ai.hey.model.DropoffCandidate
 import ai.hey.model.DropoffDecideData
 import ai.hey.model.DropoffProposeData
 import ai.hey.model.DropoffReasonId
-import ai.hey.model.DriverDecision
 import ai.hey.model.EmptyData
 import ai.hey.model.HeyConfig
 import ai.hey.model.HeyIds
 import ai.hey.model.HeyJson
 import ai.hey.model.HeyLog
 import ai.hey.model.JoinDecision
-import ai.hey.model.LatLng
 import ai.hey.model.ProgressInfo
 import ai.hey.model.QuickReplyId
 import ai.hey.model.ReplySendData
 import ai.hey.model.RequestSpokenData
+import ai.hey.model.RequestState
 import ai.hey.model.RouteFailedData
+import ai.hey.model.RouteInfo
 import ai.hey.model.ServerMessage
 import ai.hey.model.TripState
 import ai.hey.model.actionableCount
@@ -35,6 +35,7 @@ import ai.hey.vehicle.VehicleEvent
 import ai.hey.vehicle.VehicleGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,8 +57,8 @@ private const val TAG = "TripRepository"
 
 /**
  * Owns the relay connection and the vehicle and exposes ONE state. Every screen reads [state]; every user action
- * is a function of [CarCommands]. While the car is moving, commands that need the driver's hands are ignored here as
- * well as being absent from the screen, so a late tap cannot slip through.
+ * is a function of [CarCommands]. While the car is moving (or its state is unknown) commands that need the driver's
+ * hands are ignored here as well as being absent from the screen, so a late tap cannot slip through.
  */
 class TripRepository(
     private val scope: CoroutineScope,
@@ -75,10 +76,18 @@ class TripRepository(
     private val link = RelayLink(http, scope, LinkListener(), ackTimeoutMs, backoffSec, clock)
 
     @Volatile private var registration: Registration? = null
+    private var connectJob: Job? = null
 
     /** Texts waiting to be read, by speech id, so "방금 읽은 요청" can show the text once it was read. */
     private val spokenTexts = ConcurrentHashMap<String, String>()
 
+    /** Envelope id of a command -> the busy key it set, so a relay error for it can release that key. */
+    private val busyByEnvelope = ConcurrentHashMap<String, String>()
+
+    /** Trip whose arrival was already sent: the navigation event and the manual button must not both fire. */
+    @Volatile private var arrivalSentFor: String? = null
+
+    private var errorJob: Job? = null
     private var started = false
 
     fun start() {
@@ -88,15 +97,15 @@ class TripRepository(
             // Settings drive speech and the relay address.
             storage.settings.collect { s ->
                 _state.update { it.copy(settings = s) }
-                vehicle.configureSpeech(SpeechSettings(gapSec = s.speechGapSec, rate = s.speechRate))
+                vehicle.configureSpeech(SpeechSettings(gapSec = s.speechGapSec))
             }
         }
         scope.launch {
-            storage.settings.map { it.relayUrl }.distinctUntilChanged().collectLatest { connectTo(it) }
+            storage.settings.map { it.relayUrl }.distinctUntilChanged().collect { url -> restartConnection(url) }
         }
         scope.launch {
             vehicle.drivingState.collect { d ->
-                _state.update { it.copy(driving = d, endDialogOpen = if (d == DrivingState.DRIVING) false else it.endDialogOpen) }
+                _state.update { it.copy(driving = d, endDialogOpen = if (d == DrivingState.PARKED) it.endDialogOpen else false) }
                 sendDriving(d)
             }
         }
@@ -105,15 +114,22 @@ class TripRepository(
     }
 
     fun stop() {
+        connectJob?.cancel()
         link.close()
         started = false
     }
 
     // ---------------------------------------------------------------- connection
 
+    private fun restartConnection(relayUrl: String) {
+        connectJob?.cancel()
+        connectJob = scope.launch { connectTo(relayUrl) }
+    }
+
     private suspend fun connectTo(relayUrl: String) {
+        link.close()
         _state.update { it.copy(connection = ConnectionStatus.Registering) }
-        var reg = storage.loadRegistration()?.takeIf { it.relayUrl == relayUrl }
+        var reg = storage.loadRegistration(relayUrl)
         var failures = 0
         while (reg == null) {
             val plate = storage.settings.value.plateSuffix
@@ -129,7 +145,7 @@ class TripRepository(
             }
         }
         registration = reg
-        _state.update { it.copy(connection = ConnectionStatus.Connecting, qrUrl = reg.qrUrl, view = null) }
+        _state.update { it.copy(connection = ConnectionStatus.Connecting, qrUrl = reg.qrUrl, view = null, busy = emptySet()) }
         link.connect(relayUrl, reg.driverToken)
     }
 
@@ -139,8 +155,12 @@ class TripRepository(
                 _state.update { it.copy(connection = ConnectionStatus.Online) }
                 sendDriving(_state.value.driving)
             } else {
-                _state.update { it.copy(connection = ConnectionStatus.Reconnecting, busy = emptySet()) }
+                _state.update { it.copy(connection = ConnectionStatus.Reconnecting) }
             }
+        }
+
+        override fun onTokenRejected() {
+            _state.update { it.copy(connection = ConnectionStatus.Rejected, view = null, busy = emptySet()) }
         }
 
         override fun onMessage(message: ServerMessage) {
@@ -151,9 +171,19 @@ class TripRepository(
                     if (id != null) spokenTexts[id] = message.data.textKo
                     vehicle.speak(message.data.textKo, message.data.priority, id)
                 }
-                is ServerMessage.Error -> _state.update { it.copy(error = message.data.code, busy = emptySet()) }
+                is ServerMessage.Error -> onError(message.data.code, message.data.ref)
                 is ServerMessage.Notice, is ServerMessage.Ack -> Unit
             }
+        }
+    }
+
+    private fun onError(code: ai.hey.model.ErrorCode, ref: String?) {
+        val key = ref?.let { busyByEnvelope.remove(it) }
+        _state.update { it.copy(error = code, busy = if (key != null) it.busy - key else it.busy) }
+        errorJob?.cancel()
+        errorJob = scope.launch {
+            delay(ERROR_SHOWN_MS)
+            _state.update { if (it.error == code) it.copy(error = null) else it }
         }
     }
 
@@ -163,25 +193,43 @@ class TripRepository(
 
     // ---------------------------------------------------------------- snapshots
 
+    /** True when the snapshot shows the effect of the command that set [key]: only then is the button released. */
+    private fun settled(key: String, view: CarView): Boolean {
+        val parts = key.split(':')
+        return when (parts[0]) {
+            "join" -> view.pendingJoin?.joinRequestId != parts.getOrNull(1)
+            "recheck" -> view.state != TripState.CARD_SENT
+            "propose" -> (view.dropoff?.version ?: 0) > (parts.getOrNull(1)?.toIntOrNull() ?: 0)
+            "pin" -> view.pendingPins.none { it.version == parts.getOrNull(1)?.toIntOrNull() }
+            "reply" -> {
+                val requestId = parts.getOrNull(1).orEmpty()
+                val before = parts.getOrNull(3)?.toIntOrNull() ?: 0
+                view.replies.size > before || view.requests.firstOrNull { it.requestId == requestId }?.state == RequestState.Answered
+            }
+            "end" -> view.state == TripState.IDLE || view.state == TripState.ENDED
+            "arrive" -> view.state != TripState.IN_TRIP
+            else -> true
+        }
+    }
+
     private fun onSnapshot(view: CarView) {
         _state.update { old ->
             val previous = old.view
             val changed = if (previous?.tripId == view.tripId) changedConditions(previous?.card, view.card, old.changedConditions) else emptySet()
             val tripEnded = view.state == TripState.IDLE
+            if (view.tripId != previous?.tripId) arrivalSentFor = null
             old.copy(
                 view = view,
-                busy = emptySet(),
+                busy = old.busy.filterNot { settled(it, view) }.toSet(),
                 changedConditions = changed,
                 // a new/other proposal makes the typed selection obsolete (activeDraft), the panel stays as the driver left it
                 panel = if (tripEnded && old.panel == Panel.Dropoff) Panel.None else old.panel,
                 requestsDismissedAt = minOf(old.requestsDismissedAt, view.actionableCount),
-                routeStarting = false,
                 routeFailed = if (view.route != null) false else old.routeFailed && view.card != null,
                 lastSpokenKo = if (tripEnded) null else old.lastSpokenKo,
                 endDialogOpen = if (tripEnded) false else old.endDialogOpen,
                 candidates = if (view.card?.destination?.placeId != old.candidates.forPlaceId) Candidates() else old.candidates,
                 progressAt = if (view.progress != previous?.progress) clock() else old.progressAt,
-                error = old.error,
             )
         }
     }
@@ -205,8 +253,9 @@ class TripRepository(
                 if (text != null) _state.update { it.copy(lastSpokenKo = text) }
                 markSpoken(event.speechId)
             }
-            is VehicleEvent.SpeechDropped -> spokenTexts.remove(event.speechId)
-            VehicleEvent.Arrived -> if (_state.value.view?.state == TripState.IN_TRIP) arrive(force = true)
+            // The request stays "received" on the relay and visible on D6; "다시 듣기" there reads it and marks it spoken.
+            is VehicleEvent.SpeechDropped -> Unit
+            VehicleEvent.Arrived -> if (_state.value.view?.state == TripState.IN_TRIP) sendArrive(busy = false)
         }
     }
 
@@ -233,28 +282,38 @@ class TripRepository(
 
     private fun isParked(): Boolean = _state.value.driving == DrivingState.PARKED
 
-    private fun sendCommand(type: String, data: JsonElement, busy: String? = null) {
-        if (busy != null) _state.update { it.copy(busy = it.busy + busy) }
-        link.send(type, data)
+    /** Sends a command; [busyKey] keeps its button loading until a snapshot shows the effect or the relay refuses it. */
+    private fun sendCommand(type: String, data: JsonElement, busyKey: String? = null) {
+        if (busyKey != null) {
+            _state.update { it.copy(busy = it.busy + busyKey, error = null) }
+        }
+        val id = link.send(type, data)
+        if (busyKey != null) {
+            busyByEnvelope[id] = busyKey
+            scope.launch {
+                // Safety net only: a lost answer must not leave a button spinning for good.
+                delay(BUSY_GUARD_MS)
+                busyByEnvelope.remove(id)
+                _state.update { it.copy(busy = it.busy - busyKey) }
+            }
+        }
     }
 
     private val empty: JsonElement get() = HeyJson.encodeToJsonElement(EmptyData.serializer(), EmptyData())
 
-    override fun approveJoin(joinRequestId: String) {
-        if (!isParked()) return
-        if (Busy.JOIN in _state.value.busy) return
-        sendCommand(ClientType.JOIN_APPROVE, HeyJson.encodeToJsonElement(JoinDecision.serializer(), JoinDecision(joinRequestId)), Busy.JOIN)
-    }
+    override fun approveJoin(joinRequestId: String) = decideJoin(ClientType.JOIN_APPROVE, joinRequestId)
 
-    override fun declineJoin(joinRequestId: String) {
+    override fun declineJoin(joinRequestId: String) = decideJoin(ClientType.JOIN_DECLINE, joinRequestId)
+
+    private fun decideJoin(type: String, joinRequestId: String) {
         if (!isParked()) return
-        if (Busy.JOIN in _state.value.busy) return
-        sendCommand(ClientType.JOIN_DECLINE, HeyJson.encodeToJsonElement(JoinDecision.serializer(), JoinDecision(joinRequestId)), Busy.JOIN)
+        if (_state.value.isBusy(Busy.JOIN)) return
+        sendCommand(type, HeyJson.encodeToJsonElement(JoinDecision.serializer(), JoinDecision(joinRequestId)), Busy.join(joinRequestId))
     }
 
     override fun recheckCard() {
         if (!isParked()) return
-        if (Busy.RECHECK in _state.value.busy) return
+        if (_state.value.isBusy(Busy.RECHECK)) return
         sendCommand(ClientType.CARD_RECHECK, empty, Busy.RECHECK)
     }
 
@@ -265,33 +324,33 @@ class TripRepository(
         if (s.routeStarting) return
         _state.update { it.copy(routeStarting = true, routeFailed = false) }
         scope.launch {
-            val result = vehicle.startRoute(destination)
-            when (result) {
-                is RouteResult.Started -> link.send(ClientType.ROUTE_STARTED, HeyJson.encodeToJsonElement(ai.hey.model.RouteInfo.serializer(), result.route))
+            when (val result = vehicle.startRoute(destination)) {
+                is RouteResult.Started -> {
+                    link.send(ClientType.ROUTE_STARTED, HeyJson.encodeToJsonElement(RouteInfo.serializer(), result.route))
+                    _state.update { it.copy(routeStarting = false) }
+                }
                 is RouteResult.Failed -> {
                     link.send(ClientType.ROUTE_FAILED, HeyJson.encodeToJsonElement(RouteFailedData.serializer(), RouteFailedData(result.code)))
                     _state.update { it.copy(routeStarting = false, routeFailed = true) }
                 }
             }
-            // On success the next snapshot (state IN_TRIP, route set) clears routeStarting; guard against a lost one.
-            delay(ROUTE_FLAG_GUARD_MS)
-            _state.update { if (it.routeStarting) it.copy(routeStarting = false) else it }
         }
     }
 
-    override fun proposeDropoff(point: LatLng, label: String, reasonId: DropoffReasonId?) {
+    override fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?) {
         if (!isParked()) return
-        if (Busy.PROPOSE in _state.value.busy) return
+        if (_state.value.isBusy(Busy.PROPOSE)) return
+        val version = _state.value.view?.dropoff?.version ?: 0
         sendCommand(
             ClientType.DROPOFF_PROPOSE,
-            HeyJson.encodeToJsonElement(DropoffProposeData.serializer(), DropoffProposeData(point, label, reasonId)),
-            Busy.PROPOSE,
+            HeyJson.encodeToJsonElement(DropoffProposeData.serializer(), DropoffProposeData.of(candidate, reasonId)),
+            Busy.propose(version),
         )
     }
 
     override fun decidePin(version: Int, accept: Boolean) {
         if (!isParked()) return
-        if (Busy.pin(version) in _state.value.busy) return
+        if (_state.value.isBusy(Busy.pin(version))) return
         val decision = if (accept) DriverDecision.Accept else DriverDecision.Decline
         sendCommand(
             ClientType.DROPOFF_DECIDE,
@@ -300,37 +359,56 @@ class TripRepository(
         )
     }
 
-    override fun markSpoken(requestId: String) {
+    private fun markSpoken(requestId: String) {
         link.send(ClientType.REQUEST_SPOKEN, HeyJson.encodeToJsonElement(RequestSpokenData.serializer(), RequestSpokenData(requestId)))
     }
 
     override fun sendReply(requestId: String?, replyId: QuickReplyId) {
         if (!isParked()) return
-        val key = Busy.reply(requestId, replyId.name)
-        if (_state.value.busy.any { it.startsWith("reply:") }) return
+        val s = _state.value
+        if (s.isBusy(Busy.REPLY)) return
         sendCommand(
             ClientType.REPLY_SEND,
             HeyJson.encodeToJsonElement(ReplySendData.serializer(), ReplySendData(requestId, replyId)),
-            key,
+            Busy.reply(requestId, replyId.name, s.view?.replies?.size ?: 0),
         )
     }
 
-    override fun arrive() = arrive(force = false)
+    override fun arrive() {
+        if (!isParked()) return
+        if (_state.value.view?.state != TripState.IN_TRIP) return
+        sendArrive(busy = true)
+    }
 
-    private fun arrive(force: Boolean) {
-        if (!force && _state.value.driving != DrivingState.PARKED) return
-        if (Busy.ARRIVE in _state.value.busy) return
-        sendCommand(ClientType.TRIP_ARRIVE, empty, if (force) null else Busy.ARRIVE)
+    private fun sendArrive(busy: Boolean) {
+        val trip = _state.value.view?.tripId ?: return
+        if (arrivalSentFor == trip) return
+        arrivalSentFor = trip
+        sendCommand(ClientType.TRIP_ARRIVE, empty, if (busy) Busy.ARRIVE else null)
     }
 
     override fun endTrip() {
         if (!isParked()) return
-        if (Busy.END in _state.value.busy) return
+        if (_state.value.isBusy(Busy.END)) return
         _state.update { it.copy(endDialogOpen = false) }
         sendCommand(ClientType.TRIP_END, empty, Busy.END)
     }
 
     override fun replay(textKo: String) = vehicle.replay(textKo)
+
+    override fun replayRequest(requestId: String) {
+        val request = _state.value.view?.requests?.firstOrNull { it.requestId == requestId } ?: return
+        // A request that was never heard (queue overflow, speaker down) is marked spoken once this reading finishes.
+        vehicle.replay(request.text, if (request.state == RequestState.Received) requestId else null)
+    }
+
+    override fun reregister() {
+        val url = _state.value.settings.relayUrl
+        scope.launch {
+            storage.forgetRegistration(url)
+            restartConnection(url)
+        }
+    }
 
     // ---------------------------------------------------------------- local UI state
 
@@ -368,8 +446,6 @@ class TripRepository(
 
     override fun closeEndDialog() = _state.update { it.copy(endDialogOpen = false) }
 
-    override fun dismissError() = _state.update { it.copy(error = null) }
-
     override fun updateSettings(transform: (CarSettings) -> CarSettings) {
         scope.launch { storage.updateSettings(transform) }
     }
@@ -406,6 +482,7 @@ class TripRepository(
     }
 
     private companion object {
-        const val ROUTE_FLAG_GUARD_MS = 15_000L
+        const val ERROR_SHOWN_MS = 6_000L
+        const val BUSY_GUARD_MS = 20_000L
     }
 }

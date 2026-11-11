@@ -3,8 +3,6 @@ package ai.hey.feature.settings
 import ai.hey.designsystem.component.HeyConnection
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.model.CarSettings
-import ai.hey.model.PresetId
-import ai.hey.model.SpeechRate
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams.RenderingMode
@@ -24,14 +22,8 @@ private fun device(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
 
 private val shots: List<Pair<String, CarSettings>> = listOf(
     "d8-settings" to CarSettings(plateSuffix = "1234"),
-    "d8-settings-changed" to CarSettings(
-        enabledPresets = PresetId.entries.toSet() - PresetId.Slower - PresetId.Trunk - PresetId.Window,
-        speechGapSec = 30,
-        speechRate = SpeechRate.Fast,
-        plateSuffix = "1234",
-        relayUrl = "https://hey-relay.example.com",
-    ),
-    "d8-settings-min-gap" to CarSettings(speechGapSec = 4, speechRate = SpeechRate.Slow, plateSuffix = "서울12가3456"),
+    "d8-settings-changed" to CarSettings(speechGapSec = 30, plateSuffix = "1234", relayUrl = "https://hey-relay.example.com", dark = false),
+    "d8-settings-min-gap" to CarSettings(speechGapSec = 4, plateSuffix = "서울12가3456"),
 )
 
 private fun Paparazzi.recordAll() {

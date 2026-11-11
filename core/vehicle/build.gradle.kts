@@ -18,8 +18,13 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 dependencies {
     api(project(":core:model"))
     api(libs.kotlinx.coroutines.core)
-    // android.car.jar is part of the AAOS system image; compile-only and used here exclusively.
-    compileOnly(files("/home/darren/android/sdk/platforms/android-36/optional/android.car.jar"))
+    // android.car.jar is part of the AAOS system image (an optional SDK library); compile-only and used here exclusively.
+    // Located through the configured SDK instead of a machine-specific path.
+    compileOnly(
+        files(
+            androidComponents.sdkComponents.sdkDirectory.map { it.dir("platforms/android-36/optional/android.car.jar") },
+        ),
+    )
     implementation(libs.pleos.vehicle)
     implementation(libs.pleos.navihelper)
     implementation(libs.pleos.tts)

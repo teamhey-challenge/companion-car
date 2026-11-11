@@ -1,6 +1,9 @@
 package ai.hey.feature.trip
 
 import ai.hey.model.AgreedDropoff
+import ai.hey.model.DropoffKind
+import ai.hey.model.EntranceType
+import ai.hey.model.StreetName
 import ai.hey.model.ArrivalSummary
 import ai.hey.model.CarCardView
 import ai.hey.model.CarView
@@ -75,10 +78,10 @@ object TripSamples {
     val candidates = Candidates(
         forPlaceId = hotel.placeId,
         items = listOf(
-            DropoffCandidate("default", "default", "목적지 기본 위치", LatLng(37.5655, 126.9811), 0.0),
-            DropoffCandidate("fake-1", "entrance", "정문 (본관 로비)", LatLng(37.5657, 126.9814), 30.0),
-            DropoffCandidate("fake-2", "entrance", "옆 출입구 (을지로 쪽)", LatLng(37.5649, 126.9803), 78.0),
-            DropoffCandidate("fake-3", "entrance", "주차장 입구", LatLng(37.5659, 126.9806), 62.0),
+            DropoffCandidate("default", DropoffKind.Default, null, null, null, "목적지 기본 위치", "목적지 기본 위치", LatLng(37.5655, 126.9811), 0.0),
+            DropoffCandidate("fake-1", DropoffKind.Entrance, EntranceType.Main, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 정문", "을지로 쪽 정문", LatLng(37.5657, 126.9814), 30.0),
+            DropoffCandidate("fake-2", DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구", LatLng(37.5649, 126.9803), 78.0),
+            DropoffCandidate("fake-3", DropoffKind.Entrance, EntranceType.Parking, null, null, "주차장 입구", "주차장 입구", LatLng(37.5659, 126.9806), 62.0),
         ),
     )
 
@@ -105,7 +108,7 @@ object TripSamples {
         request("req_7", "트렁크를 열어 주세요.", false, RequestState.Spoken, NOW - 20_000, preset = PresetId.Trunk),
     )
 
-    val pin = DropoffProposal(2, DropoffBy.Passenger, LatLng(37.5651, 126.9807), "지도에서 고른 곳", status = ProposalStatus.Pending)
+    val pin = DropoffProposal(2, DropoffBy.Passenger, LatLng(37.5651, 126.9807), DropoffKind.Pin, null, null, null, "내가 고른 곳", "내가 고른 곳", status = ProposalStatus.Pending)
 
     private val base = CarView(
         state = TripState.IDLE,
@@ -156,7 +159,7 @@ object TripSamples {
     val cardRouteStarted = state(cardSent.copy(route = route))
     val cardRouteFailed = state(cardSent) { copy(routeFailed = true) }
     val cardRouteStale = state(
-        cardSent.copy(route = route, routeStale = true, agreedDropoff = AgreedDropoff(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), "옆 출입구 (을지로 쪽)")),
+        cardSent.copy(route = route, routeStale = true, agreedDropoff = AgreedDropoff(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구")),
         driving = DrivingState.PARKED,
     )
 
@@ -169,7 +172,7 @@ object TripSamples {
     val dropoffNone = state(cardSent, panel = Panel.Dropoff) { copy(candidates = Candidates(hotel.placeId, emptyList())) }
     val dropoffPin = state(withPin, panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
     private fun answered(status: ProposalStatus) = cardSent.copy(
-        dropoff = DropoffProposal(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), "옆 출입구 (을지로 쪽)", status = status),
+        dropoff = DropoffProposal(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구", status = status),
     )
     val dropoffOk = state(answered(ProposalStatus.Ok), panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
     val dropoffElsewhere = state(answered(ProposalStatus.Elsewhere), panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
@@ -203,7 +206,7 @@ object TripSamples {
         progress = null,
         requests = requests,
         replies = emptyList(),
-        agreedDropoff = AgreedDropoff(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), "옆 출입구 (을지로 쪽)"),
+        agreedDropoff = AgreedDropoff(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구"),
         summary = ArrivalSummary(hotel, null, 2_520, 18_400, 0, NOW - 2_520_000, NOW),
     )
     val arrivedAgreed = state(arrived)

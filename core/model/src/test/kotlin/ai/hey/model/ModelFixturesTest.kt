@@ -44,6 +44,29 @@ class ModelFixturesTest {
         roundTrip<PassengerTripView>(HeyJson.parseToJsonElement(fixture("passenger-view-in-trip.json")))
     }
 
+    @Test fun arrivedPassengerViewRoundTripsWithTheNewSummaryFields() {
+        val element = HeyJson.parseToJsonElement(fixture("passenger-view-arrived.json"))
+        roundTrip<PassengerTripView>(element)
+        val view = HeyJson.decodeFromJsonElement(serializer<PassengerTripView>(), element)
+        assertEquals(2987, view.summary?.elapsedSec)
+        assertEquals(52300, view.summary?.routeDistanceM)
+        assertEquals(DropoffKind.Curated, view.agreedDropoff?.kind)
+        assertEquals("Sogong-ro", view.agreedDropoff?.street?.latin)
+        assertEquals("Side entrance (Sogong-ro side)", view.dropoff?.labelLocal)
+    }
+
+    @Test fun proposeCarriesTheStructuredFieldsOfACandidate() {
+        val candidate = DropoffCandidate(
+            "c1", DropoffKind.Entrance, EntranceType.Side, "3", StreetName("을지로", "Eulji-ro"),
+            "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구", LatLng(37.5649, 126.9803), 78.0,
+        )
+        val sent = HeyJson.encodeToJsonElement(DropoffProposeData.serializer(), DropoffProposeData.of(candidate, DropoffReasonId.SideCloser))
+        val expected = HeyJson.parseToJsonElement(
+            """{"point":{"lat":37.5649,"lng":126.9803},"label":"을지로 쪽 옆 출입구","kind":"entrance","entranceType":"side","ref":"3","street":{"ko":"을지로","latin":"Eulji-ro"},"reasonId":"sideCloser"}""",
+        )
+        assertEquals(expected, sent)
+    }
+
     @Test fun clientEnvelopesRoundTrip() {
         val list = HeyJson.parseToJsonElement(fixture("envelopes.json")).jsonObject.getValue("clientToServer").jsonArray
         assertEquals(19, list.size)

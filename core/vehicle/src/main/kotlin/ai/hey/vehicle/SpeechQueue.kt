@@ -1,24 +1,26 @@
 package ai.hey.vehicle
 
 import ai.hey.model.SpeechPriority
-import ai.hey.model.SpeechRate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** One utterance at a time. [speak] returns true when the text was read to the end. */
+/** One utterance at a time. [speak] returns true only when the text was read to the end. */
 interface SpeechEngine {
-    suspend fun speak(text: String, rate: SpeechRate): Boolean
+    suspend fun speak(text: String): Boolean
 }
 
 /**
  * Speech policy (docs/architecture.md 2.4, policy speech.*):
  * - high priority first, then normal in arrival order; high skips the gap, normal waits [SpeechSettings.gapSec]
  *   after the previous utterance finished;
- * - the same text inside [dedupWindowMs] is not read again (the caller still gets SpeechDone so a request is not
- *   stuck in "received");
- * - more than [queueMax] waiting: the oldest normal one (else the oldest) is dropped.
+ * - only normal-priority *request* speech (it has an id) is de-duplicated: the same text inside [dedupWindowMs] of a
+ *   completed reading is not read again, and a copy of a text that is still waiting or being read joins that item.
+ *   In both cases the copy's [VehicleEvent.SpeechDone] is emitted only once the text was really heard, never at enqueue.
+ *   High priority (stopHere, card, pin, drop-off answers) is never de-duplicated;
+ * - more than [queueMax] waiting: the oldest normal one (else the oldest) is dropped and every id on it gets
+ *   [VehicleEvent.SpeechDropped].
  * [now] is injected so tests drive time with the coroutine scheduler.
  */
 class SpeechQueue(
@@ -30,12 +32,14 @@ class SpeechQueue(
     private val dedupWindowMs: Long,
     private val queueMax: Int,
 ) {
-    private class Item(val seq: Long, val id: String?, val text: String, val priority: SpeechPriority)
+    private class Item(val text: String, val priority: SpeechPriority, val ids: MutableList<String>, val dedupe: Boolean)
 
     private val lock = Any()
     private val pending = ArrayList<Item>()
-    private val recent = HashMap<String, Long>()
-    private var seq = 0L
+    private var current: Item? = null
+
+    /** text -> when it finished being read aloud. Only completed readings are remembered. */
+    private val heard = HashMap<String, Long>()
     private var lastDoneAt: Long? = null
     private val wake = Channel<Unit>(Channel.CONFLATED)
 
@@ -48,24 +52,27 @@ class SpeechQueue(
             if (id != null) emit(VehicleEvent.SpeechDone(id))
             return
         }
+        val dedupe = id != null && priority == SpeechPriority.Normal && !force
         val dropped = ArrayList<String>()
-        var duplicate = false
+        var heardRecently = false
         synchronized(lock) {
             val t = now()
-            recent.entries.removeAll { t - it.value > dedupWindowMs }
-            if (!force && recent.containsKey(text)) {
-                duplicate = true
-            } else {
-                recent[text] = t
-                pending += Item(seq++, id, text, priority)
-                while (pending.size > queueMax) {
-                    val victim = pending.firstOrNull { it.priority == SpeechPriority.Normal } ?: pending.first()
-                    pending.remove(victim)
-                    victim.id?.let { dropped += it }
+            heard.entries.removeAll { t - it.value > dedupWindowMs }
+            val existing = if (dedupe) (pending + listOfNotNull(current)).firstOrNull { it.dedupe && it.text == text } else null
+            when {
+                dedupe && heard.containsKey(text) -> heardRecently = true
+                existing != null -> existing.ids += id!!
+                else -> {
+                    pending += Item(text, priority, if (id != null) mutableListOf(id) else mutableListOf(), dedupe)
+                    while (pending.size > queueMax) {
+                        val victim = pending.firstOrNull { it.priority == SpeechPriority.Normal } ?: pending.first()
+                        pending.remove(victim)
+                        dropped += victim.ids
+                    }
                 }
             }
         }
-        if (duplicate && id != null) emit(VehicleEvent.SpeechDone(id))
+        if (heardRecently) emit(VehicleEvent.SpeechDone(id!!))
         dropped.forEach { emit(VehicleEvent.SpeechDropped(it)) }
         wake.trySend(Unit)
     }
@@ -90,11 +97,20 @@ class SpeechQueue(
                     continue
                 }
             }
-            val removed = synchronized(lock) { pending.remove(item) }
-            if (!removed) continue
-            val ok = engine.speak(item.text, settings().rate)
+            val taken = synchronized(lock) {
+                val removed = pending.remove(item)
+                if (removed) current = item
+                removed
+            }
+            if (!taken) continue
+            val ok = engine.speak(item.text)
+            val ids = synchronized(lock) {
+                current = null
+                if (ok && item.dedupe) heard[item.text] = now()
+                item.ids.toList()
+            }
             lastDoneAt = now()
-            item.id?.let { emit(if (ok) VehicleEvent.SpeechDone(it) else VehicleEvent.SpeechDropped(it)) }
+            ids.forEach { emit(if (ok) VehicleEvent.SpeechDone(it) else VehicleEvent.SpeechDropped(it)) }
         }
     }
 }

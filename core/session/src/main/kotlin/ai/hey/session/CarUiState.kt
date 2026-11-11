@@ -15,6 +15,9 @@ enum class ConnectionStatus {
     Connecting,
     Online,
     Reconnecting,
+
+    /** The relay rejected the stored token (its data was wiped or the car was removed): the QR no longer works. */
+    Rejected,
 }
 
 /** Which panel the driver opened on top of the trip screen. */
@@ -43,7 +46,7 @@ data class CarUiState(
     val connection: ConnectionStatus = ConnectionStatus.Registering,
     /** Last snapshot from the relay; null until the first one arrives. */
     val view: CarView? = null,
-    val driving: DrivingState = DrivingState.PARKED,
+    val driving: DrivingState = DrivingState.DRIVING,
     /** URL printed in the QR (from registration). */
     val qrUrl: String? = null,
     val settings: CarSettings = CarSettings(),
@@ -70,18 +73,30 @@ data class CarUiState(
 
     val parked: Boolean get() = driving == DrivingState.PARKED
 
+    /** Whether a command of this kind (by key prefix) is in flight. */
+    fun isBusy(prefix: String): Boolean = busy.any { it == prefix || it.startsWith("$prefix:") }
+
+    /** True while a button with this exact key is loading. */
+    fun isLoading(key: String): Boolean = key in busy
+
     /** The draft, or an empty one when a newer proposal made it obsolete. */
     val activeDraft: DropoffDraft
         get() = if (draft.basedOnVersion == (view?.dropoff?.version ?: 0)) draft else DropoffDraft(view?.dropoff?.version ?: 0)
 }
 
+/**
+ * Busy keys. A key stays in [CarUiState.busy] until a snapshot shows the effect of its command or the relay refuses
+ * it; an unrelated snapshot never releases a button. Keys carry what they are waiting for (see TripRepository.settled).
+ */
 object Busy {
     const val JOIN = "join"
-    const val ROUTE = "route"
     const val RECHECK = "recheck"
     const val PROPOSE = "propose"
     const val END = "end"
     const val ARRIVE = "arrive"
+    const val REPLY = "reply"
+    fun join(joinRequestId: String) = "join:$joinRequestId"
+    fun propose(previousVersion: Int) = "propose:$previousVersion"
     fun pin(version: Int) = "pin:$version"
-    fun reply(requestId: String?, replyId: String) = "reply:${requestId.orEmpty()}:$replyId"
+    fun reply(requestId: String?, replyId: String, repliesBefore: Int) = "reply:${requestId.orEmpty()}:$replyId:$repliesBefore"
 }

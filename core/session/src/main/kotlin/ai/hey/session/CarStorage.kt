@@ -23,16 +23,23 @@ data class Registration(
 interface CarStorage {
     val settings: StateFlow<CarSettings>
     suspend fun updateSettings(transform: (CarSettings) -> CarSettings)
-    suspend fun loadRegistration(): Registration?
+
+    /** The registration for exactly this relay address; one per relay, never overwritten by another relay's. */
+    suspend fun loadRegistration(relayUrl: String): Registration?
     suspend fun saveRegistration(registration: Registration)
+    suspend fun forgetRegistration(relayUrl: String)
 }
 
-class InMemoryCarStorage(initial: CarSettings = CarSettings(), private var registration: Registration? = null) : CarStorage {
+class InMemoryCarStorage(initial: CarSettings = CarSettings()) : CarStorage {
     private val _settings = MutableStateFlow(initial)
+    private val registrations = HashMap<String, Registration>()
     override val settings: StateFlow<CarSettings> = _settings.asStateFlow()
     override suspend fun updateSettings(transform: (CarSettings) -> CarSettings) = _settings.update(transform)
-    override suspend fun loadRegistration(): Registration? = registration
+    override suspend fun loadRegistration(relayUrl: String): Registration? = synchronized(registrations) { registrations[relayUrl.trimEnd('/')] }
     override suspend fun saveRegistration(registration: Registration) {
-        this.registration = registration
+        synchronized(registrations) { registrations[registration.relayUrl.trimEnd('/')] = registration }
+    }
+    override suspend fun forgetRegistration(relayUrl: String) {
+        synchronized(registrations) { registrations.remove(relayUrl.trimEnd('/')) }
     }
 }

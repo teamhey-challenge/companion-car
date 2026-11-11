@@ -8,7 +8,6 @@ import ai.hey.designsystem.component.HeyButtonVariant
 import ai.hey.designsystem.component.HeyDialog
 import ai.hey.designsystem.component.HeyDialogAction
 import ai.hey.designsystem.component.HeyLayered
-import ai.hey.designsystem.component.HeyNotice
 import ai.hey.designsystem.component.HeyScrollColumn
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyText
@@ -81,7 +80,7 @@ internal fun RequestsScreen(state: CarUiState, commands: CarCommands, nowMillis:
     val target = view?.replyTarget
     val pin = view?.pendingPins?.firstOrNull()
     val replies = quickReplies()
-    val busyReply = state.busy.firstOrNull { it.startsWith("reply:") }?.substringAfterLast(':')
+    val busyReply = state.busy.firstOrNull { it.startsWith("reply:") }?.split(':')?.getOrNull(2)
     TripFrame(
         state = state,
         nowMillis = nowMillis,
@@ -94,7 +93,7 @@ internal fun RequestsScreen(state: CarUiState, commands: CarCommands, nowMillis:
                     variant = HeyButtonVariant.Secondary,
                     size = HeyButtonSize.Large,
                     icon = HeyIcons.Flag,
-                    loading = Busy.ARRIVE in state.busy,
+                    loading = state.isBusy(Busy.ARRIVE),
                     enabled = state.parked,
                 )
                 HeyButton(
@@ -120,7 +119,7 @@ internal fun RequestsScreen(state: CarUiState, commands: CarCommands, nowMillis:
                             kind = request.uiKind(),
                             state = request.uiState(),
                             time = clockText(request.ts, KoreaZone),
-                            onReplay = { commands.replay(request.text) },
+                            onReplay = { commands.replayRequest(request.requestId) },
                             modifier = Modifier.fillWidth(),
                         )
                     }
@@ -130,7 +129,7 @@ internal fun RequestsScreen(state: CarUiState, commands: CarCommands, nowMillis:
                         replies = replies,
                         onReply = { reply -> commands.sendReply(target?.requestId, QuickReplyId.valueOf(reply.id)) },
                         modifier = Modifier.fillWidth(),
-                        enabled = state.parked && state.online && target != null,
+                        enabled = state.parked && state.online,
                         loadingId = busyReply,
                     )
                     if (pin != null) {
@@ -162,13 +161,12 @@ internal fun ArrivedScreen(state: CarUiState, commands: CarCommands, nowMillis: 
         val destination = summary?.destination ?: view?.card?.destination
         add(stringResource(R.string.trip_arrived_row_destination) to (destination?.nameKo ?: none))
         if (agreed != null) add(stringResource(R.string.trip_arrived_row_dropoff) to agreed.label)
-        summary?.durationSec?.let { add(stringResource(R.string.trip_arrived_row_duration) to durationText(it)) }
-        summary?.distanceM?.let { add(stringResource(R.string.trip_arrived_row_distance) to distanceText(it)) }
+        summary?.elapsedSec?.let { add(stringResource(R.string.trip_arrived_row_duration) to durationText(it)) }
+        summary?.routeDistanceM?.let { add(stringResource(R.string.trip_arrived_row_distance) to distanceText(it)) }
         add(stringResource(R.string.trip_arrived_row_requests) to stringResource(R.string.trip_format_count, view?.requests?.size ?: 0))
         add(stringResource(R.string.trip_arrived_row_replies) to stringResource(R.string.trip_format_count, view?.replies?.size ?: 0))
     }
     val navDiffers = agreed != null && view.card != null && view.routeStale
-    var hints by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     HeyLayered(
         modifier = Modifier.fillSize(),
         overlay = if (state.endDialogOpen) {
@@ -185,11 +183,6 @@ internal fun ArrivedScreen(state: CarUiState, commands: CarCommands, nowMillis: 
         } else {
             null
         },
-        notice = if (hints > 0) {
-            { androidx.compose.runtime.key(hints) { HeyNotice(stringResource(R.string.trip_arrived_next_hint), HeyStatusTone.Info) } }
-        } else {
-            null
-        },
     ) {
         TripFrame(
             state = state,
@@ -198,18 +191,12 @@ internal fun ArrivedScreen(state: CarUiState, commands: CarCommands, nowMillis: 
             rail = {
                 HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
                     HeyButton(
-                        stringResource(R.string.trip_arrived_next),
-                        { hints++ },
-                        variant = HeyButtonVariant.Secondary,
-                        size = HeyButtonSize.Large,
-                    )
-                    HeyButton(
                         stringResource(R.string.trip_arrived_end),
                         commands::openEndDialog,
                         size = HeyButtonSize.Large,
                         icon = HeyIcons.Check,
                         enabled = state.parked && state.online,
-                        loading = Busy.END in state.busy,
+                        loading = state.isBusy(Busy.END),
                     )
                 }
             },

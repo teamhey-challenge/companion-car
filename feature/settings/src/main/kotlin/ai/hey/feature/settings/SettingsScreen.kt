@@ -11,7 +11,6 @@ import ai.hey.designsystem.component.HeySection
 import ai.hey.designsystem.component.HeySegmentOption
 import ai.hey.designsystem.component.HeySegmented
 import ai.hey.designsystem.component.HeyStepperRow
-import ai.hey.designsystem.component.HeySwitchRow
 import ai.hey.designsystem.component.HeyText
 import ai.hey.designsystem.component.HeyTextField
 import ai.hey.designsystem.component.StatusStrip
@@ -25,8 +24,6 @@ import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTone
 import ai.hey.model.CarSettings
 import ai.hey.model.HeyConfig
-import ai.hey.model.PresetId
-import ai.hey.model.SpeechRate
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,8 +35,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 
 /**
- * D8. Values are saved the moment they change ([onChange]). The two text values are validated; an invalid draft stays
- * on screen with its error and is not saved. [connection], [wordmarkParty] and [clock] only dress the status strip.
+ * D8. Values are saved the moment they change ([onChange]), except the two text values: the plate suffix is checked as
+ * it is typed and saved when valid; the relay address is only applied with its own button, because applying it
+ * reconnects (and, for an address never used before, registers the car there).
+ * [connection], [wordmarkParty] and [clock] only dress the status strip.
  */
 @Composable
 fun SettingsScreen(
@@ -74,17 +73,6 @@ fun SettingsScreen(
                 HeyText(stringResource(R.string.settings_title), variant = HeyTextVariant.Title, maxLines = 1)
                 HeyText(stringResource(R.string.settings_subtitle), tone = HeyTone.Muted, maxLines = 1)
             }
-            HeySection(stringResource(R.string.settings_presets)) {
-                PresetId.entries.forEach { id ->
-                    HeySwitchRow(
-                        label = stringResource(presetLabel(id)),
-                        checked = id in settings.enabledPresets,
-                        onCheckedChange = { on -> onChange { it.withPreset(id, on) } },
-                        modifier = Modifier.fillWidth(),
-                        enabled = id.driverCanDisable,
-                    )
-                }
-            }
             HeySection(stringResource(R.string.settings_speech)) {
                 HeyStepperRow(
                     label = stringResource(R.string.settings_gap),
@@ -95,17 +83,6 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.fillWidth(),
                     format = { gapText(context, it) },
-                )
-                HeyText(stringResource(R.string.settings_rate), variant = HeyTextVariant.Label, tone = HeyTone.Muted, maxLines = 1)
-                HeySegmented(
-                    options = listOf(
-                        HeySegmentOption(SpeechRate.Slow, stringResource(R.string.settings_rate_slow)),
-                        HeySegmentOption(SpeechRate.Normal, stringResource(R.string.settings_rate_normal)),
-                        HeySegmentOption(SpeechRate.Fast, stringResource(R.string.settings_rate_fast)),
-                    ),
-                    selected = settings.speechRate,
-                    onSelect = { rate -> onChange { it.copy(speechRate = rate) } },
-                    modifier = Modifier.fillWidth(),
                 )
             }
             HeySection(stringResource(R.string.settings_theme)) {
@@ -120,22 +97,8 @@ fun SettingsScreen(
                 )
             }
             HeySection(stringResource(R.string.settings_vehicle)) {
-                TextSetting(
-                    label = stringResource(R.string.settings_plate),
-                    saved = settings.plateSuffix,
-                    valid = { it.length in 1..8 && it.all(Char::isLetterOrDigit) },
-                    errorText = stringResource(R.string.settings_plate_error),
-                    onValid = { value -> onChange { it.copy(plateSuffix = value) } },
-                )
-                TextSetting(
-                    label = stringResource(R.string.settings_relay),
-                    saved = settings.relayUrl,
-                    keyboard = HeyKeyboard.Uri,
-                    placeholder = stringResource(R.string.settings_relay_hint),
-                    valid = { it.startsWith("http://") || it.startsWith("https://") },
-                    errorText = stringResource(R.string.settings_relay_error),
-                    onValid = { value -> onChange { it.copy(relayUrl = value.trimEnd('/')) } },
-                )
+                PlateSetting(settings.plateSuffix) { value -> onChange { it.copy(plateSuffix = value) } }
+                RelaySetting(settings.relayUrl) { value -> onChange { it.copy(relayUrl = value) } }
                 HeyText(stringResource(R.string.settings_device_note), variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 2)
             }
         }
@@ -145,39 +108,53 @@ fun SettingsScreen(
 /** The stepper's formatter is not composable, so it gets a Context resolved by the caller. */
 private fun gapText(context: Context, seconds: Int): String = context.getString(R.string.settings_gap_value, seconds)
 
-/** A text value with a local draft: typing never touches the saved value until the draft is valid. */
+private fun validPlate(value: String) = value.length in 1..8 && value.all(Char::isLetterOrDigit)
+
+/** http(s) with a host; anything else is rejected before it can trigger a connection. */
+private fun validRelay(value: String): Boolean {
+    val rest = when {
+        value.startsWith("http://") -> value.removePrefix("http://")
+        value.startsWith("https://") -> value.removePrefix("https://")
+        else -> return false
+    }
+    val host = rest.substringBefore('/').substringBefore(':')
+    return host.length >= 3 && host.all { it.isLetterOrDigit() || it == '.' || it == '-' }
+}
+
 @Composable
-private fun TextSetting(
-    label: String,
-    saved: String,
-    valid: (String) -> Boolean,
-    errorText: String,
-    onValid: (String) -> Unit,
-    keyboard: HeyKeyboard = HeyKeyboard.Text,
-    placeholder: String? = null,
-) {
+private fun PlateSetting(saved: String, onValid: (String) -> Unit) {
     var draft by remember(saved) { mutableStateOf(saved) }
     HeyTextField(
-        label = label,
+        label = stringResource(R.string.settings_plate),
         value = draft,
         onValueChange = {
             draft = it
-            if (valid(it) && it != saved) onValid(it)
+            if (validPlate(it) && it != saved) onValid(it)
         },
         modifier = Modifier.fillWidth(),
-        keyboard = keyboard,
-        placeholder = placeholder,
-        error = if (valid(draft)) null else errorText,
+        error = if (validPlate(draft)) null else stringResource(R.string.settings_plate_error),
     )
 }
 
-private fun presetLabel(id: PresetId): Int = when (id) {
-    PresetId.Slower -> R.string.settings_preset_slower
-    PresetId.Cooler -> R.string.settings_preset_cooler
-    PresetId.Warmer -> R.string.settings_preset_warmer
-    PresetId.Window -> R.string.settings_preset_window
-    PresetId.Card -> R.string.settings_preset_card
-    PresetId.HowLong -> R.string.settings_preset_how_long
-    PresetId.StopHere -> R.string.settings_preset_stop_here
-    PresetId.Trunk -> R.string.settings_preset_trunk
+@Composable
+private fun RelaySetting(saved: String, onApply: (String) -> Unit) {
+    var draft by remember(saved) { mutableStateOf(saved) }
+    val value = draft.trim().trimEnd('/')
+    VStack(HeyGap.G8) {
+        HeyTextField(
+            label = stringResource(R.string.settings_relay),
+            value = draft,
+            onValueChange = { draft = it },
+            modifier = Modifier.fillWidth(),
+            keyboard = HeyKeyboard.Uri,
+            placeholder = stringResource(R.string.settings_relay_hint),
+            error = if (validRelay(value)) null else stringResource(R.string.settings_relay_error),
+        )
+        HeyButton(
+            stringResource(R.string.settings_relay_apply),
+            { onApply(value) },
+            variant = HeyButtonVariant.Secondary,
+            enabled = validRelay(value) && value != saved,
+        )
+    }
 }

@@ -141,13 +141,37 @@ data class Place(
 )
 
 @Serializable
+enum class DropoffKind {
+    @SerialName("default") Default,
+    @SerialName("entrance") Entrance,
+    @SerialName("side") Side,
+    @SerialName("curated") Curated,
+    @SerialName("pin") Pin,
+}
+
+@Serializable
+enum class EntranceType {
+    @SerialName("main") Main,
+    @SerialName("side") Side,
+    @SerialName("service") Service,
+    @SerialName("parking") Parking,
+}
+
+@Serializable
+data class StreetName(val ko: String, val latin: String? = null)
+
+/** A drop-off point described by structure; `label` is the Korean text the car shows, `labelLocal` is the reader's language. */
+@Serializable
 data class DropoffCandidate(
     val candidateId: String,
-    val kind: String,
+    val kind: DropoffKind,
+    val entranceType: EntranceType? = null,
+    val ref: String? = null,
+    val street: StreetName? = null,
     val label: String,
+    val labelLocal: String,
     val point: LatLng,
     val distanceM: Double,
-    val street: String? = null,
 )
 
 @Serializable
@@ -155,14 +179,29 @@ data class DropoffProposal(
     val version: Int,
     val by: DropoffBy,
     val point: LatLng,
+    val kind: DropoffKind,
+    val entranceType: EntranceType? = null,
+    val ref: String? = null,
+    val street: StreetName? = null,
     val label: String,
+    val labelLocal: String,
     val reasonId: DropoffReasonId? = null,
     val reasonText: String? = null,
     val status: ProposalStatus,
 )
 
 @Serializable
-data class AgreedDropoff(val version: Int, val by: DropoffBy, val point: LatLng, val label: String)
+data class AgreedDropoff(
+    val version: Int,
+    val by: DropoffBy,
+    val point: LatLng,
+    val kind: DropoffKind,
+    val entranceType: EntranceType? = null,
+    val ref: String? = null,
+    val street: StreetName? = null,
+    val label: String,
+    val labelLocal: String,
+)
 
 @Serializable
 data class CardInput(
@@ -203,14 +242,24 @@ data class RouteInfo(val durationSec: Int, val distanceM: Int, val tollFare: Int
 data class ProgressInfo(val etaSec: Int, val distanceM: Int, val stale: Boolean)
 
 @Serializable
-data class DropoffPoint(val point: LatLng, val label: String)
+data class ArrivalDropoff(
+    val point: LatLng,
+    val kind: DropoffKind,
+    val entranceType: EntranceType? = null,
+    val ref: String? = null,
+    val street: StreetName? = null,
+    val label: String,
+    val labelLocal: String,
+)
 
 @Serializable
 data class ArrivalSummary(
     val destination: Place,
-    val dropoff: DropoffPoint? = null,
-    val durationSec: Int? = null,
-    val distanceM: Int? = null,
+    val dropoff: ArrivalDropoff? = null,
+    /** Seconds from route.started to arrival, measured by the relay. */
+    val elapsedSec: Int? = null,
+    /** Planned route distance reported at route.started, not the driven distance. */
+    val routeDistanceM: Int? = null,
     val tollFare: Int? = null,
     val startedAt: Long,
     val endedAt: Long? = null,

@@ -145,7 +145,7 @@ class RelayIntegrationTest {
 
         // first launch: registers, connects, snapshot says there is no trip
         eventually("online idle") { repo.state.value.takeIf { it.online && it.view?.state == TripState.IDLE } }
-        val registration = storage.loadRegistration()
+        val registration = storage.loadRegistration(base)
         assertNotNull(registration)
         assertEquals("1234", repo.state.value.view?.plateSuffix)
         assertTrue(repo.state.value.qrUrl!!.contains(registration!!.carCode))
@@ -185,19 +185,46 @@ class RelayIntegrationTest {
         eventually("IN_TRIP") { repo.state.value.takeIf { it.view?.state == TripState.IN_TRIP } }
         assertEquals(1, vehicle.routes.size)
 
-        // car proposes a drop-off; the passenger answers ok through the relay
+        // car proposes a drop-off with a structured candidate; the passenger device gets a localized label for it
         repo.openDropoff()
         val withCandidates = eventually("candidates") { repo.state.value.takeIf { it.candidates.items.size > 1 } }
-        val entrance = withCandidates.candidates.items[1]
-        repo.proposeDropoff(entrance.point, entrance.label, null)
+        val entrance = withCandidates.candidates.items.first { it.kind != ai.hey.model.DropoffKind.Default }
+        repo.proposeDropoff(entrance, null)
         val proposed = eventually("proposal") { repo.state.value.view?.dropoff?.takeIf { it.status == ai.hey.model.ProposalStatus.Pending } }
+        assertEquals(entrance.kind, proposed.kind)
+        val seenByPassenger = eventually("passenger sees the proposal") {
+            passenger.lastSnapshot()?.get("dropoff")?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.jsonObject
+        }
+        assertEquals(entrance.kind.name.lowercase(), seenByPassenger.getValue("kind").jsonPrimitive.content)
+        assertTrue(seenByPassenger.getValue("labelLocal").jsonPrimitive.content.isNotBlank())
         passenger.send("dropoff.respond", """{"version":${proposed.version},"response":"ok"}""")
         val agreed = eventually("agreed") { repo.state.value.view?.agreedDropoff }
         assertEquals(entrance.label, agreed.label)
-        assertTrue(repo.state.value.view?.dropoff?.status == ai.hey.model.ProposalStatus.Ok)
-        // the passenger device saw the same trip through its own read model
-        assertNotNull(passenger.lastSnapshot())
+        assertEquals(ai.hey.model.ProposalStatus.Ok, repo.state.value.view?.dropoff?.status)
 
+        // arrival by the manual button (navigation may never report it); a second press must not send again
+        repo.arrive()
+        eventually("ARRIVED") { repo.state.value.takeIf { it.view?.state == TripState.ARRIVED } }
+        repo.arrive()
+        assertTrue(repo.state.value.error == null)
+        assertNotNull(repo.state.value.view?.summary?.elapsedSec)
+
+        repo.endTrip()
+        eventually("IDLE again") { repo.state.value.takeIf { it.view?.state == TripState.IDLE } }
+
+        repo.stop()
+    }
+
+    @Test fun aRegistrationTheRelayDoesNotKnowIsReportedAndCanBeRedone() = runBlocking {
+        val vehicle = FakeVehicleGateway(scope)
+        val storage = InMemoryCarStorage(ai.hey.model.CarSettings(plateSuffix = "5678", relayUrl = base))
+        storage.saveRegistration(Registration("ZZZZZZZZ", "not-a-real-token-000000", "$base/c/ZZZZZZZZ", base, "5678"))
+        val repo = TripRepository(scope, vehicle, storage, http = http, progressPollMs = 3_600_000)
+        repo.start()
+        eventually("rejected") { repo.state.value.takeIf { it.connection == ConnectionStatus.Rejected } }
+        repo.reregister()
+        val online = eventually("online after re-registering") { repo.state.value.takeIf { it.online && it.view != null } }
+        assertTrue(!online.qrUrl!!.contains("ZZZZZZZZ"))
         repo.stop()
     }
 }

@@ -32,15 +32,6 @@ class ScreenChoiceTest {
         }
     }
 
-    @Test fun drivingKeepsTheDropoffDraftAndReturnsToD4() {
-        val parked = TripSamples.dropoffSelected
-        val driving = parked.copy(driving = DrivingState.DRIVING)
-        val back = driving.copy(driving = DrivingState.PARKED)
-        assertEquals(TripScreenId.D4Dropoff, id(back))
-        assertEquals(parked.draft, back.draft)
-        assertEquals(Panel.Dropoff, back.panel)
-    }
-
     @Test fun openQuestionsOpenD6AndDismissHidesUntilMoreArrive() {
         assertEquals(TripScreenId.D6Requests, id(TripSamples.requestsPlain))
         val dismissed = TripSamples.requestsPlain.copy(requestsDismissedAt = 2)

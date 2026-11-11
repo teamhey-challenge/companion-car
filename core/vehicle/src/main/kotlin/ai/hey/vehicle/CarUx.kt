@@ -12,14 +12,20 @@ import android.os.Handler
 internal object CarUx {
     private var car: Car? = null
 
-    /** Calls [onDriving] with the current value and on every change; "driving" = distraction optimisation required. */
-    fun start(context: Context, handler: Handler, onDriving: (Boolean) -> Unit) {
+    /**
+     * [onDriving] gets the current value and every change ("driving" = distraction optimisation required).
+     * [onLost] is called when the car service is not (or no longer) available: the caller must treat that as driving.
+     */
+    fun start(context: Context, handler: Handler, onDriving: (Boolean) -> Unit, onLost: () -> Unit) {
         Car.createCar(
             context,
             handler,
             10_000L,
             Car.CarServiceLifecycleListener { connected, ready ->
-                if (!ready) return@CarServiceLifecycleListener
+                if (!ready) {
+                    onLost()
+                    return@CarServiceLifecycleListener
+                }
                 car = connected
                 val manager = connected.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE) as CarUxRestrictionsManager
                 onDriving(manager.currentCarUxRestrictions.isRequiresDistractionOptimization)

@@ -2,13 +2,12 @@ package ai.hey.feature.trip
 
 import ai.hey.designsystem.component.HeyConnection
 import ai.hey.designsystem.component.ProposalState
-import ai.hey.designsystem.component.RequestKind as UiRequestKind
-import ai.hey.designsystem.component.RequestState as UiRequestState
 import ai.hey.designsystem.component.QuickReplyUi
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.model.ConditionId
 import ai.hey.model.DropoffReasonId
 import ai.hey.model.ErrorCode
+import ai.hey.model.Lang
 import ai.hey.model.ProposalStatus
 import ai.hey.model.QuickReplyId
 import ai.hey.model.RequestItem
@@ -18,11 +17,20 @@ import ai.hey.session.ConnectionStatus
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import ai.hey.designsystem.component.RequestKind as UiRequestKind
+import ai.hey.designsystem.component.RequestState as UiRequestState
 
 fun ConnectionStatus.toStrip(): HeyConnection = when (this) {
     ConnectionStatus.Online -> HeyConnection.Online
     ConnectionStatus.Connecting, ConnectionStatus.Reconnecting -> HeyConnection.Reconnecting
-    ConnectionStatus.Registering, ConnectionStatus.RegistrationFailed -> HeyConnection.Offline
+    ConnectionStatus.Registering, ConnectionStatus.RegistrationFailed, ConnectionStatus.Rejected -> HeyConnection.Offline
+}
+
+fun Lang.labelRes(): Int = when (this) {
+    Lang.En -> R.string.trip_lang_en
+    Lang.Ja -> R.string.trip_lang_ja
+    Lang.ZhHans -> R.string.trip_lang_zh
+    Lang.Ko -> R.string.trip_lang_ko
 }
 
 internal fun ConditionId.icon(): ImageVector = when (this) {

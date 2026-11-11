@@ -5,14 +5,10 @@ import ai.hey.model.HeyConfig
 import ai.hey.model.Place
 import ai.hey.model.RouteInfo
 import ai.hey.model.SpeechPriority
-import ai.hey.model.SpeechRate
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
-data class SpeechSettings(
-    val gapSec: Int = HeyConfig.SPEECH_GAP_SEC,
-    val rate: SpeechRate = SpeechRate.Normal,
-)
+data class SpeechSettings(val gapSec: Int = HeyConfig.SPEECH_GAP_SEC)
 
 enum class VehicleGear { Unknown, Park, Reverse, Neutral, Drive }
 
@@ -27,7 +23,7 @@ sealed interface RouteResult {
 }
 
 sealed interface VehicleEvent {
-    /** The text with this id was read aloud (or was an exact repeat inside the dedup window). */
+    /** The text with this id was heard (read to the end by the speaker). Never emitted for text that was not spoken. */
     data class SpeechDone(val speechId: String) : VehicleEvent
 
     /** The text with this id was pushed out of a full queue, or the speech engine could not read it. */
@@ -42,6 +38,10 @@ sealed interface VehicleEvent {
  * android.car stay behind [PleosVehicleGateway].
  */
 interface VehicleGateway {
+    /**
+     * Fails closed: the Pleos gateway reports DRIVING until the car service has said otherwise (and again when it
+     * goes away), so hands-on actions are never offered on a guess.
+     */
     val drivingState: StateFlow<DrivingState>
     val gear: StateFlow<VehicleGear>
 
@@ -51,15 +51,16 @@ interface VehicleGateway {
 
     /**
      * Queues [textKo] for the driver. [speechId] comes back in [VehicleEvent.SpeechDone] / [VehicleEvent.SpeechDropped].
-     * High priority goes first and skips the gap; an identical text inside the dedup window is not read twice.
+     * High priority goes first and skips the gap; request speech (has an id, normal priority) is de-duplicated.
      */
     fun speak(textKo: String, priority: SpeechPriority, speechId: String? = null)
 
-    /** Driver pressed "다시 듣기": reads again even if the same text was just read. */
-    fun replay(textKo: String)
+    /** Driver pressed "다시 듣기": reads again even if the same text was just read. [speechId] gets the done event. */
+    fun replay(textKo: String, speechId: String? = null)
 
     fun configureSpeech(settings: SpeechSettings)
 
+    /** One route request at a time; a second call waits for the first. */
     suspend fun startRoute(place: Place): RouteResult
 
     /** Null when the navigation service does not answer (no route, service missing). */

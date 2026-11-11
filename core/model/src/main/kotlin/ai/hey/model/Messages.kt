@@ -23,7 +23,29 @@ val HeyJson: Json = Json {
 
 @Serializable data class JoinDecision(val joinRequestId: String)
 @Serializable data class RouteFailedData(val code: String)
-@Serializable data class DropoffProposeData(val point: LatLng, val label: String, val reasonId: DropoffReasonId? = null)
+@Serializable
+data class DropoffProposeData(
+    val point: LatLng,
+    val label: String,
+    val kind: DropoffKind? = null,
+    val entranceType: EntranceType? = null,
+    val ref: String? = null,
+    val street: StreetName? = null,
+    val reasonId: DropoffReasonId? = null,
+) {
+    companion object {
+        /** The structured fields of a candidate go back to the relay unchanged so passengers get localized labels. */
+        fun of(candidate: DropoffCandidate, reasonId: DropoffReasonId?) = DropoffProposeData(
+            point = candidate.point,
+            label = candidate.label,
+            kind = candidate.kind,
+            entranceType = candidate.entranceType,
+            ref = candidate.ref,
+            street = candidate.street,
+            reasonId = reasonId,
+        )
+    }
+}
 @Serializable data class DropoffDecideData(val version: Int, val decision: DriverDecision)
 @Serializable data class RequestSpokenData(val requestId: String)
 @Serializable data class ReplySendData(val requestId: String? = null, val replyId: QuickReplyId)

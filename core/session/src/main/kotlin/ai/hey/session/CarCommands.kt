@@ -1,26 +1,34 @@
 package ai.hey.session
 
 import ai.hey.model.CarSettings
+import ai.hey.model.DropoffCandidate
 import ai.hey.model.DropoffReasonId
-import ai.hey.model.LatLng
 import ai.hey.model.QuickReplyId
 
 /** Everything a screen can ask for. Screens never reach the socket or the vehicle themselves. */
 interface CarCommands {
-    // ---- relay commands (ignored while driving, except nothing: all of these need a parked car)
+    // ---- relay commands (all of these need a parked car and are refused otherwise)
     fun approveJoin(joinRequestId: String)
     fun declineJoin(joinRequestId: String)
     fun recheckCard()
     fun startRoute()
-    fun proposeDropoff(point: LatLng, label: String, reasonId: DropoffReasonId?)
+
+    /** Sends the chosen candidate with its structured fields (kind, entranceType, ref, street) so passengers get localized labels. */
+    fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?)
     fun decidePin(version: Int, accept: Boolean)
-    fun markSpoken(requestId: String)
     fun sendReply(requestId: String?, replyId: QuickReplyId)
     fun arrive()
     fun endTrip()
 
     // ---- vehicle
     fun replay(textKo: String)
+
+    /** Reads a request again; a request that was never heard is marked spoken when the reading ends. */
+    fun replayRequest(requestId: String)
+
+    // ---- registration
+    /** Drops the registration this relay no longer knows and registers again (the QR sticker changes). */
+    fun reregister()
 
     // ---- local UI state
     fun openDropoff()
@@ -32,7 +40,6 @@ interface CarCommands {
     fun closeSettings()
     fun openEndDialog()
     fun closeEndDialog()
-    fun dismissError()
 
     // ---- settings (device only)
     fun updateSettings(transform: (CarSettings) -> CarSettings)
@@ -44,13 +51,14 @@ object NoCommands : CarCommands {
     override fun declineJoin(joinRequestId: String) = Unit
     override fun recheckCard() = Unit
     override fun startRoute() = Unit
-    override fun proposeDropoff(point: LatLng, label: String, reasonId: DropoffReasonId?) = Unit
+    override fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?) = Unit
     override fun decidePin(version: Int, accept: Boolean) = Unit
-    override fun markSpoken(requestId: String) = Unit
     override fun sendReply(requestId: String?, replyId: QuickReplyId) = Unit
     override fun arrive() = Unit
     override fun endTrip() = Unit
     override fun replay(textKo: String) = Unit
+    override fun replayRequest(requestId: String) = Unit
+    override fun reregister() = Unit
     override fun openDropoff() = Unit
     override fun closeDropoff() = Unit
     override fun selectCandidate(candidateId: String) = Unit
@@ -60,6 +68,5 @@ object NoCommands : CarCommands {
     override fun closeSettings() = Unit
     override fun openEndDialog() = Unit
     override fun closeEndDialog() = Unit
-    override fun dismissError() = Unit
     override fun updateSettings(transform: (CarSettings) -> CarSettings) = Unit
 }

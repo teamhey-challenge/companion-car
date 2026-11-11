@@ -5,7 +5,6 @@ import ai.hey.model.HeyConfig
 import ai.hey.model.Place
 import ai.hey.model.RouteInfo
 import ai.hey.model.SpeechPriority
-import ai.hey.model.SpeechRate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -16,8 +15,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Stand-in for previews, tests and devices without the Pleos services. Driving state and arrival are driven by
- * the caller; speech goes through the real [SpeechQueue] so queue policy is exercised in tests too.
+ * Stand-in for previews and tests only (production never falls back to it). Driving state and arrival are driven by the
+ * caller; speech goes through the real [SpeechQueue] so queue policy is exercised in tests too.
  */
 class FakeVehicleGateway(
     scope: CoroutineScope,
@@ -35,7 +34,7 @@ class FakeVehicleGateway(
 
     private val _spoken = ArrayList<String>()
     private val _routes = ArrayList<Place>()
-    private var settings = SpeechSettings()
+    @Volatile private var settings = SpeechSettings()
 
     /** Texts that were read, in order. */
     val spoken: List<String> get() = synchronized(_spoken) { _spoken.toList() }
@@ -46,6 +45,9 @@ class FakeVehicleGateway(
     /** Set to make the next [startRoute] fail with this code. */
     @Volatile var routeFailure: String? = null
 
+    /** Set to false to make the speaker fail: texts are then dropped instead of heard. */
+    @Volatile var speakerWorks: Boolean = true
+
     override val drivingState: StateFlow<DrivingState> = _driving.asStateFlow()
     override val gear: StateFlow<VehicleGear> = _gear.asStateFlow()
     override val doors: StateFlow<Set<VehicleDoor>> = _doors.asStateFlow()
@@ -54,7 +56,8 @@ class FakeVehicleGateway(
     private val queue = SpeechQueue(
         scope = scope,
         engine = object : SpeechEngine {
-            override suspend fun speak(text: String, rate: SpeechRate): Boolean {
+            override suspend fun speak(text: String): Boolean {
+                if (!speakerWorks) return false
                 synchronized(_spoken) { _spoken += text }
                 if (speechMillis > 0) delay(speechMillis)
                 return true
@@ -85,7 +88,7 @@ class FakeVehicleGateway(
 
     override fun speak(textKo: String, priority: SpeechPriority, speechId: String?) = queue.enqueue(textKo, priority, speechId)
 
-    override fun replay(textKo: String) = queue.enqueue(textKo, SpeechPriority.High, null, force = true)
+    override fun replay(textKo: String, speechId: String?) = queue.enqueue(textKo, SpeechPriority.High, speechId, force = true)
 
     override fun configureSpeech(settings: SpeechSettings) {
         this.settings = settings

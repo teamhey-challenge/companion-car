@@ -2,6 +2,8 @@ package ai.hey.feature.trip
 
 import ai.hey.designsystem.component.EmptyPanel
 import ai.hey.designsystem.component.HeyBanner
+import ai.hey.designsystem.component.HeyButton
+import ai.hey.designsystem.component.HeyButtonVariant
 import ai.hey.designsystem.component.HeyCard
 import ai.hey.designsystem.component.HeyDivider
 import ai.hey.designsystem.component.HeyIconButton
@@ -21,7 +23,6 @@ import ai.hey.designsystem.layout.fillWidth
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTone
-import ai.hey.model.Lang
 import ai.hey.session.Busy
 import ai.hey.session.CarCommands
 import ai.hey.session.CarUiState
@@ -45,16 +46,25 @@ internal fun WaitingScreen(state: CarUiState, commands: CarCommands, nowMillis: 
         },
     ) {
         val qr = state.qrUrl
-        if (qr == null) {
-            val failed = state.connection == ConnectionStatus.RegistrationFailed
-            EmptyPanel(
-                icon = if (failed) HeyIcons.Warning else HeyIcons.Qr,
-                title = stringResource(if (failed) R.string.trip_waiting_register_failed_title else R.string.trip_waiting_registering),
-                message = if (failed) stringResource(R.string.trip_waiting_register_failed_message) else null,
-                modifier = Modifier.fillSize(),
-            )
-        } else {
-            WaitingContent(state, qr)
+        when {
+            state.connection == ConnectionStatus.Rejected -> VStack(HeyGap.G24, align = HeyAlign.Center, arrange = HeyArrange.Center, modifier = Modifier.fillSize()) {
+                EmptyPanel(
+                    icon = HeyIcons.Warning,
+                    title = stringResource(R.string.trip_waiting_rejected_title),
+                    message = stringResource(R.string.trip_waiting_rejected_message),
+                )
+                HeyButton(stringResource(R.string.trip_waiting_reregister), commands::reregister, enabled = state.parked)
+            }
+            qr == null -> {
+                val failed = state.connection == ConnectionStatus.RegistrationFailed
+                EmptyPanel(
+                    icon = if (failed) HeyIcons.Warning else HeyIcons.Qr,
+                    title = stringResource(if (failed) R.string.trip_waiting_register_failed_title else R.string.trip_waiting_registering),
+                    message = if (failed) stringResource(R.string.trip_waiting_register_failed_message) else null,
+                    modifier = Modifier.fillSize(),
+                )
+            }
+            else -> WaitingContent(state, qr)
         }
     }
 }
@@ -105,9 +115,9 @@ internal fun JoinScreen(state: CarUiState, commands: CarCommands, nowMillis: Lon
             }
             if (join != null) {
                 val left = ((join.expiresAt - nowMillis) / 1000).toInt().coerceAtLeast(0)
-                val locked = Busy.JOIN in state.busy
+                val locked = state.isBusy(Busy.JOIN)
                 JoinRequestCard(
-                    langLabel = join.lang.label,
+                    langLabel = stringResource(join.lang.labelRes()),
                     partySize = join.partySize,
                     expiresInSec = left,
                     onApprove = { commands.approveJoin(join.joinRequestId) },
