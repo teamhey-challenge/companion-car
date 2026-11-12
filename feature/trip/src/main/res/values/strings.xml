@@ -101,6 +101,7 @@
     <string name="trip_arrived_navi_differs">내비 목적지와 내린 곳이 달라요</string>
     <string name="trip_arrived_offline">연결되면 끝낼 수 있어요</string>
     <string name="trip_arrived_end">운행 끝내기</string>
+    <string name="trip_end_button">운행 끝내기</string>
     <string name="trip_arrived_row_destination">목적지</string>
     <string name="trip_arrived_row_dropoff">내린 곳</string>
     <string name="trip_arrived_row_duration">걸린 시간</string>

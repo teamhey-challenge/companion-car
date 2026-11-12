@@ -175,7 +175,7 @@ class RelayIntegrationTest {
         // a driving car must not approve; parked it can
         vehicle.setDriving(true)
         eventually("driving") { repo.state.value.takeIf { it.driving == DrivingStatus.Driving } }
-        repo.approveJoin(joinId)
+        repo.state.value.parked?.approveJoin(joinId) // no hands-on commands exist while the car moves
         delay(500)
         assertEquals(TripState.REQUESTED, repo.state.value.view?.state)
         vehicle.setDriving(false)
@@ -183,7 +183,7 @@ class RelayIntegrationTest {
         // The relay learns about the stop through driving.state; a refusal (it still believed the car was moving)
         // clears the button, so a second tap is what the driver would do. Retrying here removes that ordering race.
         eventually("CONNECTED after a parked approve") {
-            if (!repo.state.value.joinInFlight) repo.approveJoin(joinId)
+            if (!repo.state.value.joinInFlight) repo.state.value.parked?.approveJoin(joinId)
             repo.state.value.takeIf { it.view?.state == TripState.CONNECTED }
         }
 
@@ -198,16 +198,16 @@ class RelayIntegrationTest {
         eventually("card speech") { vehicle.spoken.firstOrNull { "롯데호텔" in it } }
 
         // car starts the route (fake navigation answers at once)
-        repo.startRoute()
+        repo.state.value.parked!!.startRoute()
         eventually("IN_TRIP") { repo.state.value.takeIf { it.view?.state == TripState.IN_TRIP } }
         assertEquals(1, vehicle.routes.size)
 
         // car proposes a drop-off with a structured candidate; the passenger device gets a localized label for it
-        repo.openDropoff()
+        repo.state.value.parked!!.openDropoff()
         val withCandidates = eventually("candidates") { repo.state.value.takeIf { it.candidates.items.size > 1 } }
         val entrance = withCandidates.candidates.items.first { it.kind != ai.hey.model.DropoffKind.Default }
-        repo.proposeDropoff(entrance, null)
-        val proposed = eventually("proposal") { repo.state.value.view?.dropoff?.takeIf { it.status == ai.hey.model.ProposalStatus.Pending } }
+        repo.state.value.parked!!.proposeDropoff(entrance, null)
+        val proposed = eventually("proposal") { repo.state.value.view?.dropoff?.takeIf { (it as? ai.hey.model.DriverProposal)?.status == ai.hey.model.DriverProposalStatus.Pending } }
         assertEquals(entrance.kind, proposed.kind)
         val seenByPassenger = eventually("passenger sees the proposal") {
             passenger.lastSnapshot()?.get("dropoff")?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.jsonObject
@@ -217,16 +217,17 @@ class RelayIntegrationTest {
         passenger.send("dropoff.respond", """{"version":${proposed.version},"response":"ok"}""")
         val agreed = eventually("agreed") { repo.state.value.view?.agreedDropoff }
         assertEquals(entrance.label, agreed.label)
-        assertEquals(ai.hey.model.ProposalStatus.Ok, repo.state.value.view?.dropoff?.status)
+        assertEquals(ai.hey.model.DriverProposalStatus.Ok, (repo.state.value.view?.dropoff as? ai.hey.model.DriverProposal)?.status)
 
         // arrival by the manual button (navigation may never report it); a second press must not send again
-        repo.arrive()
+        repo.closeDropoff() // D4 offers no arrive button; the driver closes it first
+        repo.state.value.parked!!.arrive()
         eventually("ARRIVED") { repo.state.value.takeIf { it.view?.state == TripState.ARRIVED } }
-        repo.arrive()
+        repo.state.value.parked?.arrive() // not offered in ARRIVED
         assertTrue(repo.state.value.error == null)
         assertNotNull(repo.state.value.view?.summary?.elapsedSec)
 
-        repo.endTrip()
+        repo.state.value.parked!!.endTrip()
         eventually("IDLE again") { repo.state.value.takeIf { it.view?.state == TripState.IDLE } }
 
         repo.stop()
@@ -239,7 +240,7 @@ class RelayIntegrationTest {
         val repo = TripRepository(scope, vehicle, storage, http = http, progressPollMs = 3_600_000)
         repo.start()
         eventually("rejected") { repo.state.value.takeIf { it.connection == ConnectionStatus.Rejected } }
-        repo.reregister()
+        repo.state.value.parked!!.reregister()
         val online = eventually("online after re-registering") { repo.state.value.takeIf { it.online && it.view != null } }
         assertTrue(!online.qrUrl!!.contains("ZZZZZZZZ"))
         repo.stop()
@@ -259,7 +260,7 @@ class RelayIntegrationTest {
         post("/v1/c/${registration.carCode}/join", """{"lang":"en","partySize":1}""")
         eventually("REQUESTED") { repo.state.value.takeIf { it.view?.state == TripState.REQUESTED } }
 
-        repo.approveJoin("jr_does_not_exist")
+        repo.state.value.parked!!.approveJoin("jr_does_not_exist")
         val refused = eventually("error shown") { repo.state.value.takeIf { it.error != null } }
         assertEquals(ai.hey.model.ErrorCode.BAD_REQUEST, refused.error)
         assertTrue("the join button must be released", !refused.joinInFlight)
@@ -284,7 +285,7 @@ class RelayIntegrationTest {
         passenger.open()
         eventually("REQUESTED") { repo.state.value.takeIf { it.view?.state == TripState.REQUESTED } }
 
-        repo.approveJoin(joinId)
+        repo.state.value.parked!!.approveJoin(joinId)
         eventually("CONNECTED") { repo.state.value.takeIf { it.view?.state == TripState.CONNECTED } }
         val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=en").header("Authorization", "Device $deviceToken").build())
             .execute().use { it.body!!.string() }
@@ -297,10 +298,13 @@ class RelayIntegrationTest {
         val candidate = DropoffCandidate("default", DropoffKind.Default, null, null, null, "기본 위치", "기본 위치", LatLng(37.5655, 126.9811), 0.0)
         val beforeVersion = repo.state.value.view?.dropoff?.version ?: 0
         val beforeReplies = repo.state.value.view?.replies?.size ?: 0
+        // The open question puts the car on D6; dismissing it is the driver's way back to the card, where a drop-off
+        // proposal and a reply are both legal and can be tapped together.
+        repo.dismissRequests()
+        val hands = repo.state.value.parked!!
         listOf(
-            launch(Dispatchers.IO) { repo.approveJoin("jr_stale_${UUID.randomUUID()}") },
-            launch(Dispatchers.IO) { repo.proposeDropoff(candidate, null) },
-            launch(Dispatchers.IO) { repo.sendReply(open.requestId, QuickReplyId.Yes) },
+            launch(Dispatchers.IO) { hands.proposeDropoff(candidate, null) },
+            launch(Dispatchers.IO) { hands.sendReply(open.requestId, QuickReplyId.Yes) },
         ).forEach { it.join() }
 
         // The proposal and reply clear through snapshots; the stale approve clears through its error ref.

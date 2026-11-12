@@ -1,0 +1,246 @@
+{
+  "REQUESTED": [
+    {
+      "type": "join.approve",
+      "role": "car"
+    },
+    {
+      "type": "join.decline",
+      "role": "car"
+    },
+    {
+      "type": "driving.state",
+      "role": "car"
+    },
+    {
+      "type": "trip.end",
+      "role": "car"
+    },
+    {
+      "type": "trip.leave",
+      "role": "passenger"
+    },
+    {
+      "type": "device.lang",
+      "role": "passenger"
+    }
+  ],
+  "CONNECTED": [
+    {
+      "type": "card.submit",
+      "role": "lead"
+    },
+    {
+      "type": "card.update",
+      "role": "lead"
+    },
+    {
+      "type": "driving.state",
+      "role": "car"
+    },
+    {
+      "type": "request.send",
+      "role": "passenger"
+    },
+    {
+      "type": "request.spoken",
+      "role": "car"
+    },
+    {
+      "type": "reply.send",
+      "role": "car"
+    },
+    {
+      "type": "trip.end",
+      "role": "car"
+    },
+    {
+      "type": "trip.leave",
+      "role": "passenger"
+    },
+    {
+      "type": "device.lang",
+      "role": "passenger"
+    }
+  ],
+  "CARD_SENT": [
+    {
+      "type": "card.submit",
+      "role": "lead"
+    },
+    {
+      "type": "card.update",
+      "role": "lead"
+    },
+    {
+      "type": "card.recheck",
+      "role": "car"
+    },
+    {
+      "type": "route.started",
+      "role": "car"
+    },
+    {
+      "type": "route.failed",
+      "role": "car"
+    },
+    {
+      "type": "dropoff.propose",
+      "role": "car-or-lead"
+    },
+    {
+      "type": "dropoff.respond",
+      "role": "lead"
+    },
+    {
+      "type": "dropoff.decide",
+      "role": "car"
+    },
+    {
+      "type": "request.send",
+      "role": "passenger"
+    },
+    {
+      "type": "request.spoken",
+      "role": "car"
+    },
+    {
+      "type": "reply.send",
+      "role": "car"
+    },
+    {
+      "type": "driving.state",
+      "role": "car"
+    },
+    {
+      "type": "trip.arrive",
+      "role": "car"
+    },
+    {
+      "type": "trip.end",
+      "role": "car"
+    },
+    {
+      "type": "trip.leave",
+      "role": "passenger"
+    },
+    {
+      "type": "device.lang",
+      "role": "passenger"
+    }
+  ],
+  "IN_TRIP": [
+    {
+      "type": "card.submit",
+      "role": "lead"
+    },
+    {
+      "type": "card.update",
+      "role": "lead"
+    },
+    {
+      "type": "route.started",
+      "role": "car"
+    },
+    {
+      "type": "route.failed",
+      "role": "car"
+    },
+    {
+      "type": "trip.progress",
+      "role": "car"
+    },
+    {
+      "type": "dropoff.propose",
+      "role": "car-or-lead"
+    },
+    {
+      "type": "dropoff.respond",
+      "role": "lead"
+    },
+    {
+      "type": "dropoff.decide",
+      "role": "car"
+    },
+    {
+      "type": "request.send",
+      "role": "passenger"
+    },
+    {
+      "type": "request.spoken",
+      "role": "car"
+    },
+    {
+      "type": "reply.send",
+      "role": "car"
+    },
+    {
+      "type": "driving.state",
+      "role": "car"
+    },
+    {
+      "type": "trip.arrive",
+      "role": "car"
+    },
+    {
+      "type": "trip.end",
+      "role": "car"
+    },
+    {
+      "type": "trip.leave",
+      "role": "passenger"
+    },
+    {
+      "type": "device.lang",
+      "role": "passenger"
+    }
+  ],
+  "ARRIVED": [
+    {
+      "type": "request.send",
+      "role": "passenger"
+    },
+    {
+      "type": "request.spoken",
+      "role": "car"
+    },
+    {
+      "type": "reply.send",
+      "role": "car"
+    },
+    {
+      "type": "driving.state",
+      "role": "car"
+    },
+    {
+      "type": "trip.end",
+      "role": "car"
+    },
+    {
+      "type": "trip.leave",
+      "role": "passenger"
+    },
+    {
+      "type": "device.lang",
+      "role": "passenger"
+    }
+  ],
+  "ENDED": [
+    {
+      "type": "driving.state",
+      "role": "car"
+    }
+  ],
+  "DECLINED": [
+    {
+      "type": "driving.state",
+      "role": "car"
+    }
+  ],
+  "EXPIRED": [
+    {
+      "type": "driving.state",
+      "role": "car"
+    }
+  ]
+}

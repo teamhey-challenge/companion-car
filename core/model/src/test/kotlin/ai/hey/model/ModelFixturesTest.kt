@@ -36,8 +36,8 @@ class ModelFixturesTest {
         assertEquals(TripState.CARD_SENT, view.state)
         assertEquals(Lang.Ja, view.passengerLang)
         assertEquals(1, view.pendingPins.size)
-        assertEquals(DropoffBy.Passenger, view.dropoff?.by)
-        assertEquals(ProposalStatus.Pending, view.dropoff?.status)
+        assertEquals(PinProposalStatus.Pending, (view.dropoff as PassengerPin).status)
+        assertEquals(PinProposalStatus.Pending, view.pendingPins.single().status)
     }
 
     @Test fun passengerViewRoundTrips() {

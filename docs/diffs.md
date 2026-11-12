@@ -5,3 +5,5 @@
 | 날짜 | 스냅숏 | 이유 |
 |---|---|---|
 | 2026-11-12 | `feature/trip` `d1-speech-unavailable-*`, `d1-navi-unavailable-*` (1280·1600, 라이트·다크) | D1에 차량 문제 배너와 "다시 시도"가 생겼다(음성 엔진 없음, 내비 사용 불가). 문제가 있으면 장식용 인사말 줄 대신 그 배너를 그린다. 기존 `d1-waiting*` 기준 이미지는 바뀌지 않았다. |
+| 2026-11-12 | 새로 만든 `feature/trip` `d3-end-dialog-*`, `d3-in-trip-*`, `d6-requests-connected-*`, `d6-requests-card-sent-*`, `d6-requests-arrived-*` (1280·1600, 라이트·다크) | 리뷰 B3·M2·M3. 기사님이 D3에서도 운행을 끝낼 수 있어 확인창을 추가했고(`d3-end-dialog`), IN_TRIP의 D3는 가장 넓은 레일(내릴 곳·다시 듣기·경로 다시 시작·도착)이 1280dp에 들어가는지 본다(`d3-in-trip`). 질문이 있으면 CONNECTED·CARD_SENT·ARRIVED에서도 D6가 열린다. |
+| 2026-11-12 | `feature/trip` `d3-*`(card, card-waiting, card-four, card-long, route-started, route-failed, route-stale), `d6-requests*`(기본, many, pin, replying, notice-only) (1280·1600, 라이트·다크) | B3·M3. D3에 "운행 끝내기"가 생겼다(내용 열, 레일 폭은 그대로). 릴레이가 IN_TRIP에서 `card.recheck`를 받지 않으므로 IN_TRIP의 D3에서 "다시 확인 요청"을 뺐다. D6 레일에 "운행 끝내기"가 생기고 "도착했어요"는 IN_TRIP에서만 보인다. 나머지 화면(D1·D2·D4·D5·D7)의 기준 이미지는 바뀌지 않았다. |

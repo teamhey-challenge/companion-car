@@ -32,6 +32,16 @@ fun CarView.routeDestination(): Place? {
     return dest.copy(lat = agreed.point.lat, lng = agreed.point.lng, nameKo = "${dest.nameKo} ${agreed.label}")
 }
 
+/**
+ * Milliseconds the device clock runs ahead of the relay's, from the `ts` of a received envelope. Small jitter (1 s,
+ * the latency of one message) keeps the current offset so the countdown does not twitch. Same rule as the passenger web.
+ */
+fun nextClockOffset(current: Long, deviceNow: Long, serverTs: Long): Long =
+    if (kotlin.math.abs(deviceNow - serverTs - current) > 1_000) deviceNow - serverTs else current
+
+/** The relay's clock, as far as the device can tell. */
+fun serverNow(deviceNow: Long, clockOffsetMs: Long): Long = deviceNow - clockOffsetMs
+
 /** Great-circle distance in metres (haversine), rounded. */
 fun LatLng.distanceTo(other: LatLng): Int {
     val r = 6_371_000.0

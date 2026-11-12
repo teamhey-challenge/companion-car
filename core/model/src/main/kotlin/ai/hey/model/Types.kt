@@ -1,7 +1,16 @@
 package ai.hey.model
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonClassDiscriminator
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonTransformingSerializer
+import kotlinx.serialization.json.jsonObject
 
 // Hand-mirrored from packages/protocol/src/{catalog,types}.ts. The fixtures in packages/protocol/fixtures
 // are parsed and round-tripped by ModelFixturesTest, which is what keeps the two sides the same shape.
@@ -108,16 +117,23 @@ enum class DropoffBy {
     @SerialName("passenger") Passenger,
 }
 
-/** Driver proposals use pending..superseded, passenger pins use pending/accepted/declined/superseded. */
+/** Driver proposal statuses (`by: "driver"`). */
 @Serializable
-enum class ProposalStatus {
+enum class DriverProposalStatus {
     @SerialName("pending") Pending,
     @SerialName("ok") Ok,
     @SerialName("elsewhere") Elsewhere,
     @SerialName("unsure") Unsure,
     @SerialName("superseded") Superseded,
+}
+
+/** Passenger pin statuses (`by: "passenger"`). */
+@Serializable
+enum class PinProposalStatus {
+    @SerialName("pending") Pending,
     @SerialName("accepted") Accepted,
     @SerialName("declined") Declined,
+    @SerialName("superseded") Superseded,
 }
 
 @Serializable
@@ -174,21 +190,65 @@ data class DropoffCandidate(
     val distanceM: Double,
 )
 
+/**
+ * One versioned drop-off proposal. The wire `by` picks the variant, and each variant has only its own status set,
+ * so a driver proposal "accepted" or a pin "ok" cannot be represented.
+ */
+@OptIn(ExperimentalSerializationApi::class)
+@JsonClassDiscriminator("by")
 @Serializable
-data class DropoffProposal(
-    val version: Int,
-    val by: DropoffBy,
-    val point: LatLng,
-    val kind: DropoffKind,
-    val entranceType: EntranceType? = null,
-    val ref: String? = null,
-    val street: StreetName? = null,
-    val label: String,
-    val labelLocal: String,
-    val reasonId: DropoffReasonId? = null,
-    val reasonText: String? = null,
-    val status: ProposalStatus,
-)
+sealed interface DropoffProposal {
+    val version: Int
+    val point: LatLng
+    val kind: DropoffKind
+    val entranceType: EntranceType?
+    val ref: String?
+    val street: StreetName?
+    val label: String
+    val labelLocal: String
+    val reasonId: DropoffReasonId?
+    val reasonText: String?
+}
+
+@Serializable
+@SerialName("driver")
+data class DriverProposal(
+    override val version: Int,
+    override val point: LatLng,
+    override val kind: DropoffKind,
+    override val entranceType: EntranceType? = null,
+    override val ref: String? = null,
+    override val street: StreetName? = null,
+    override val label: String,
+    override val labelLocal: String,
+    override val reasonId: DropoffReasonId? = null,
+    override val reasonText: String? = null,
+    val status: DriverProposalStatus,
+) : DropoffProposal
+
+@Serializable
+@SerialName("passenger")
+data class PassengerPin(
+    override val version: Int,
+    override val point: LatLng,
+    override val kind: DropoffKind,
+    override val entranceType: EntranceType? = null,
+    override val ref: String? = null,
+    override val street: StreetName? = null,
+    override val label: String,
+    override val labelLocal: String,
+    override val reasonId: DropoffReasonId? = null,
+    override val reasonText: String? = null,
+    val status: PinProposalStatus,
+) : DropoffProposal
+
+/** The pins in `pendingPins`: decoded as [PassengerPin] (the wire `by` is implied), written back with `by: "passenger"`. */
+object PinSerializer : JsonTransformingSerializer<PassengerPin>(PassengerPin.serializer()) {
+    override fun transformSerialize(element: JsonElement): JsonElement =
+        JsonObject(element.jsonObject + ("by" to JsonPrimitive("passenger")))
+}
+
+object PinListSerializer : KSerializer<List<PassengerPin>> by ListSerializer(PinSerializer)
 
 @Serializable
 data class AgreedDropoff(
@@ -328,7 +388,7 @@ data class CarView(
     val routeStale: Boolean = false,
     val progress: ProgressInfo? = null,
     val dropoff: DropoffProposal? = null,
-    val pendingPins: List<DropoffProposal> = emptyList(),
+    @Serializable(with = PinListSerializer::class) val pendingPins: List<PassengerPin> = emptyList(),
     val agreedDropoff: AgreedDropoff? = null,
     val requests: List<RequestItem> = emptyList(),
     val replies: List<ReplyItem> = emptyList(),

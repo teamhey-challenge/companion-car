@@ -10,15 +10,17 @@ import ai.hey.model.CarView
 import ai.hey.model.ConditionId
 import ai.hey.model.DropoffBy
 import ai.hey.model.DropoffCandidate
-import ai.hey.model.DropoffProposal
+import ai.hey.model.DriverProposal
+import ai.hey.model.DriverProposalStatus
 import ai.hey.model.DrivingState
 import ai.hey.model.Lang
 import ai.hey.model.LatLng
 import ai.hey.model.PendingJoin
 import ai.hey.model.Place
 import ai.hey.model.PresetId
+import ai.hey.model.PassengerPin
+import ai.hey.model.PinProposalStatus
 import ai.hey.model.ProgressInfo
-import ai.hey.model.ProposalStatus
 import ai.hey.model.QuickReplyId
 import ai.hey.model.RequestItem
 import ai.hey.model.RequestKind
@@ -114,7 +116,7 @@ object TripSamples {
         request("req_7", "트렁크를 열어 주세요.", false, RequestState.Spoken, NOW - 20_000, preset = PresetId.Trunk),
     )
 
-    val pin = DropoffProposal(2, DropoffBy.Passenger, LatLng(37.5651, 126.9807), DropoffKind.Pin, null, null, null, "내가 고른 곳", "내가 고른 곳", status = ProposalStatus.Pending)
+    val pin = PassengerPin(2, LatLng(37.5651, 126.9807), DropoffKind.Pin, null, null, null, "내가 고른 곳", "내가 고른 곳", status = PinProposalStatus.Pending)
 
     private val base = CarView(
         state = TripState.IDLE,
@@ -163,6 +165,7 @@ object TripSamples {
     val cardWaiting = state(connected)
     val cardOk = state(cardSent)
     val cardFourConditions = state(cardSent.copy(card = fourConditionsCard)) { copy(changedConditions = setOf(ConditionId.Temperature)) }
+    val cardEndDialog = state(cardSent) { copy(endDialogOpen = true) }
     val cardLong = state(cardSent.copy(card = longCard))
     val cardRouteStarted = state(cardSent.copy(route = route))
     val cardRouteFailed = state(cardSent) { copy(commands = mapOf(CommandKey.StartRoute to CommandState.Failed("NAVI_UNAVAILABLE"))) }
@@ -179,12 +182,12 @@ object TripSamples {
     }
     val dropoffNone = state(cardSent, panel = Panel.Dropoff) { copy(candidates = Candidates(hotel.placeId, emptyList())) }
     val dropoffPin = state(withPin, panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
-    private fun answered(status: ProposalStatus) = cardSent.copy(
-        dropoff = DropoffProposal(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구", status = status),
+    private fun answered(status: DriverProposalStatus) = cardSent.copy(
+        dropoff = DriverProposal(1, LatLng(37.5649, 126.9803), DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구", status = status),
     )
-    val dropoffOk = state(answered(ProposalStatus.Ok), panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
-    val dropoffElsewhere = state(answered(ProposalStatus.Elsewhere), panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
-    val dropoffUnsure = state(answered(ProposalStatus.Unsure), panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
+    val dropoffOk = state(answered(DriverProposalStatus.Ok), panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
+    val dropoffElsewhere = state(answered(DriverProposalStatus.Elsewhere), panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
+    val dropoffUnsure = state(answered(DriverProposalStatus.Unsure), panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
 
     // ---- D5
     private val inTrip = cardSent.copy(
@@ -192,6 +195,8 @@ object TripSamples {
         route = route,
         progress = ProgressInfo(1_380, 14_200, stale = false),
     )
+    // D3 in IN_TRIP has the widest rail (arrive + end): proves it fits at 1280dp
+    val cardInTrip = state(inTrip)
     val drivingNone = state(inTrip, DrivingStatus.Driving)
     val drivingRequest = state(inTrip.copy(requests = requests), DrivingStatus.Driving) { copy(lastSpokenKo = "창문을 열어도 될까요?", progressAt = NOW) }
     val drivingStale = state(inTrip.copy(requests = requests), DrivingStatus.Driving) {
@@ -206,7 +211,7 @@ object TripSamples {
     val requestsMany = state(inTrip.copy(requests = manyRequests))
     val requestsPin = state(inTrip.copy(requests = requests, dropoff = pin, pendingPins = listOf(pin)))
     val requestsReplying = state(inTrip.copy(requests = requests)) {
-        copy(commands = mapOf(CommandKey.Reply("req_2", QuickReplyId.Yes, 0) to CommandState.InFlight("env")))
+        copy(commands = mapOf(CommandKey.Reply("req_2", QuickReplyId.Yes, null) to CommandState.InFlight("env")))
     }
     val requestsNoticeOnly = state(inTrip.copy(requests = requests.filter { !it.replyExpected }))
 
@@ -214,7 +219,7 @@ object TripSamples {
     private val arrived = inTrip.copy(
         state = TripState.ARRIVED,
         progress = null,
-        requests = requests,
+        requests = requests.map { if (it.replyExpected) it.copy(state = RequestState.Answered) else it }, // nothing left to answer, so D7 and not D6
         replies = emptyList(),
         agreedDropoff = AgreedDropoff(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구"),
         summary = ArrivalSummary(hotel, null, 2_520, 18_400, 0, NOW - 2_520_000, NOW),
@@ -223,4 +228,9 @@ object TripSamples {
     val arrivedNoAgreement = state(arrived.copy(agreedDropoff = null))
     val arrivedDialog = state(arrived) { copy(endDialogOpen = true) }
     val arrivedOffline = state(arrived, connection = ConnectionStatus.Reconnecting)
+
+    // D6 outside IN_TRIP: the relay accepts request.send in CONNECTED, CARD_SENT and ARRIVED too.
+    val requestsConnected = state(connected.copy(requests = requests))
+    val requestsCardSent = state(cardSent.copy(requests = requests))
+    val requestsArrived = state(arrived.copy(requests = requests))
 }

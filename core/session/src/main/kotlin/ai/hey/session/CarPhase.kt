@@ -15,30 +15,70 @@ data class LocalUi(
 /**
  * What the car is doing, derived in one pure function from the snapshot, the car's motion and local UI flags.
  * [Driving] covers both [DrivingStatus.Driving] and [DrivingStatus.Unknown]: an unknown car is treated as moving.
+ *
+ * Every parked phase carries [Parked.enabled]: the hands-on commands the relay accepts in exactly that situation
+ * (docs/transitions.json is the table; `CarPhaseTransitionsTest` checks this file against it). A button is enabled
+ * from this set and from nothing else, so the car cannot offer what the relay would reject.
  */
 sealed interface CarPhase {
-    /** Phases in which the driver's hands are free. Hands-on commands exist only here. */
+    /** Phases in which the driver's hands are free. */
     sealed interface Parked : CarPhase {
-        /**
-         * The only way to obtain [ParkedCommands]. A driving phase does not have this method, so screen code
-         * outside a parked branch cannot compile a hands-on call.
-         */
-        fun requireParked(commands: ParkedCommands): ParkedCommands = commands
+        val enabled: Set<CarCommand>
+    }
+
+    /** The boarding card screen (D3), one type per trip state because each state accepts different commands. */
+    sealed interface Card : Parked {
+        val view: CarView
     }
 
     data object Driving : CarPhase
 
-    data object Waiting : Parked
+    data object Waiting : Parked {
+        override val enabled: Set<CarCommand> = emptySet()
+    }
 
-    data class JoinRequest(val join: PendingJoin) : Parked
+    data class JoinRequest(val join: PendingJoin) : Parked {
+        override val enabled: Set<CarCommand> = setOf(CarCommand.ApproveJoin, CarCommand.DeclineJoin)
+    }
 
-    data class BoardingCard(val view: CarView, val inTrip: Boolean) : Parked
+    /** CONNECTED: the passenger is writing the card, or the driver asked for a re-check and the old card is shown. */
+    data class AwaitingCard(override val view: CarView) : Card {
+        override val enabled: Set<CarCommand> = setOf(CarCommand.Reply, CarCommand.End)
+    }
 
-    data class DropoffProposal(val view: CarView) : Parked
+    /** CARD_SENT: the card is out; the route is not started yet. */
+    data class CardSent(override val view: CarView) : Card {
+        override val enabled: Set<CarCommand> = setOf(
+            CarCommand.Recheck, CarCommand.StartRoute, CarCommand.Propose, CarCommand.DecidePin, CarCommand.Reply, CarCommand.End,
+        )
+    }
 
-    data class Requests(val view: CarView) : Parked
+    /** IN_TRIP: the route runs. A re-check is not possible any more (the relay refuses `card.recheck`). */
+    data class InTrip(override val view: CarView) : Card {
+        override val enabled: Set<CarCommand> = setOf(
+            CarCommand.StartRoute, CarCommand.Propose, CarCommand.DecidePin, CarCommand.Reply, CarCommand.Arrive, CarCommand.End,
+        )
+    }
 
-    data class Arrived(val view: CarView) : Parked
+    /** D4. Only built in CARD_SENT and IN_TRIP, where `dropoff.propose` and `dropoff.decide` are legal. */
+    data class DropoffProposal(val view: CarView) : Parked {
+        override val enabled: Set<CarCommand> = setOf(CarCommand.Propose, CarCommand.DecidePin)
+    }
+
+    /** D6: open questions or pins wait. Built in every state in which the relay accepts `request.send`. */
+    data class Requests(val view: CarView) : Parked {
+        override val enabled: Set<CarCommand> = when (view.state) {
+            TripState.IN_TRIP -> setOf(CarCommand.Reply, CarCommand.DecidePin, CarCommand.Arrive, CarCommand.End)
+            TripState.CARD_SENT -> setOf(CarCommand.Reply, CarCommand.DecidePin, CarCommand.End)
+            TripState.CONNECTED, TripState.ARRIVED -> setOf(CarCommand.Reply, CarCommand.End)
+            // phaseOf never builds Requests here.
+            TripState.IDLE, TripState.REQUESTED, TripState.ENDED -> emptySet()
+        }
+    }
+
+    data class Arrived(val view: CarView) : Parked {
+        override val enabled: Set<CarCommand> = setOf(CarCommand.Reply, CarCommand.End)
+    }
 }
 
 /**
@@ -52,17 +92,22 @@ fun phaseOf(view: CarView?, driving: DrivingStatus, local: LocalUi): CarPhase {
         DrivingStatus.Parked -> Unit
     }
     if (view == null) return CarPhase.Waiting
+    val dropoffOpen = local.panel == Panel.Dropoff && view.card != null
+    val questionsWait = view.actionableCount > local.requestsDismissedAt
     return when (view.state) {
         TripState.IDLE, TripState.ENDED -> CarPhase.Waiting
         TripState.REQUESTED -> view.pendingJoin?.let { CarPhase.JoinRequest(it) } ?: CarPhase.Waiting
-        TripState.CONNECTED, TripState.CARD_SENT ->
-            if (local.panel == Panel.Dropoff && view.card != null) CarPhase.DropoffProposal(view)
-            else CarPhase.BoardingCard(view, inTrip = false)
-        TripState.IN_TRIP -> when {
-            local.panel == Panel.Dropoff && view.card != null -> CarPhase.DropoffProposal(view)
-            view.actionableCount > local.requestsDismissedAt -> CarPhase.Requests(view)
-            else -> CarPhase.BoardingCard(view, inTrip = true)
+        TripState.CONNECTED -> if (questionsWait) CarPhase.Requests(view) else CarPhase.AwaitingCard(view)
+        TripState.CARD_SENT -> when {
+            dropoffOpen -> CarPhase.DropoffProposal(view)
+            questionsWait -> CarPhase.Requests(view)
+            else -> CarPhase.CardSent(view)
         }
-        TripState.ARRIVED -> CarPhase.Arrived(view)
+        TripState.IN_TRIP -> when {
+            dropoffOpen -> CarPhase.DropoffProposal(view)
+            questionsWait -> CarPhase.Requests(view)
+            else -> CarPhase.InTrip(view)
+        }
+        TripState.ARRIVED -> if (questionsWait) CarPhase.Requests(view) else CarPhase.Arrived(view)
     }
 }

@@ -26,7 +26,7 @@ import ai.hey.session.CarCommands
 import ai.hey.session.CarPhase
 import ai.hey.session.CarUiState
 import ai.hey.session.ConnectionStatus
-import ai.hey.session.ParkedCommands
+import ai.hey.model.serverNow
 import ai.hey.session.VehicleIssue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -35,14 +35,14 @@ import androidx.compose.ui.res.stringResource
 // ================================================================ D1 waiting
 
 @Composable
-internal fun WaitingScreen(state: CarUiState, parked: ParkedCommands, commands: CarCommands, nowMillis: Long, modifier: Modifier = Modifier) {
+internal fun WaitingScreen(state: CarUiState, commands: CarCommands, nowMillis: Long, modifier: Modifier = Modifier) {
     TripFrame(
         state = state,
         nowMillis = nowMillis,
         modifier = modifier,
         rail = {
             HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
-                HeyIconButton(HeyIcons.Menu, stringResource(R.string.trip_settings), parked::openSettings)
+                HeyIconButton(HeyIcons.Menu, stringResource(R.string.trip_settings), { state.parked?.openSettings() })
             }
         },
     ) {
@@ -54,7 +54,7 @@ internal fun WaitingScreen(state: CarUiState, parked: ParkedCommands, commands: 
                     title = stringResource(R.string.trip_waiting_rejected_title),
                     message = stringResource(R.string.trip_waiting_rejected_message),
                 )
-                HeyButton(stringResource(R.string.trip_waiting_reregister), parked::reregister)
+                HeyButton(stringResource(R.string.trip_waiting_reregister), { state.parked?.reregister() })
                 VehicleIssueBanners(state, commands)
             }
             qr == null -> {
@@ -143,7 +143,6 @@ private fun WaitingContent(state: CarUiState, qrUrl: String, commands: CarComman
 internal fun JoinScreen(
     state: CarUiState,
     phase: CarPhase.JoinRequest,
-    parked: ParkedCommands,
     commands: CarCommands,
     nowMillis: Long,
     modifier: Modifier = Modifier,
@@ -155,14 +154,14 @@ internal fun JoinScreen(
                 HeyText(stringResource(R.string.trip_join_title), variant = HeyTextVariant.Hero, maxLines = 2)
                 HeyText(stringResource(R.string.trip_join_hint), tone = HeyTone.Muted, maxLines = 1)
             }
-            val left = ((join.expiresAt - nowMillis) / 1000).toInt().coerceAtLeast(0)
+            val left = ((join.expiresAt - serverNow(nowMillis, state.clockOffsetMs)) / 1000).toInt().coerceAtLeast(0)
             val locked = state.joinInFlight
             JoinRequestCard(
                 langLabel = stringResource(join.lang.labelRes()),
                 partySize = join.partySize,
                 expiresInSec = left,
-                onApprove = { parked.approveJoin(join.joinRequestId) },
-                onDecline = { parked.declineJoin(join.joinRequestId) },
+                onApprove = { state.parked?.approveJoin(join.joinRequestId) },
+                onDecline = { state.parked?.declineJoin(join.joinRequestId) },
                 modifier = Modifier.fillWidth(),
                 enabled = !locked && state.online,
             )

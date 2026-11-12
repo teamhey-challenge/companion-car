@@ -67,7 +67,7 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 제안은 버전을 가진다. `DropoffProposal = { version, by: "driver" | "passenger", point: { lat, lng }, label, reasonId?, status }`. `status`는 기사 제안이면 `pending | ok | elsewhere | unsure | superseded`, 승객 핀이면 `pending | accepted | declined | superseded`다. 합의된 하차 위치(`agreedDropoff`)는 기사 제안 `ok` 또는 승객 핀 `accepted`인 가장 최근 버전이다.
 
 - 기사 제안의 승객 응답은 `ok`(여기 좋아요) / `elsewhere`(다른 곳을 원해요) / `unsure`(위치를 모르겠어요) 셋이다. 응답 없음은 `pending`으로 남고 동의로 바꾸지 않는다.
-- 새 제안이 오면 이전 제안은 `superseded`가 되고, 이전 응답을 새 버전에 재사용하지 않는다.
+- 새 제안이 오면 이전의 **대기 중** 제안은 `superseded`가 되고, 이전 응답을 새 버전에 재사용하지 않는다. 이미 응답이 끝난 제안은 그 응답(`ok`·`elsewhere`·`unsure`·`accepted`·`declined`)을 남긴다. 대기 중인 제안은 언제나 하나뿐이다.
 - 승객 핀 제안(`by: "passenger"`)은 기사 화면에 쌓이고, 기사님이 정차 중 `accept`/`decline` 한다. 주행 중에는 음성으로 "승객이 내릴 곳을 지도에서 골랐어요. 정차하면 확인해 주세요"만 나간다.
 - 합의된 하차 위치가 내비 목적지와 다르면 기사님이 다시 경로 시작을 눌러야 내비가 바뀐다. 승인 없이 경로를 바꾸지 않는다.
 
@@ -75,7 +75,7 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 
 ### 2.4 요청과 답장
 
-승객 요청은 프리셋 또는 직접 입력이다. 프리셋 한국어 음성 문장은 검수된 고정 문장(`packages/copy/ko.ts`의 `speech.*`)을 쓰고, 직접 입력은 서버가 번역해 한국어 문장으로 만든다. 요청 상태는 셋을 구분해 보여 준다: `received`(차량 수신) → `spoken`(음성 전달) → `answered`(기사 응답). 알림형 프리셋은 `spoken`에서 끝나고, 질문형과 직접 입력은 `answered`까지 간다. 음성 완료를 기사 수락으로 표시하지 않는다. 번역 실패나 차량 오프라인으로 전달하지 못한 요청은 `failed`이며 승객 화면에 다시 보내기가 붙는다. 직접 입력 분당 3회 제한은 기기별이다.
+승객 요청은 프리셋 또는 직접 입력이다. 프리셋 한국어 음성 문장은 검수된 고정 문장(`packages/copy/ko.ts`의 `speech.*`)을 쓰고, 직접 입력은 서버가 번역해 한국어 문장으로 만든다. 요청 상태는 셋을 구분해 보여 준다: `received`(차량 수신) → `spoken`(음성 전달) → `answered`(기사 응답). 알림형 프리셋은 `spoken`에서 끝나고, 질문형과 직접 입력은 `answered`까지 간다. 음성 완료를 기사 수락으로 표시하지 않는다. 차량이 오프라인이라 전달하지 못한 요청은 `failed`이며 승객 화면에 다시 보내기가 붙는다. 번역에 실패한 직접 입력은 요청으로 저장하지 않는다: 서버는 그 요청의 `clientRef`를 실은 `error(TRANSLATE_FAILED)`만 돌려주고 분당 한도(3회)를 쓰지 않는다. 클라이언트는 입력창에 쓴 글을 되살리고 오류를 보여 준다(`RATE_LIMITED`·`TOO_LONG`과 같은 경로). 직접 입력 분당 3회 제한은 기기별이다.
 
 음성 우선순위 `high`는 탑승 카드 도착·변경, 하차 제안 응답, 승객 핀 제안, `stopHere` 프리셋이다. 나머지는 `normal`이며 도착 순서대로 `speech.gapSec` 간격을 둔다.
 
@@ -204,11 +204,14 @@ hey-taxi/
   - 내비 초기화 실패·요청 없는 내비 오류·음성 엔진 없음은 `VehicleEvent.NavigationUnavailable` / `SpeechDropped`로 올라가 D1 배너와 "다시 시도"(`retryNavigation`/`retrySpeech`)로 이어진다.
 - `:core:session` — OkHttp WebSocket 클라이언트, 재연결(1·2·4·8·15초), ack, `TripRepository`(`StateFlow<CarUiState>`), 음성 큐(`speech.*` 정책).
   - 상태 기계는 하나다. `phaseOf(view, driving, local): CarPhase`가 스냅숏·주행 상태·로컬 플래그에서 화면 단계를 계산하고, 화면 선택은 그 결과만 본다(`when`은 빠짐없이, `else` 없음). 새 `TripState`를 더하면 이 함수가 컴파일되지 않는다.
-  - 주행 잠금은 조건문이 아니라 타입이다. 손이 필요한 명령(`approveJoin`·`declineJoin`·`startRoute`·`proposeDropoff`·`decidePin`·`sendReply`·`arrive`·`endTrip`·`recheckCard`·`openDropoff`·`openSettings`·`openEndDialog`·`reregister`)은 `ParkedCommands`에만 있고, 그 값은 `CarPhase.Parked.requireParked(...)`로만 얻는다. `CarPhase.Driving`에는 그 메서드가 없어 주행 분기에서는 컴파일되지 않는다. 저장소도 한 번 더 막는다(테스트 seam 포함).
+  - 주행 잠금과 상태별 명령은 조건문이 아니라 타입이다. 손이 필요한 명령은 `ParkedCommands`에만 있고, 그 값은 저장소만 만들어(생성자가 모듈 안으로 닫혀 있다) `CarUiState.parked: ParkedCommands?`로만 내준다. 주행·미확인 단계에서는 `null`이라 호출할 대상이 없다. 정차 단계(`CarPhase.Parked`)는 `enabled: Set<CarCommand>`를 들고 있다: 그 상황에서 릴레이가 받는 명령만이다. `BoardingCard` 하나이던 단계는 `AwaitingCard`(CONNECTED)·`CardSent`(CARD_SENT)·`InTrip`(IN_TRIP)으로 나뉘어, CONNECTED에서는 경로 시작·하차 제안·도착이, IN_TRIP에서는 재확인이 켜지지 않는다. 질문이 있으면 CONNECTED·CARD_SENT·IN_TRIP·ARRIVED 어디서나 D6(`Requests`)이 열리고, `trip.end`는 D3·D6·D7 어디서나 확인창을 거쳐 보낼 수 있다. 화면은 버튼을 `enabled`에서만 켜고, 저장소의 각 명령도 지금 단계의 `enabled`를 다시 본다. 단계별 `enabled`가 `docs/transitions.json`(hey-relay의 `TRANSITIONS`에서 생성)의 부분집합인지는 `CarPhaseTransitionsTest`가 확인한다. 이 파일은 Gradle이 `HEY_RELAY_DIR`(기본 `../hey-relay`)의 것을 시험 자원으로 복사하고, 없으면 이 저장소에 커밋된 사본을 쓴다. 시험용 진입점은 운영 클래스에 없다: 저장소는 `RelayTransport` 생성자 인자로 연결을 받고, 시험은 기록용 가짜를 넣어 같은 리스너로 메시지를 흘린다.
+  - 하차 제안은 `by`로 갈라진 두 타입이다: `DriverProposal`(상태 `pending|ok|elsewhere|unsure|superseded`)과 `PassengerPin`(`pending|accepted|declined|superseded`). 한 타입에서 다른 쪽 상태를 표현할 수 없다.
+  - 합류 요청 남은 시간은 기기 시계가 아니라 릴레이 시계로 센다. 저장소가 스냅숏 봉투의 `ts`로 `clockOffsetMs`를 갱신하고(1초 안쪽 흔들림은 무시, 승객 웹의 `nextClockOffset`과 같은 규칙), D2는 `expiresAt - serverNow(...)`를 쓴다.
+  - 명령 상태는 운행 하나에 속한다: 스냅숏의 `tripId`가 바뀌면 `commands`와 봉투 대응표를 비운다. 버튼 없이 보낸 메시지(읽음 보고 등)가 거절돼도 배너를 띄우지 않는다.
   - 버튼 하나의 진행은 `Map<CommandKey, CommandState>` 하나에 있다(`Idle`은 항목 없음). 해제 규칙은 셋뿐이다: ① 그 명령의 결과가 스냅숏에 보임 ② 릴레이가 그 봉투(`ref`)를 거절함 ③ 20초 안전 시간 초과. 무관한 스냅숏은 버튼을 풀지 않는다.
 - `:core:model` — 프로토콜 Kotlin 타입(kotlinx.serialization), `HeyConfig`. 서버와 주고받는 `DrivingState`(`PARKED`/`DRIVING`)는 프로토콜 값이고, 앱 안의 `DrivingStatus`와 다른 타입이다.
 - `:core:designsystem` — Compose 부품, `HeyTheme`, Paparazzi 시험. 토큰(`HeyTokens`)은 `ai.hey:tokens-compose`(hey-shared `android/`, includeBuild)가 준다.
-- `:feature:trip` — D1~D7 화면. 화면은 `CarUiState.phase`로 갈라지고, 정차 단계에서만 `requireParked`로 얻은 `ParkedCommands`를 받는다. `:feature:settings` — D8.
+- `:feature:trip` — D1~D7 화면. 화면은 `CarUiState.phase`로 갈라지고, 정차 단계의 버튼은 그 단계의 `enabled`에서만 켜진다. 손이 필요한 호출은 `state.parked?.…`이다. 시험·미리보기용 빈 명령은 `CarCommands` 쪽 `NoTripCommands`(debug)뿐이다. `:feature:settings` — D8.
 - `:app` — `MainActivity`(`distractionOptimized`), 내비게이션, DI(수동 생성자 주입), 포그라운드 서비스.
 
 빌드: AGP 8.11.2, Kotlin 2.1.0, Compose BOM 2025.12.01, Paparazzi 2.0.0-alpha02, Gradle 8.13, JDK 17, compileSdk 36, minSdk 28, targetSdk 34. Pleos Maven `https://nexus-playground.pleos.ai/repository/maven-releases/`, `android.car.jar`는 `compileOnly`.
@@ -221,3 +224,35 @@ hey-taxi/
 - 차량 앱: 이 저장소 루트에서 `./check.sh`(= `nice -n 19 ./gradlew --max-workers=4 :app:assembleDebug check :feature:trip:verifyPaparazziDebug :feature:settings:verifyPaparazziDebug :core:designsystem:verifyPaparazziDebug`). 스냅숏 기록은 `./gradlew recordPaparazziDebug`. 클론은 `git clone --recurse-submodules`(또는 `git submodule update --init`). 중계 서버 통합 시험은 환경 변수 `HEY_RELAY_DIR`(기본 `../hey-relay`)의 relay를 `bun`으로 띄우며, 없으면 건너뛰고 이유를 출력한다. darren-vm 부하를 줄이기 위해 `org.gradle.workers.max=4`.
 - 에뮬레이터는 맥북 `darren-mbp-14`에서만 띄운다(`~/pleos/emu-start.sh`, adb `emulator-5600`).
 - 비밀값(번역 API 키 등)은 저장소에 넣지 않는다. 서버는 600 권한 파일 경로를 환경 변수 `HEY_SECRETS_FILE`로 받는다.
+
+## 8. 메시지와 상태 (서버 정본)
+
+2.2의 상태 흐름을 메시지 단위로 옮긴 표다. `src/state.ts`의 `TRANSITIONS`가 이 표를 그대로 옮긴 것이고, `test/state-machine.test.ts`가 두 표가 같은지 확인한다. 표에 없는 (상태, 메시지) 조합은 서버가 거부한다: 종료된 운행은 `TRIP_ENDED`, 그 밖은 `BAD_REQUEST`. 표에 없는 메시지 타입은 봉투 검사에서 `BAD_REQUEST`다.
+
+### 8.1 상태별로 받는 메시지
+
+| 상태 | 받는 메시지 |
+|---|---|
+| `REQUESTED` | `join.approve`, `join.decline`, `driving.state`, `trip.end`, `trip.leave`, `device.lang` |
+| `CONNECTED` | `card.submit`, `card.update`, `driving.state`, `request.send`, `request.spoken`, `reply.send`, `trip.end`, `trip.leave`, `device.lang` |
+| `CARD_SENT` | `card.submit`, `card.update`, `card.recheck`, `route.started`, `route.failed`, `dropoff.propose`, `dropoff.respond`, `dropoff.decide`, `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.arrive`, `trip.end`, `trip.leave`, `device.lang` |
+| `IN_TRIP` | `card.submit`, `card.update`, `route.started`, `route.failed`, `trip.progress`, `dropoff.propose`, `dropoff.respond`, `dropoff.decide`, `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.arrive`, `trip.end`, `trip.leave`, `device.lang` |
+| `ARRIVED` | `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.end`, `trip.leave`, `device.lang` |
+| `ENDED` | `driving.state` |
+| `DECLINED` | `driving.state` |
+| `EXPIRED` | `driving.state` |
+
+`driving.state`는 운행 상태를 바꾸지 않는 차량 신호라 모든 상태에서 받는다. `join.approve`는 `REQUESTED`에서만, `card.recheck`는 `CARD_SENT`에서만 받는다(2.2의 화살표와 같다). 기사님은 종료되지 않은 모든 상태(`REQUESTED`~`ARRIVED`)에서 `trip.end`를 보낼 수 있다.
+
+이 표는 `docs/transitions.json`(상태 → `{ type, role }[]`, `role`은 8.2의 값)으로도 내보낸다. `bun run export:transitions`가 `TRANSITIONS`에서 만들고, 시험이 커밋된 파일과 내보내기가 같은지 확인한다. 차량 앱과 승객 웹은 이 파일을 복사해, 화면이 켜 두는 명령이 표의 부분집합인지 자기 시험에서 확인한다. 승객 언어의 하차 지점 이름은 서버가 만든 `labelLocal` 하나뿐이고 클라이언트는 이름을 다시 만들지 않는다.
+
+### 8.2 보낼 수 있는 쪽
+
+`CLIENT_MESSAGE_ROLES`(hey-protocol)가 정본이고 서버는 이 표 하나로 역할을 본다. 대표가 아닌 기기의 대표 전용 메시지는 `NOT_LEAD`, 그 밖의 역할 위반은 `BAD_REQUEST`다. 일행은 `passenger` 값인 메시지(`request.send`, `trip.leave`, `device.lang`)만 보낼 수 있다. 현재 값은 넷이다.
+
+| 값 | 보낼 수 있는 쪽 |
+|---|---|
+| `car` | 차량(`driverToken`)만 |
+| `lead` | 대표 승객만 |
+| `passenger` | 대표·일행 모두 |
+| `car-or-lead` | 차량 또는 대표 승객 |

@@ -2,7 +2,6 @@ package ai.hey.feature.trip
 
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.session.CarUiState
-import ai.hey.session.NoCommands
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams.RenderingMode
@@ -32,6 +31,8 @@ private val shots: List<Pair<String, CarUiState>> = listOf(
     "d3-card-waiting" to TripSamples.cardWaiting,
     "d3-card" to TripSamples.cardOk,
     "d3-card-four" to TripSamples.cardFourConditions,
+    "d3-end-dialog" to TripSamples.cardEndDialog,
+    "d3-in-trip" to TripSamples.cardInTrip,
     "d3-card-long" to TripSamples.cardLong,
     "d3-route-started" to TripSamples.cardRouteStarted,
     "d3-route-failed" to TripSamples.cardRouteFailed,
@@ -52,6 +53,9 @@ private val shots: List<Pair<String, CarUiState>> = listOf(
     "d6-requests-pin" to TripSamples.requestsPin,
     "d6-requests-replying" to TripSamples.requestsReplying,
     "d6-requests-notice-only" to TripSamples.requestsNoticeOnly,
+    "d6-requests-connected" to TripSamples.requestsConnected,
+    "d6-requests-card-sent" to TripSamples.requestsCardSent,
+    "d6-requests-arrived" to TripSamples.requestsArrived,
     "d7-arrived" to TripSamples.arrivedAgreed,
     "d7-arrived-none" to TripSamples.arrivedNoAgreement,
     "d7-arrived-dialog" to TripSamples.arrivedDialog,
@@ -62,7 +66,7 @@ private fun Paparazzi.recordAll() {
     shots.forEach { (name, state) ->
         listOf(true, false).forEach { dark ->
             snapshot("$name-${if (dark) "dark" else "light"}") {
-                HeyTheme(dark) { TripScreen(state, NoCommands, NoCommands, TripSamples.NOW) }
+                HeyTheme(dark) { TripScreen(state, NoTripCommands, TripSamples.NOW) }
             }
         }
     }

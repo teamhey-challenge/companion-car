@@ -2,7 +2,6 @@ package ai.hey.feature.trip
 
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.session.CarUiState
-import ai.hey.session.NoCommands
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 
@@ -10,7 +9,7 @@ private const val SPEC = "spec:width=1600dp,height=900dp,dpi=160"
 
 @Composable
 private fun Shown(state: CarUiState, dark: Boolean = true) {
-    HeyTheme(dark) { TripScreen(state, NoCommands, NoCommands, TripSamples.NOW) }
+    HeyTheme(dark) { TripScreen(state, NoTripCommands, TripSamples.NOW) }
 }
 
 @Preview(name = "D1 waiting", device = SPEC) @Composable private fun D1Waiting() = Shown(TripSamples.waiting)

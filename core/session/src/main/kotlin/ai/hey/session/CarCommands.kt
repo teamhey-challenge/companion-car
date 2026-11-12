@@ -1,6 +1,7 @@
 package ai.hey.session
 
 import ai.hey.model.CarSettings
+import ai.hey.model.ClientType
 import ai.hey.model.DropoffCandidate
 import ai.hey.model.DropoffReasonId
 import ai.hey.model.QuickReplyId
@@ -28,52 +29,47 @@ interface CarCommands {
 }
 
 /**
- * Commands that need the driver's hands. Only [CarPhase.Parked.requireParked] can hand these out, so a screen cannot
- * reach them from a driving phase even if a stale button tap arrives.
+ * A hands-on action that changes the trip on the relay, with the message types it sends. This is the unit the relay's
+ * transition table (`docs/transitions.json`) is checked against: a phase may enable a command only in a trip state
+ * whose table row lists every one of [wire] for the car.
  */
-interface ParkedCommands {
-    fun approveJoin(joinRequestId: String)
-    fun declineJoin(joinRequestId: String)
-    fun recheckCard()
-    fun startRoute()
+enum class CarCommand(vararg wireTypes: String) {
+    ApproveJoin(ClientType.JOIN_APPROVE),
+    DeclineJoin(ClientType.JOIN_DECLINE),
+    Recheck(ClientType.CARD_RECHECK),
+    StartRoute(ClientType.ROUTE_STARTED, ClientType.ROUTE_FAILED),
+    Propose(ClientType.DROPOFF_PROPOSE),
+    DecidePin(ClientType.DROPOFF_DECIDE),
+    Reply(ClientType.REPLY_SEND),
+    Arrive(ClientType.TRIP_ARRIVE),
+    End(ClientType.TRIP_END),
+    ;
 
-    /** Sends the chosen candidate with its structured fields (kind, entranceType, ref, street) so passengers get localized labels. */
-    fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?)
-    fun decidePin(version: Int, accept: Boolean)
-    fun sendReply(requestId: String?, replyId: QuickReplyId)
-    fun arrive()
-    fun endTrip()
-    fun openDropoff()
-    fun openSettings()
-    fun openEndDialog()
-
-    /** Drops the registration this relay no longer knows and registers again (the QR sticker changes). */
-    fun reregister()
+    val wire: Set<String> = wireTypes.toSet()
 }
 
-/** For previews and snapshots. */
-object NoCommands : CarCommands, ParkedCommands {
-    override fun approveJoin(joinRequestId: String) = Unit
-    override fun declineJoin(joinRequestId: String) = Unit
-    override fun recheckCard() = Unit
-    override fun startRoute() = Unit
-    override fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?) = Unit
-    override fun decidePin(version: Int, accept: Boolean) = Unit
-    override fun sendReply(requestId: String?, replyId: QuickReplyId) = Unit
-    override fun arrive() = Unit
-    override fun endTrip() = Unit
-    override fun replay(textKo: String) = Unit
-    override fun replayRequest(requestId: String) = Unit
-    override fun reregister() = Unit
-    override fun openDropoff() = Unit
-    override fun closeDropoff() = Unit
-    override fun selectCandidate(candidateId: String) = Unit
-    override fun selectReason(index: Int) = Unit
-    override fun dismissRequests() = Unit
-    override fun openSettings() = Unit
-    override fun closeSettings() = Unit
-    override fun openEndDialog() = Unit
-    override fun closeEndDialog() = Unit
-    override fun updateSettings(transform: (CarSettings) -> CarSettings) = Unit
-    override fun retryVehicleIssue(issue: VehicleIssue) = Unit
+/**
+ * Commands that need the driver's hands. Only [TripRepository] creates one (the constructor is module-internal), and
+ * the only way to reach it is [CarUiState.parked], which the repository fills with one of these only while the
+ * phase is parked and clears otherwise. Every method also asks the repository's live [CarPhase.Parked.enabled], so a
+ * reference kept across a phase change cannot send what the relay would refuse.
+ */
+abstract class ParkedCommands internal constructor() {
+    abstract fun approveJoin(joinRequestId: String)
+    abstract fun declineJoin(joinRequestId: String)
+    abstract fun recheckCard()
+    abstract fun startRoute()
+
+    /** Sends the chosen candidate with its structured fields (kind, entranceType, ref, street) so passengers get localized labels. */
+    abstract fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?)
+    abstract fun decidePin(version: Int, accept: Boolean)
+    abstract fun sendReply(requestId: String?, replyId: QuickReplyId)
+    abstract fun arrive()
+    abstract fun endTrip()
+    abstract fun openDropoff()
+    abstract fun openSettings()
+    abstract fun openEndDialog()
+
+    /** Drops the registration this relay no longer knows and registers again (the QR sticker changes). */
+    abstract fun reregister()
 }

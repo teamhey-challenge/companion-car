@@ -52,20 +52,8 @@ suspend fun registerCar(http: OkHttpClient, baseUrl: String, plateSuffix: String
         }
     }
 
-/**
- * One WebSocket to the relay with the delivery rules of docs/architecture.md 3.2:
- * every received envelope is acked and processed once (dedupe by id); every sent envelope is kept until acked and
- * sent again every [ackTimeoutMs] (and after a reconnect); a lost socket is reopened after 1/2/4/8/15 s.
- * The token is passed to the socket URL only; it is never logged.
- */
-class RelayLink(
-    private val http: OkHttpClient,
-    private val scope: CoroutineScope,
-    private val listener: Listener,
-    private val ackTimeoutMs: Long = HeyConfig.WS_ACK_TIMEOUT_MS,
-    private val backoffSec: List<Long> = HeyConfig.RECONNECT_BACKOFF_SEC,
-    private val clock: () -> Long = { System.currentTimeMillis() },
-) {
+/** What the repository needs from the connection. [RelayLink] is the real one; tests plug in a recording fake. */
+interface RelayTransport {
     interface Listener {
         /** Called on every connect (true) and loss (false). */
         fun onConnection(connected: Boolean)
@@ -76,6 +64,32 @@ class RelayLink(
         fun onMessage(message: ServerMessage)
     }
 
+    /** Opens (or reopens with new coordinates) the connection. */
+    fun connect(baseUrl: String, token: String)
+
+    fun close()
+
+    /**
+     * Queues an envelope. [supersedeKey]: an unacked envelope with the same key is replaced (only the last
+     * driving.state matters). Returns the envelope id.
+     */
+    fun send(type: String, data: JsonElement, supersedeKey: String? = null, id: String = UUID.randomUUID().toString()): String
+}
+
+/**
+ * One WebSocket to the relay with the delivery rules of docs/architecture.md 3.2:
+ * every received envelope is acked and processed once (dedupe by id); every sent envelope is kept until acked and
+ * sent again every [ackTimeoutMs] (and after a reconnect); a lost socket is reopened after 1/2/4/8/15 s.
+ * The token is passed to the socket URL only; it is never logged.
+ */
+class RelayLink(
+    private val http: OkHttpClient,
+    private val scope: CoroutineScope,
+    private val listener: RelayTransport.Listener,
+    private val ackTimeoutMs: Long = HeyConfig.WS_ACK_TIMEOUT_MS,
+    private val backoffSec: List<Long> = HeyConfig.RECONNECT_BACKOFF_SEC,
+    private val clock: () -> Long = { System.currentTimeMillis() },
+) : RelayTransport {
     private class Outgoing(val id: String, val key: String?, val json: String, var sentAt: Long)
 
     private val lock = Any()
@@ -86,8 +100,7 @@ class RelayLink(
     @Volatile private var tokenRejected = false
     private var job: Job? = null
 
-    /** Opens (or reopens with new coordinates) the connection. */
-    fun connect(baseUrl: String, token: String) {
+    override fun connect(baseUrl: String, token: String) {
         val previous = job
         job = scope.launch {
             previous?.cancelAndJoinQuietly()
@@ -95,17 +108,13 @@ class RelayLink(
         }
     }
 
-    fun close() {
+    override fun close() {
         job?.cancel()
         job = null
         synchronized(lock) { socket?.cancel(); socket = null }
     }
 
-    /**
-     * Queues an envelope. [supersedeKey]: an unacked envelope with the same key is replaced (only the last
-     * driving.state matters). Returns the envelope id.
-     */
-    fun send(type: String, data: JsonElement, supersedeKey: String? = null, id: String = UUID.randomUUID().toString()): String {
+    override fun send(type: String, data: JsonElement, supersedeKey: String?, id: String): String {
         val json = envelopeJson(type, id, clock(), data)
         val ws: WebSocket?
         synchronized(lock) {

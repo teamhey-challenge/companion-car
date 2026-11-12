@@ -8,7 +8,7 @@ import ai.hey.model.ConditionId
 import ai.hey.model.DropoffReasonId
 import ai.hey.model.ErrorCode
 import ai.hey.model.Lang
-import ai.hey.model.ProposalStatus
+import ai.hey.model.DriverProposalStatus
 import ai.hey.model.QuickReplyId
 import ai.hey.model.RequestItem
 import ai.hey.model.RequestKind
@@ -40,12 +40,12 @@ internal fun ConditionId.icon(): ImageVector = when (this) {
     ConditionId.Temperature -> HeyIcons.ThermometerCool
 }
 
-internal fun ProposalStatus.toUi(): ProposalState = when (this) {
-    ProposalStatus.Pending -> ProposalState.Pending
-    ProposalStatus.Ok, ProposalStatus.Accepted -> ProposalState.Ok
-    ProposalStatus.Elsewhere, ProposalStatus.Declined -> ProposalState.Elsewhere
-    ProposalStatus.Unsure -> ProposalState.Unsure
-    ProposalStatus.Superseded -> ProposalState.Superseded
+internal fun DriverProposalStatus.toUi(): ProposalState = when (this) {
+    DriverProposalStatus.Pending -> ProposalState.Pending
+    DriverProposalStatus.Ok -> ProposalState.Ok
+    DriverProposalStatus.Elsewhere -> ProposalState.Elsewhere
+    DriverProposalStatus.Unsure -> ProposalState.Unsure
+    DriverProposalStatus.Superseded -> ProposalState.Superseded
 }
 
 internal fun RequestItem.uiKind(): UiRequestKind = when {

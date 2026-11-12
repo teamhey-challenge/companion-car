@@ -13,11 +13,10 @@ import ai.hey.model.TripState
 import ai.hey.vehicle.DrivingStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The one state machine: every TripState x DrivingStatus pair, and the hands-on gate. */
+/** The one state machine: which phase each TripState x DrivingStatus pair is, and which commands a phase offers. */
 class CarPhaseTest {
     private val place = Place("p1", "Hotel", "호텔", "서울 중구", "서울", 37.5, 127.0)
     private val card = CarCardView(place, emptyList(), emptyList())
@@ -32,6 +31,8 @@ class CarPhaseTest {
             pendingJoin = if (join) this.join else null,
             requests = if (question) listOf(this.question) else emptyList(),
         )
+
+    private fun parked(view: CarView, local: LocalUi = LocalUi()) = phaseOf(view, DrivingStatus.Parked, local)
 
     @Test fun everyTripStateAndDrivingStatusHasAPhase() {
         for (state in TripState.entries) {
@@ -52,50 +53,72 @@ class CarPhaseTest {
         assertEquals(phaseOf(view, DrivingStatus.Driving, LocalUi()), phaseOf(view, DrivingStatus.Unknown, LocalUi()))
     }
 
-    @Test fun aDrivingPhaseCannotProduceParkedCommands() {
-        // Compile-time: CarPhase.Driving does not implement CarPhase.Parked, so requireParked() is not in its API.
-        assertFalse(CarPhase.Parked::class.java.isAssignableFrom(CarPhase.Driving::class.java))
-        assertTrue(CarPhase.Parked::class.java.isAssignableFrom(CarPhase.Waiting::class.java))
-        assertSame(NoCommands, CarPhase.Waiting.requireParked(NoCommands))
-        // The only door to hands-on commands is the method on the parked interface.
-        val door = CarPhase.Parked::class.java.methods.single { it.name == "requireParked" }
-        assertEquals(ParkedCommands::class.java, door.returnType)
-        assertTrue("Driving must not declare requireParked", CarPhase.Driving::class.java.methods.none { it.name == "requireParked" })
-    }
-
     @Test fun requestedWithoutAJoinIsWaiting() {
-        assertEquals(CarPhase.Waiting, phaseOf(view(TripState.REQUESTED), DrivingStatus.Parked, LocalUi()))
+        assertEquals(CarPhase.Waiting, parked(view(TripState.REQUESTED)))
     }
 
     @Test fun requestedWithAJoinCarriesTheJoin() {
-        val phase = phaseOf(view(TripState.REQUESTED, join = true), DrivingStatus.Parked, LocalUi())
-        assertEquals(CarPhase.JoinRequest(join), phase)
+        assertEquals(CarPhase.JoinRequest(join), parked(view(TripState.REQUESTED, join = true)))
     }
 
-    @Test fun dropoffPanelNeedsACard() {
-        val withCard = phaseOf(view(TripState.CONNECTED, card = true), DrivingStatus.Parked, LocalUi(panel = Panel.Dropoff))
-        assertTrue(withCard is CarPhase.DropoffProposal)
-        val withoutCard = phaseOf(view(TripState.CONNECTED), DrivingStatus.Parked, LocalUi(panel = Panel.Dropoff))
-        assertTrue(withoutCard is CarPhase.BoardingCard)
+    /** B3: the three card states are three phases, because the relay accepts different commands in each. */
+    @Test fun connectedCardSentAndInTripAreDifferentPhases() {
+        assertTrue(parked(view(TripState.CONNECTED, card = true)) is CarPhase.AwaitingCard)
+        assertTrue(parked(view(TripState.CARD_SENT, card = true)) is CarPhase.CardSent)
+        assertTrue(parked(view(TripState.IN_TRIP, card = true)) is CarPhase.InTrip)
     }
 
-    @Test fun inTripShowsRequestsUntilDismissed() {
-        val open = phaseOf(view(TripState.IN_TRIP, card = true, question = true), DrivingStatus.Parked, LocalUi())
-        assertTrue(open is CarPhase.Requests)
-        val dismissed = phaseOf(
-            view(TripState.IN_TRIP, card = true, question = true),
-            DrivingStatus.Parked,
-            LocalUi(requestsDismissedAt = 1),
-        )
-        assertEquals(CarPhase.BoardingCard(view(TripState.IN_TRIP, card = true, question = true), inTrip = true), dismissed)
+    /** B3: the relay refuses route.started in CONNECTED and card.recheck in IN_TRIP, so those phases do not offer them. */
+    @Test fun aPhaseDoesNotOfferWhatTheRelayRefusesInThatState() {
+        val connected = parked(view(TripState.CONNECTED, card = true)) as CarPhase.Parked
+        assertFalse(CarCommand.StartRoute in connected.enabled)
+        assertFalse(CarCommand.Propose in connected.enabled)
+        assertFalse(CarCommand.Arrive in connected.enabled)
+        val inTrip = parked(view(TripState.IN_TRIP, card = true)) as CarPhase.Parked
+        assertFalse(CarCommand.Recheck in inTrip.enabled)
+        assertTrue(CarCommand.Arrive in inTrip.enabled)
+        val sent = parked(view(TripState.CARD_SENT, card = true)) as CarPhase.Parked
+        assertTrue(CarCommand.Recheck in sent.enabled)
+        assertFalse(CarCommand.Arrive in sent.enabled || CarCommand.Arrive in connected.enabled)
     }
 
-    @Test fun arrivedIsArrived() {
-        val phase = phaseOf(view(TripState.ARRIVED), DrivingStatus.Parked, LocalUi())
-        assertTrue(phase is CarPhase.Arrived)
+    @Test fun dropoffPanelNeedsACardAndAStateWhereTheRelayTakesProposals() {
+        val dropoff = LocalUi(panel = Panel.Dropoff)
+        assertTrue(parked(view(TripState.CARD_SENT, card = true), dropoff) is CarPhase.DropoffProposal)
+        assertTrue(parked(view(TripState.IN_TRIP, card = true), dropoff) is CarPhase.DropoffProposal)
+        assertTrue(parked(view(TripState.CARD_SENT), dropoff) is CarPhase.CardSent)
+        // CONNECTED: dropoff.propose is not legal, so the panel cannot show there.
+        assertTrue(parked(view(TripState.CONNECTED, card = true), dropoff) is CarPhase.AwaitingCard)
+    }
+
+    /** M2: a question is answerable in every parked state where the relay accepts reply.send, not only IN_TRIP. */
+    @Test fun openQuestionsOpenTheRequestsScreenInEveryStateThatTakesReplies() {
+        for (state in listOf(TripState.CONNECTED, TripState.CARD_SENT, TripState.IN_TRIP, TripState.ARRIVED)) {
+            val phase = parked(view(state, card = true, question = true))
+            assertTrue("$state with an open question must show requests", phase is CarPhase.Requests)
+            assertTrue("$state must allow a reply", CarCommand.Reply in (phase as CarPhase.Parked).enabled)
+        }
+    }
+
+    @Test fun dismissedQuestionsGoBackToTheCardOrSummary() {
+        val dismissed = LocalUi(requestsDismissedAt = 1)
+        assertTrue(parked(view(TripState.CONNECTED, card = true, question = true), dismissed) is CarPhase.AwaitingCard)
+        assertTrue(parked(view(TripState.CARD_SENT, card = true, question = true), dismissed) is CarPhase.CardSent)
+        assertTrue(parked(view(TripState.IN_TRIP, card = true, question = true), dismissed) is CarPhase.InTrip)
+        assertTrue(parked(view(TripState.ARRIVED, question = true), dismissed) is CarPhase.Arrived)
+    }
+
+    /** M3: the driver can end the trip from every parked trip screen, as the relay and the state diagram allow. */
+    @Test fun everyParkedTripPhaseCanEndTheTrip() {
+        for (state in listOf(TripState.CONNECTED, TripState.CARD_SENT, TripState.IN_TRIP, TripState.ARRIVED)) {
+            for (question in listOf(false, true)) {
+                val phase = parked(view(state, card = true, question = question)) as CarPhase.Parked
+                assertTrue("$state (question=$question) must offer End", CarCommand.End in phase.enabled)
+            }
+        }
     }
 
     @Test fun endedReturnsToWaiting() {
-        assertEquals(CarPhase.Waiting, phaseOf(view(TripState.ENDED), DrivingStatus.Parked, LocalUi()))
+        assertEquals(CarPhase.Waiting, parked(view(TripState.ENDED)))
     }
 }

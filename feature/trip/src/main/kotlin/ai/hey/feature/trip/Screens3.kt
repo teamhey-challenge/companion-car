@@ -35,7 +35,7 @@ import ai.hey.session.CarCommands
 import ai.hey.session.CarPhase
 import ai.hey.session.CarUiState
 import ai.hey.session.CommandKey
-import ai.hey.session.ParkedCommands
+import ai.hey.session.CarCommand
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -76,7 +76,6 @@ internal fun DrivingScreen(state: CarUiState, nowMillis: Long, modifier: Modifie
 internal fun RequestsScreen(
     state: CarUiState,
     phase: CarPhase.Requests,
-    parked: ParkedCommands,
     commands: CarCommands,
     nowMillis: Long,
     modifier: Modifier = Modifier,
@@ -87,68 +86,73 @@ internal fun RequestsScreen(
     val pin = view.pendingPins.firstOrNull()
     val replies = quickReplies()
     val busyReply = state.replyInFlight?.replyId?.name
-    TripFrame(
-        state = state,
-        nowMillis = nowMillis,
-        modifier = modifier,
-        rail = {
-            HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
-                HeyButton(
-                    stringResource(R.string.trip_requests_arrive),
-                    parked::arrive,
-                    variant = HeyButtonVariant.Secondary,
-                    size = HeyButtonSize.Large,
-                    icon = HeyIcons.Flag,
-                    loading = state.isLoading(CommandKey.Arrive),
-                    enabled = state.online,
-                )
-                HeyButton(
-                    stringResource(R.string.trip_requests_close),
-                    commands::dismissRequests,
-                    variant = HeyButtonVariant.Secondary,
-                    size = HeyButtonSize.Large,
-                )
-            }
-        },
-    ) {
-        VStack(HeyGap.G16, modifier = Modifier.fillSize()) {
-            VStack(HeyGap.G8) {
-                HeyText(stringResource(R.string.trip_requests_title), variant = HeyTextVariant.Title, maxLines = 1)
-                HeyText(stringResource(R.string.trip_requests_subtitle), tone = HeyTone.Muted, maxLines = 1)
-            }
-            if (!state.online) HeyBanner(HeyStatusTone.Warning, stringResource(R.string.trip_requests_offline), Modifier.fillWidth())
-            HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillWidth().grow()) {
-                HeyScrollColumn(HeyGap.G8, modifier = Modifier.grow(1f)) {
-                    requests.forEach { request ->
-                        RequestRow(
-                            textKo = request.text,
-                            kind = request.uiKind(),
-                            state = request.uiState(),
-                            time = clockText(request.ts, KoreaZone),
-                            onReplay = { commands.replayRequest(request.requestId) },
-                            modifier = Modifier.fillWidth(),
+    EndTripLayer(state, commands) {
+        TripFrame(
+            state = state,
+            nowMillis = nowMillis,
+            modifier = modifier,
+            rail = {
+                HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
+                    if (CarCommand.Arrive in phase.enabled) {
+                        HeyButton(
+                            stringResource(R.string.trip_requests_arrive),
+                            { state.parked?.arrive() },
+                            variant = HeyButtonVariant.Secondary,
+                            size = HeyButtonSize.Large,
+                            icon = HeyIcons.Flag,
+                            loading = state.isLoading(CommandKey.Arrive),
+                            enabled = state.online,
                         )
                     }
-                }
-                VStack(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
-                    QuickReplyGrid(
-                        replies = replies,
-                        onReply = { reply -> parked.sendReply(target?.requestId, QuickReplyId.valueOf(reply.id)) },
-                        modifier = Modifier.fillWidth(),
-                        enabled = state.online,
-                        loadingId = busyReply,
+                    EndTripButton(state, phase.enabled)
+                    HeyButton(
+                        stringResource(R.string.trip_requests_close),
+                        commands::dismissRequests,
+                        variant = HeyButtonVariant.Secondary,
+                        size = HeyButtonSize.Large,
                     )
-                    if (pin != null) {
-                        val from = view.card?.destination?.let { LatLng(it.lat, it.lng) }
-                        PassengerPinCard(
-                            label = pin.label,
-                            distanceText = from?.let { distanceText(it.distanceTo(pin.point)) }.orEmpty(),
-                            onAccept = { parked.decidePin(pin.version, true) },
-                            onDecline = { parked.decidePin(pin.version, false) },
-                            modifier = Modifier.fillWidth(),
-                        )
+                }
+            },
+        ) {
+            VStack(HeyGap.G16, modifier = Modifier.fillSize()) {
+                VStack(HeyGap.G8) {
+                    HeyText(stringResource(R.string.trip_requests_title), variant = HeyTextVariant.Title, maxLines = 1)
+                    HeyText(stringResource(R.string.trip_requests_subtitle), tone = HeyTone.Muted, maxLines = 1)
+                }
+                if (!state.online) HeyBanner(HeyStatusTone.Warning, stringResource(R.string.trip_requests_offline), Modifier.fillWidth())
+                HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillWidth().grow()) {
+                    HeyScrollColumn(HeyGap.G8, modifier = Modifier.grow(1f)) {
+                        requests.forEach { request ->
+                            RequestRow(
+                                textKo = request.text,
+                                kind = request.uiKind(),
+                                state = request.uiState(),
+                                time = clockText(request.ts, KoreaZone),
+                                onReplay = { commands.replayRequest(request.requestId) },
+                                modifier = Modifier.fillWidth(),
+                            )
+                        }
                     }
-                    ErrorBanner(state, Modifier.fillWidth())
+                    VStack(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
+                        QuickReplyGrid(
+                            replies = replies,
+                            onReply = { reply -> state.parked?.sendReply(target?.requestId, QuickReplyId.valueOf(reply.id)) },
+                            modifier = Modifier.fillWidth(),
+                            enabled = state.online && CarCommand.Reply in phase.enabled,
+                            loadingId = busyReply,
+                        )
+                        if (pin != null) {
+                            val from = view.card?.destination?.let { LatLng(it.lat, it.lng) }
+                            PassengerPinCard(
+                                label = pin.label,
+                                distanceText = from?.let { distanceText(it.distanceTo(pin.point)) }.orEmpty(),
+                                onAccept = { state.parked?.decidePin(pin.version, true) },
+                                onDecline = { state.parked?.decidePin(pin.version, false) },
+                                modifier = Modifier.fillWidth(),
+                            )
+                        }
+                        ErrorBanner(state, Modifier.fillWidth())
+                    }
                 }
             }
         }
@@ -161,7 +165,6 @@ internal fun RequestsScreen(
 internal fun ArrivedScreen(
     state: CarUiState,
     phase: CarPhase.Arrived,
-    parked: ParkedCommands,
     commands: CarCommands,
     nowMillis: Long,
     modifier: Modifier = Modifier,
@@ -180,37 +183,14 @@ internal fun ArrivedScreen(
         add(stringResource(R.string.trip_arrived_row_replies) to stringResource(R.string.trip_format_count, view.replies.size))
     }
     val navDiffers = agreed != null && view.card != null && view.routeStale
-    HeyLayered(
-        modifier = Modifier.fillSize(),
-        overlay = if (state.endDialogOpen) {
-            {
-                HeyDialog(
-                    title = stringResource(R.string.trip_end_dialog_title),
-                    message = stringResource(R.string.trip_end_dialog_message),
-                    confirm = HeyDialogAction(stringResource(R.string.trip_end_dialog_confirm), parked::endTrip),
-                    dismiss = HeyDialogAction(stringResource(R.string.trip_end_dialog_cancel), commands::closeEndDialog),
-                    modifier = Modifier.fillSize(),
-                    danger = true,
-                )
-            }
-        } else {
-            null
-        },
-    ) {
+    EndTripLayer(state, commands) {
         TripFrame(
             state = state,
             nowMillis = nowMillis,
             modifier = modifier,
             rail = {
                 HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
-                    HeyButton(
-                        stringResource(R.string.trip_arrived_end),
-                        parked::openEndDialog,
-                        size = HeyButtonSize.Large,
-                        icon = HeyIcons.Check,
-                        enabled = state.online,
-                        loading = state.isLoading(CommandKey.End),
-                    )
+                    EndTripButton(state, phase.enabled, label = R.string.trip_arrived_end, primary = true)
                 }
             },
         ) {

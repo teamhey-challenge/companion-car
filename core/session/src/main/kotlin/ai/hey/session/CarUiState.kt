@@ -46,7 +46,8 @@ sealed interface CommandKey {
     data object Recheck : CommandKey
     data class Propose(val previousVersion: Int) : CommandKey
     data class Pin(val version: Int) : CommandKey
-    data class Reply(val requestId: String?, val replyId: QuickReplyId, val repliesBefore: Int) : CommandKey
+    /** [newestReplyBefore]: the newest reply when the tap happened; a different newest reply is the effect (the relay caps the list, so a count would stall). */
+    data class Reply(val requestId: String?, val replyId: QuickReplyId, val newestReplyBefore: ai.hey.model.ReplyItem?) : CommandKey
     data object End : CommandKey
     data object Arrive : CommandKey
     data object StartRoute : CommandKey
@@ -100,13 +101,23 @@ data class CarUiState(
     val candidates: Candidates = Candidates(),
     /** Epoch ms of the last trip.progress seen on the car, for the "출발할 때" caption on D5. */
     val progressAt: Long? = null,
+    /** Milliseconds this device's clock runs ahead of the relay's (from snapshot `ts`), so countdowns use the relay's deadlines. */
+    val clockOffsetMs: Long = 0,
+    /** The repository's hands-on commands; reachable only through [parked]. */
+    internal val hands: ParkedCommands? = null,
 ) {
     val online: Boolean get() = connection == ConnectionStatus.Online
 
     /** The one state machine; screens read this, never the raw fields. */
     val phase: CarPhase get() = phaseOf(view, driving, LocalUi(panel, requestsDismissedAt))
 
-    val parked: Boolean get() = phase is CarPhase.Parked
+    val isParked: Boolean get() = phase is CarPhase.Parked
+
+    /**
+     * Hands-on commands, or null unless the car is parked. The repository creates them; no other code can, so a driving
+     * screen has nothing to call. Which of them the relay accepts right now is [CarPhase.Parked.enabled].
+     */
+    val parked: ParkedCommands? get() = if (isParked) hands else null
 
     fun commandState(key: CommandKey): CommandState = commands[key] ?: CommandState.Idle
 

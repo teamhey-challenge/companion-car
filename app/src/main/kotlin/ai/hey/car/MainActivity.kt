@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
             HeyTheme(dark = state.settings.dark) {
                 // Settings only while parked, and a connection request always wins over it: its 5 minutes keep running.
                 val joinWaiting = state.view?.state == TripState.REQUESTED && state.view?.pendingJoin != null
-                val showSettings = state.panel == Panel.Settings && state.parked && !joinWaiting
+                val showSettings = state.panel == Panel.Settings && state.isParked && !joinWaiting
                 if (showSettings) {
                     BackHandler(onBack = repository::closeSettings)
                     SettingsScreen(
@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
                         clock = clockLabel(now),
                     )
                 } else {
-                    TripScreen(state, repository, repository, now)
+                    TripScreen(state, repository, now)
                 }
             }
         }

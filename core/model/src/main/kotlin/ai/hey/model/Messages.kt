@@ -10,6 +10,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
 /** The one Json configuration used for every wire message. */
@@ -91,7 +92,8 @@ inline fun <reified T> envelopeOf(type: String, id: String, ts: Long, data: T): 
 sealed interface ServerMessage {
     val id: String
 
-    data class Snapshot(override val id: String, val view: CarView) : ServerMessage
+    /** [ts] is the relay's clock when it built the snapshot; the car uses it to correct its own clock for countdowns. */
+    data class Snapshot(override val id: String, val view: CarView, val ts: Long? = null) : ServerMessage
     data class Say(override val id: String, val data: SayData) : ServerMessage
     data class Notice(override val id: String, val data: NoticeData) : ServerMessage
     data class Error(override val id: String, val data: ErrorData) : ServerMessage
@@ -111,7 +113,7 @@ fun parseServerMessage(raw: String): ServerMessage? = try {
             "trip.snapshot" -> {
                 // The relay sends role-specific snapshots; a car only ever receives role "car".
                 val role = (data as? JsonObject)?.get("role")?.jsonPrimitive?.contentOrNull
-                if (role == "car") ServerMessage.Snapshot(id, HeyJson.decodeFromJsonElement<CarView>(data)) else null
+                if (role == "car") ServerMessage.Snapshot(id, HeyJson.decodeFromJsonElement<CarView>(data), obj["ts"]?.jsonPrimitive?.longOrNull) else null
             }
             "say" -> ServerMessage.Say(id, HeyJson.decodeFromJsonElement(data))
             "notice" -> ServerMessage.Notice(id, HeyJson.decodeFromJsonElement(data))

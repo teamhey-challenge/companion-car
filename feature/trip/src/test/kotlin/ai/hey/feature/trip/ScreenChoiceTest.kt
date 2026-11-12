@@ -50,6 +50,13 @@ class ScreenChoiceTest {
 
     @Test fun noticesOnlyStayOnD3() = assertEquals(TripScreenId.D3Card, id(TripSamples.requestsNoticeOnly))
 
+    /** M2: a question is on D6 in every parked state where the relay takes replies, not only IN_TRIP. */
+    @Test fun questionsOpenD6AlsoBeforeTheRouteAndAfterArrival() {
+        assertEquals(TripScreenId.D6Requests, id(TripSamples.requestsConnected))
+        assertEquals(TripScreenId.D6Requests, id(TripSamples.requestsCardSent))
+        assertEquals(TripScreenId.D6Requests, id(TripSamples.requestsArrived))
+    }
+
     @Test fun arrivedIsD7() = assertEquals(TripScreenId.D7Arrived, id(TripSamples.arrivedAgreed))
 
     @Test fun theSettingsPanelIsNotATripScreenChoice() {

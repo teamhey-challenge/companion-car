@@ -3,7 +3,6 @@ package ai.hey.feature.trip
 import ai.hey.session.CarCommands
 import ai.hey.session.CarPhase
 import ai.hey.session.CarUiState
-import ai.hey.session.ParkedCommands
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
@@ -19,7 +18,7 @@ fun tripScreenFor(phase: CarPhase): TripScreenId = when (phase) {
     is CarPhase.Parked -> when (phase) {
         is CarPhase.Waiting -> TripScreenId.D1Waiting
         is CarPhase.JoinRequest -> TripScreenId.D2Join
-        is CarPhase.BoardingCard -> TripScreenId.D3Card
+        is CarPhase.Card -> TripScreenId.D3Card
         is CarPhase.DropoffProposal -> TripScreenId.D4Dropoff
         is CarPhase.Requests -> TripScreenId.D6Requests
         is CarPhase.Arrived -> TripScreenId.D7Arrived
@@ -29,8 +28,9 @@ fun tripScreenFor(phase: CarPhase): TripScreenId = when (phase) {
 fun tripScreenFor(state: CarUiState): TripScreenId = tripScreenFor(state.phase)
 
 /**
- * The screen layer receives safe commands plus a [ParkedCommands] token. The token is only ever obtained from a
- * parked phase, so a driving branch has no way to compile a hands-on call.
+ * The screen layer receives the safe [CarCommands] and the state. Hands-on commands exist only as
+ * [CarUiState.parked], which is null while driving, and every parked button is enabled from its phase's
+ * [CarPhase.Parked.enabled], so a screen cannot offer what the relay would reject.
  *
  * [nowMillis] is passed in so snapshots are deterministic; the app feeds it from [rememberNowMillis].
  */
@@ -38,22 +38,18 @@ fun tripScreenFor(state: CarUiState): TripScreenId = tripScreenFor(state.phase)
 fun TripScreen(
     state: CarUiState,
     commands: CarCommands,
-    parked: ParkedCommands,
     nowMillis: Long,
     modifier: Modifier = Modifier,
 ) {
     when (val phase = state.phase) {
         CarPhase.Driving -> DrivingScreen(state, nowMillis, modifier)
-        is CarPhase.Parked -> {
-            val parkedCommands = phase.requireParked(parked)
-            when (phase) {
-                is CarPhase.Waiting -> WaitingScreen(state, parkedCommands, commands, nowMillis, modifier)
-                is CarPhase.JoinRequest -> JoinScreen(state, phase, parkedCommands, commands, nowMillis, modifier)
-                is CarPhase.BoardingCard -> CardScreen(state, phase, parkedCommands, commands, nowMillis, modifier)
-                is CarPhase.DropoffProposal -> DropoffScreen(state, phase, parkedCommands, commands, nowMillis, modifier)
-                is CarPhase.Requests -> RequestsScreen(state, phase, parkedCommands, commands, nowMillis, modifier)
-                is CarPhase.Arrived -> ArrivedScreen(state, phase, parkedCommands, commands, nowMillis, modifier)
-            }
+        is CarPhase.Parked -> when (phase) {
+            is CarPhase.Waiting -> WaitingScreen(state, commands, nowMillis, modifier)
+            is CarPhase.JoinRequest -> JoinScreen(state, phase, commands, nowMillis, modifier)
+            is CarPhase.Card -> CardScreen(state, phase, commands, nowMillis, modifier)
+            is CarPhase.DropoffProposal -> DropoffScreen(state, phase, commands, nowMillis, modifier)
+            is CarPhase.Requests -> RequestsScreen(state, phase, commands, nowMillis, modifier)
+            is CarPhase.Arrived -> ArrivedScreen(state, phase, commands, nowMillis, modifier)
         }
     }
 }
