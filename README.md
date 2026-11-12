@@ -8,7 +8,7 @@ HEY 차량 앱(Pleos Connect, AAOS 가로, Kotlin + Jetpack Compose). 모노레�
 git clone --recurse-submodules git@github.com:darren-pleos-challenge/hey-car.git   # 이미 클론했다면: git submodule update --init
 ```
 
-`shared/`는 `hey-shared` 서브모듈(태그 `v0.6.2` 고정, 프로토콜 3.0.0)이다. 토큰은 `includeBuild("shared/android")`로 `ai.hey:tokens-compose`에 의존하고, 프로토콜 fixture는 `shared/packages/protocol/fixtures`를 `:core:model` 시험이 읽는다. D1의 QR 안내 6개 언어 문장은 `shared/packages/copy/src/<lang>.ts`의 `car.scanQr`에서 빌드 때 생성한다. 버전 올리기: `git -C shared fetch --tags && git -C shared checkout <새 태그>` 후 포인터를 커밋.
+`shared/`는 `hey-shared` 서브모듈(태그 `v0.6.3` 고정, 프로토콜 3.0.0)이다. 토큰은 `includeBuild("shared/android")`로 `ai.hey:tokens-compose`에 의존하고, 프로토콜 fixture는 `shared/packages/protocol/fixtures`를 `:core:model` 시험이 읽는다. D1의 QR 안내 6개 언어 문장은 `shared/packages/copy/src/<lang>.ts`의 `car.scanQr`에서 빌드 때 생성한다. 버전 올리기: `git -C shared fetch --tags && git -C shared checkout <새 태그>` 후 포인터를 커밋.
 
 ## 로컬 점검 (CI 없음)
 

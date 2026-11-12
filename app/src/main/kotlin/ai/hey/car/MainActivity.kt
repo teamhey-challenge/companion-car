@@ -16,12 +16,18 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 
 class MainActivity : ComponentActivity() {
+    // One launcher for both runtime permissions; only an answer that contains the microphone goes back to the session.
+    private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        voiceAnswer(result)?.let { (application as HeyApp).graph.repository.voicePermissionResult(it) }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestNotificationPermission()
@@ -32,7 +38,7 @@ class MainActivity : ComponentActivity() {
             // The driver pressed the microphone without RECORD_AUDIO: ask once, the answer goes back to the session.
             LaunchedEffect(state.voice is VoiceState.NeedsPermission) {
                 if (state.voice is VoiceState.NeedsPermission) {
-                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_RECORD_AUDIO)
+                    permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                 }
             }
             val now by rememberNowMillis()
@@ -58,25 +64,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_RECORD_AUDIO) {
-            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
-            (application as HeyApp).graph.repository.voicePermissionResult(granted)
-        }
-    }
-
     /**
      * The foreground-service notification is the driver's way back to the screen (a service cannot start an activity),
-     * and on API 33+ it only shows once this runtime permission is granted.
+     * and on API 33+ it only shows once this runtime permission is granted. A denial changes nothing else.
      */
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT < 33) return
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
-        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-    }
-
-    private companion object {
-        const val REQUEST_RECORD_AUDIO = 2
+        permissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
     }
 }

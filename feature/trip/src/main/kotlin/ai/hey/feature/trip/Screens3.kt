@@ -224,6 +224,8 @@ private fun VoiceStatus(voice: VoiceState, commands: CarCommands) {
                 },
             ),
             Modifier.fillWidth(),
+            // Denied: one line on where to switch it back on (the system will not ask again).
+            message = if (voice.reason == VoiceState.Reason.PermissionDenied) stringResource(R.string.trip_voice_permission_hint) else null,
         )
         VoiceState.Idle, is VoiceState.Confirm -> Unit
     }

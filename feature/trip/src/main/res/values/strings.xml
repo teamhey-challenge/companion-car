@@ -111,6 +111,7 @@
     <string name="trip_voice_cancel">취소</string>
     <string name="trip_voice_no_speech">말씀을 알아듣지 못했어요</string>
     <string name="trip_voice_permission">마이크 권한이 필요해요</string>
+    <string name="trip_voice_permission_hint">설정 &gt; 앱 &gt; HEY &gt; 권한에서 마이크를 켜 주세요</string>
     <string name="trip_voice_unavailable">음성 인식을 쓸 수 없어요</string>
     <string name="trip_voice_sent">승객에게 전달했어요</string>
     <string name="trip_voice_driving_locked">운전 중에는 음성 입력을 쓸 수 없어요</string>
