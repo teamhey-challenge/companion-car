@@ -293,7 +293,7 @@ class TripRepositoryTest {
     /** Rule 1: the snapshot shows the effect, so the button is released. */
     @Test fun aSnapshotShowingTheEffectClearsTheCommand() = runTest {
         val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
-        snapshot(rig, view(state = TripState.REQUESTED, pendingJoin = ai.hey.model.PendingJoin("jr_1", ai.hey.model.Lang.En, 1, 0)))
+        snapshot(rig, view(state = TripState.REQUESTED, pendingJoin = ai.hey.model.PendingJoin("jr_1", ai.hey.model.Lang.En, 1, 0, "47")))
         rig.repo.state.value.parked!!.approveJoin("jr_1")
         val key = CommandKey.Join("jr_1")
         assertTrue(rig.repo.state.value.isLoading(key))
@@ -306,7 +306,7 @@ class TripRepositoryTest {
     /** Rule 2: the relay names the envelope, the key fails, and the banner clears on its own. */
     @Test fun anErrorNamingTheEnvelopeFailsThenClearsTheCommand() = runTest {
         val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
-        snapshot(rig, view(state = TripState.REQUESTED, pendingJoin = ai.hey.model.PendingJoin("jr_1", ai.hey.model.Lang.En, 1, 0)))
+        snapshot(rig, view(state = TripState.REQUESTED, pendingJoin = ai.hey.model.PendingJoin("jr_1", ai.hey.model.Lang.En, 1, 0, "47")))
         rig.repo.state.value.parked!!.approveJoin("jr_1")
         val key = CommandKey.Join("jr_1")
         val envelope = rig.transport.sent.last { it.type == ClientType.JOIN_APPROVE }.id
@@ -375,7 +375,7 @@ class TripRepositoryTest {
     /** Rule 3: a lost answer cannot leave a button spinning for good. */
     @Test fun aLostAnswerTimesOutAndClearsTheCommand() = runTest {
         val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
-        snapshot(rig, view(state = TripState.REQUESTED, pendingJoin = ai.hey.model.PendingJoin("jr_1", ai.hey.model.Lang.En, 1, 0)))
+        snapshot(rig, view(state = TripState.REQUESTED, pendingJoin = ai.hey.model.PendingJoin("jr_1", ai.hey.model.Lang.En, 1, 0, "47")))
         rig.repo.state.value.parked!!.approveJoin("jr_1")
         val key = CommandKey.Join("jr_1")
         assertTrue(rig.repo.state.value.isLoading(key))

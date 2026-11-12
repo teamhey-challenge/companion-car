@@ -20,7 +20,7 @@ import org.junit.Test
 class CarPhaseTest {
     private val place = Place("p1", "Hotel", "호텔", "서울 중구", "서울", 37.5, 127.0)
     private val card = CarCardView(place, emptyList(), emptyList())
-    private val join = PendingJoin("jr_1", Lang.En, 2, 0)
+    private val join = PendingJoin("jr_1", Lang.En, 2, 0, "47")
     private val question = RequestItem("req_1", RequestKind.Preset, null, "창문을 열어도 될까요?", true, RequestState.Received, ts = 0)
     private val base = CarView(state = TripState.IDLE, carCode = "C", plateSuffix = "1", driving = DrivingState.PARKED)
 

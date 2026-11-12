@@ -158,7 +158,7 @@ object TripSamples {
     // ---- D2
     private val requested = base.copy(
         state = TripState.REQUESTED,
-        pendingJoin = PendingJoin("jr_1", Lang.En, 2, NOW + 252_000),
+        pendingJoin = PendingJoin("jr_1", Lang.En, 2, NOW + 252_000, "47"),
         partySize = 2,
         passengerLang = Lang.En,
     )

@@ -166,8 +166,7 @@ class RelayLink(
 
     private suspend fun run(baseUrl: String, token: String) {
         // The token is never part of the URL (access logs); it goes in the first frame after the upgrade.
-        val url = baseUrl.toHttpUrl().newBuilder().addPathSegments("v1/ws")
-            .addQueryParameter(ProtocolVersion.QUERY, protocolVersion).build()
+        val url = baseUrl.toHttpUrl().newBuilder().addPathSegments("v1/ws").build()
         val authFrame = kotlinx.serialization.json.buildJsonObject {
             put("type", kotlinx.serialization.json.JsonPrimitive("auth"))
             put("token", kotlinx.serialization.json.JsonPrimitive(token))

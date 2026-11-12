@@ -114,7 +114,7 @@ class RelayIntegrationTest {
     }
 
     /** A passenger device: socket + the envelopes it received. */
-    private class Passenger(val http: OkHttpClient, val wsUrl: String) {
+    private class Passenger(val http: OkHttpClient, val wsUrl: String, val token: String) {
         val received = CopyOnWriteArrayList<JsonObject>()
         lateinit var socket: WebSocket
 
@@ -122,6 +122,10 @@ class RelayIntegrationTest {
             socket = http.newWebSocket(
                 Request.Builder().url(wsUrl).build(),
                 object : WebSocketListener() {
+                    override fun onOpen(webSocket: WebSocket, response: Response) {
+                        webSocket.send("""{"type":"auth","token":"$token","protocol":"${ai.hey.protocol.ProtocolVersion.CURRENT}"}""")
+                    }
+
                     override fun onMessage(webSocket: WebSocket, text: String) {
                         val obj = Json.parseToJsonElement(text).jsonObject
                         if (obj["type"]?.jsonPrimitive?.content == "ack") return
@@ -169,7 +173,7 @@ class RelayIntegrationTest {
         val joinId = join.getValue("joinRequestId").jsonPrimitive.content
         val requested = eventually("REQUESTED") { repo.state.value.takeIf { it.view?.state == TripState.REQUESTED } }
         assertEquals(joinId, requested.view?.pendingJoin?.joinRequestId)
-        val passenger = Passenger(http, base.replace("http", "ws") + "/v1/ws?token=$deviceToken")
+        val passenger = Passenger(http, base.replace("http", "ws") + "/v1/ws", deviceToken)
         passenger.open()
 
         // a driving car must not approve; parked it can
@@ -333,7 +337,7 @@ class RelayIntegrationTest {
         val join = post("/v1/c/${registration.carCode}/join", """{"lang":"en","partySize":1}""")
         val deviceToken = join.getValue("deviceToken").jsonPrimitive.content
         val joinId = join.getValue("joinRequestId").jsonPrimitive.content
-        val passenger = Passenger(http, base.replace("http", "ws") + "/v1/ws?token=$deviceToken")
+        val passenger = Passenger(http, base.replace("http", "ws") + "/v1/ws", deviceToken)
         passenger.open()
         eventually("REQUESTED") { repo.state.value.takeIf { it.view?.state == TripState.REQUESTED } }
 
@@ -398,7 +402,7 @@ class RelayIntegrationTest {
         val join = post("/v1/c/${registration.carCode}/join", """{"lang":"ja","partySize":2}""")
         val deviceToken = join.getValue("deviceToken").jsonPrimitive.content
         val joinId = join.getValue("joinRequestId").jsonPrimitive.content
-        val passenger = Passenger(http, base.replace("http", "ws") + "/v1/ws?token=$deviceToken")
+        val passenger = Passenger(http, base.replace("http", "ws") + "/v1/ws", deviceToken)
         passenger.open()
         heard("join request", sentence("speech.joinRequest"))
         eventually("REQUESTED") { repo.state.value.takeIf { it.view?.pendingJoin != null } }

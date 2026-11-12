@@ -305,9 +305,9 @@ object Stories {
         add(part("greeting-strip-empty") { LanguageGreetingStrip(emptyList(), Modifier.width(720.dp)) })
 
         // Join request
-        add(part("join-parked") { JoinRequestCard("English", 2, 252, {}, {}, Modifier.width(720.dp)) })
-        add(part("join-driving") { JoinRequestCard("日本語", 4, 38, {}, {}, Modifier.width(720.dp), enabled = false) })
-        add(part("join-long-lang") { JoinRequestCard("简体中文 Chinese (Simplified) 中文普通话 대륙 표준어", 1, 300, {}, {}, Modifier.width(720.dp)) })
+        add(part("join-parked") { JoinRequestCard("English", 2, 252, "47", {}, {}, Modifier.width(720.dp)) })
+        add(part("join-driving") { JoinRequestCard("日本語", 4, 38, "05", {}, {}, Modifier.width(720.dp), enabled = false) })
+        add(part("join-long-lang") { JoinRequestCard("简体中文 Chinese (Simplified) 中文普通话 대륙 표준어", 1, 300, "90", {}, {}, Modifier.width(720.dp)) })
 
         // Summary
         add(part("korean-summary-4") {
@@ -529,7 +529,7 @@ private fun WaitingScreen(party: Int, connection: HeyConnection) {
 private fun JoinScreen(driving: Boolean) {
     CarFrame(statusStrip = stripFor(2, HeyConnection.Online, driving), driving = false) {
         VStack(HeyGap.G24, arrange = HeyArrange.Center, modifier = Modifier.fillMaxSize()) {
-            JoinRequestCard("English", 2, 252, {}, {}, Modifier.fillMaxWidth(), enabled = !driving)
+            JoinRequestCard("English", 2, 252, "47", {}, {}, Modifier.fillMaxWidth(), enabled = !driving)
         }
     }
 }

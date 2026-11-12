@@ -48,7 +48,7 @@ class CarPhaseTransitionsTest {
             for (panel in Panel.entries) for (dismissed in listOf(0, 1)) {
                 val view = CarView(
                     state = state, carCode = "C", plateSuffix = "1", driving = DrivingState.PARKED,
-                    pendingJoin = if (join) PendingJoin("jr", Lang.En, 1, 0) else null,
+                    pendingJoin = if (join) PendingJoin("jr", Lang.En, 1, 0, "47") else null,
                     card = if (card) CarCardView(place, emptyList(), emptyList()) else null,
                     requests = if (asks) listOf(question) else emptyList(),
                     pendingPins = if (pinned) listOf(pin) else emptyList(),

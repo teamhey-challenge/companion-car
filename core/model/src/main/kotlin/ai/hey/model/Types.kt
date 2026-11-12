@@ -368,8 +368,9 @@ data class CarCardView(
     val temperatureLabelKo: String? = null,
 )
 
+/** [checkCode]: 2 digits the relay made for this request; the passenger sees the same on P1. The driver approves only if they match. */
 @Serializable
-data class PendingJoin(val joinRequestId: String, val lang: Lang, val partySize: Int, val expiresAt: Long)
+data class PendingJoin(val joinRequestId: String, val lang: Lang, val partySize: Int, val expiresAt: Long, val checkCode: String)
 
 @Serializable
 data class CarView(

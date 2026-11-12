@@ -164,6 +164,7 @@ internal fun JoinScreen(
                 langLabel = stringResource(join.lang.labelRes()),
                 partySize = join.partySize,
                 expiresInSec = left,
+                checkCode = join.checkCode,
                 onApprove = { state.parked?.approveJoin(join.joinRequestId) },
                 onDecline = { state.parked?.declineJoin(join.joinRequestId) },
                 modifier = Modifier.fillWidth(),
