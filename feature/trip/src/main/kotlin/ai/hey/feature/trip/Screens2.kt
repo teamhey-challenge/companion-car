@@ -5,6 +5,7 @@ import ai.hey.designsystem.component.DropoffCandidateRow
 import ai.hey.designsystem.component.EmptyPanel
 import ai.hey.designsystem.component.EtaBlock
 import ai.hey.designsystem.component.HeyBanner
+import ai.hey.designsystem.component.HeyBannerAction
 import ai.hey.designsystem.component.HeyButton
 import ai.hey.designsystem.component.HeyButtonSize
 import ai.hey.designsystem.component.HeyButtonVariant
@@ -42,6 +43,7 @@ import ai.hey.session.CommandKey
 import ai.hey.model.DriverProposal
 import ai.hey.session.CarCommand
 import ai.hey.vehicle.RouteFailure
+import ai.hey.vehicle.RouteStartState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -156,53 +158,47 @@ internal fun CardScreen(
             } else {
                 val lines = conditionLines(card, state.changedConditions)
                 HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillSize()) {
-                    HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(2f)) {
+                    HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(3f)) {
                         KoreanSummary(card.destination.nameKo, card.destination.addressKo, card.destination.nameLocal, lines)
                     }
-                    VStack(HeyGap.G16, modifier = Modifier.grow(1f)) {
-                        HeyStatusPill(
-                            stringResource(if (routeStarted) R.string.trip_card_route_started else R.string.trip_card_checking),
-                            HeyStatusTone.Info,
-                        )
-                        if (state.routeAwaitingConfirm) {
+                    HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(2f)) {
+                        val routeState = phase.route
+                        val pill = when (routeState) {
+                            RouteStartState.Requested -> R.string.trip_card_pill_requested to HeyStatusTone.Info
+                            RouteStartState.AwaitingNaviConfirm -> R.string.trip_card_pill_confirm to HeyStatusTone.Warning
+                            is RouteStartState.Failed -> R.string.trip_card_pill_failed to HeyStatusTone.Danger
+                            is RouteStartState.Started, RouteStartState.Idle ->
+                                (if (routeStarted) R.string.trip_card_route_started else R.string.trip_card_checking) to HeyStatusTone.Info
+                        }
+                        HeyStatusPill(stringResource(pill.first), pill.second)
+                        val canRoute = CarCommand.StartRoute in phase.enabled
+                        if (routeState == RouteStartState.AwaitingNaviConfirm) {
                             HeyBanner(
                                 HeyStatusTone.Info,
                                 stringResource(R.string.trip_card_route_confirm),
                                 Modifier.fillWidth(),
                                 message = stringResource(R.string.trip_card_route_confirm_message),
-                            )
-                            HeyButton(
-                                stringResource(R.string.trip_card_route_cancel),
-                                { state.parked?.cancelRoute() },
-                                variant = HeyButtonVariant.Secondary,
-                                enabled = CarCommand.StartRoute in phase.enabled,
+                                actions = listOf(HeyBannerAction(stringResource(R.string.trip_card_route_cancel), { state.parked?.cancelRoute() }, enabled = canRoute)),
                             )
                         }
-                        if (state.routeFailed) {
-                            val code = state.routeFailureCode
+                        if (routeState is RouteStartState.Failed) {
+                            val code = routeState.code
                             val title = when (code) {
                                 RouteFailure.NAVI_NOT_READY -> R.string.trip_card_route_not_ready
                                 RouteFailure.NAVI_CONFIRM_TIMEOUT -> R.string.trip_card_route_confirm_timeout
                                 else -> R.string.trip_card_route_failed
                             }
+                            val retry = HeyBannerAction(stringResource(R.string.trip_card_retry), { state.parked?.startRoute() }, enabled = canRoute)
                             HeyBanner(
                                 HeyStatusTone.Danger,
                                 stringResource(title),
                                 Modifier.fillWidth(),
                                 message = if (code == RouteFailure.NAVI_NOT_READY) stringResource(R.string.trip_card_route_not_ready_message) else null,
-                            )
-                            if (code == RouteFailure.NAVI_NOT_READY) {
-                                HeyButton(
-                                    stringResource(R.string.trip_card_open_navi),
-                                    { state.parked?.openNavi() },
-                                    enabled = CarCommand.StartRoute in phase.enabled,
-                                )
-                            }
-                            HeyButton(
-                                stringResource(R.string.trip_card_retry),
-                                { state.parked?.startRoute() },
-                                variant = HeyButtonVariant.Secondary,
-                                enabled = CarCommand.StartRoute in phase.enabled,
+                                actions = if (code == RouteFailure.NAVI_NOT_READY) {
+                                    listOf(HeyBannerAction(stringResource(R.string.trip_card_open_navi), { state.parked?.openNavi() }, primary = true, enabled = canRoute), retry)
+                                } else {
+                                    listOf(retry)
+                                },
                             )
                         }
                         if (view.routeStale) {

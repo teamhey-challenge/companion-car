@@ -47,6 +47,9 @@
     <string name="trip_card_replay_hint">다시 듣기를 누르면 목적지를 다시 읽어 드려요</string>
     <string name="trip_card_replay_text">목적지: %1$s.</string>
     <string name="trip_card_route_failed">경로를 시작하지 못했어요</string>
+    <string name="trip_card_pill_requested">내비 연결 중</string>
+    <string name="trip_card_pill_confirm">내비 확인 대기</string>
+    <string name="trip_card_pill_failed">경로 시작 실패</string>
     <string name="trip_card_route_confirm">내비에서 안내 시작을 눌러 주세요</string>
     <string name="trip_card_route_confirm_message">내비 화면에 경로 미리보기가 떠 있어요. 안내 시작을 누르면 출발해요.</string>
     <string name="trip_card_route_cancel">취소</string>

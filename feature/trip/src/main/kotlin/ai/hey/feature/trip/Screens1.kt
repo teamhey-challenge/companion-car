@@ -3,7 +3,7 @@ package ai.hey.feature.trip
 import ai.hey.designsystem.component.EmptyPanel
 import ai.hey.designsystem.component.HeyBanner
 import ai.hey.designsystem.component.HeyButton
-import ai.hey.designsystem.component.HeyButtonVariant
+import ai.hey.designsystem.component.HeyBannerAction
 import ai.hey.designsystem.component.HeyCard
 import ai.hey.designsystem.component.HeyIconButton
 import ai.hey.designsystem.component.HeyStatusPill
@@ -78,22 +78,18 @@ internal fun WaitingScreen(state: CarUiState, commands: CarCommands, nowMillis: 
 private fun VehicleIssueBanners(state: CarUiState, commands: CarCommands) {
     state.issues.forEach { issue ->
         when (issue) {
-            is VehicleIssue.Navi -> {
-                HeyBanner(HeyStatusTone.Danger, stringResource(R.string.trip_waiting_navi_unavailable), Modifier.fillWidth())
-                HeyButton(
-                    stringResource(R.string.trip_card_retry),
-                    { commands.retryVehicleIssue(issue) },
-                    variant = HeyButtonVariant.Secondary,
-                )
-            }
-            is VehicleIssue.Speech -> {
-                HeyBanner(HeyStatusTone.Warning, stringResource(R.string.trip_waiting_speech_unavailable), Modifier.fillWidth())
-                HeyButton(
-                    stringResource(R.string.trip_card_retry),
-                    { commands.retryVehicleIssue(issue) },
-                    variant = HeyButtonVariant.Secondary,
-                )
-            }
+            is VehicleIssue.Navi -> HeyBanner(
+                HeyStatusTone.Danger,
+                stringResource(R.string.trip_waiting_navi_unavailable),
+                Modifier.fillWidth(),
+                actions = listOf(HeyBannerAction(stringResource(R.string.trip_card_retry), { commands.retryVehicleIssue(issue) })),
+            )
+            is VehicleIssue.Speech -> HeyBanner(
+                HeyStatusTone.Warning,
+                stringResource(R.string.trip_waiting_speech_unavailable),
+                Modifier.fillWidth(),
+                actions = listOf(HeyBannerAction(stringResource(R.string.trip_card_retry), { commands.retryVehicleIssue(issue) })),
+            )
         }
     }
 }

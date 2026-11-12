@@ -111,7 +111,7 @@ data class CarUiState(
     val online: Boolean get() = connection == ConnectionStatus.Online
 
     /** The one state machine; screens read this, never the raw fields. */
-    val phase: CarPhase get() = phaseOf(view, driving, LocalUi(panel, requestsDismissedAt))
+    val phase: CarPhase get() = phaseOf(view, driving, LocalUi(panel, requestsDismissedAt, route))
 
     val isParked: Boolean get() = phase is CarPhase.Parked
 

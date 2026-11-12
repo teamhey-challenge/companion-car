@@ -113,12 +113,24 @@ fun HeyStatusPill(
     }
 }
 
+/**
+ * One action a banner offers. The banner renders it itself as a [HeyButton] (Regular, or Large for the [primary] one),
+ * so an action can never be smaller than the car touch floor; there is no free content slot to put a chip into.
+ */
+class HeyBannerAction(
+    val text: String,
+    val onClick: () -> Unit,
+    val primary: Boolean = false,
+    val enabled: Boolean = true,
+)
+
 @Composable
 fun HeyBanner(
     tone: HeyStatusTone,
     title: String,
     modifier: Modifier = Modifier,
     message: String? = null,
+    actions: List<HeyBannerAction> = emptyList(),
 ) {
     val ink = HeyTheme.colors.ink(tone)
     val icon = when (tone) {
@@ -128,18 +140,34 @@ fun HeyBanner(
         else -> HeyIcons.Info
     }
     val shape = RoundedCornerShape(HeyTokens.Radius.lg)
-    HStack(
+    VStack(
         gap = HeyGap.G16,
-        align = HeyAlign.Start,
         modifier = modifier
             .clip(shape)
             .background(ink.container, shape)
             .padding(HeyTokens.Space.s24),
     ) {
-        InkIcon(icon, null, ink.content)
-        VStack(gap = HeyGap.G4, modifier = Modifier.grow()) {
-            InkText(title, ink.content, variant = HeyTextVariant.Heading, maxLines = 2)
-            if (message != null) HeyText(message, tone = HeyTone.Default, variant = HeyTextVariant.Body, maxLines = 4)
+        HStack(gap = HeyGap.G16, align = HeyAlign.Start, modifier = Modifier.fillMaxWidth()) {
+            InkIcon(icon, null, ink.content)
+            VStack(gap = HeyGap.G4, modifier = Modifier.grow()) {
+                InkText(title, ink.content, variant = HeyTextVariant.Heading, maxLines = 3)
+                if (message != null) HeyText(message, tone = HeyTone.Default, variant = HeyTextVariant.Body, maxLines = 4)
+            }
+        }
+        if (actions.isNotEmpty()) {
+            // One row; the primary action is a Large (96dp) button with the bigger share, the others are Regular (76dp).
+            HStack(gap = HeyGap.G8, modifier = Modifier.fillMaxWidth()) {
+                actions.forEach { a ->
+                    HeyButton(
+                        a.text,
+                        a.onClick,
+                        Modifier.grow(if (a.primary) 1.4f else 1f),
+                        variant = if (a.primary) HeyButtonVariant.Primary else HeyButtonVariant.Secondary,
+                        size = if (a.primary) HeyButtonSize.Large else HeyButtonSize.Regular,
+                        enabled = a.enabled,
+                    )
+                }
+            }
         }
     }
 }

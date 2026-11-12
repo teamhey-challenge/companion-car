@@ -7,6 +7,7 @@ import ai.hey.designsystem.component.DrivingPanel
 import ai.hey.designsystem.component.EmptyPanel
 import ai.hey.designsystem.component.EtaBlock
 import ai.hey.designsystem.component.HeyBanner
+import ai.hey.designsystem.component.HeyBannerAction
 import ai.hey.designsystem.component.HeyButton
 import ai.hey.designsystem.component.HeyButtonSize
 import ai.hey.designsystem.component.HeyButtonVariant
@@ -240,6 +241,13 @@ object Stories {
                     HeyBanner(it, "승객이 목적지를 바꿨어요", Modifier.fillMaxWidth(), message = "새 목적지로 경로를 다시 시작해 주세요.")
                 }
                 HeyBanner(HeyStatusTone.Danger, "제목만 있는 배너", Modifier.fillMaxWidth())
+                HeyBanner(
+                    HeyStatusTone.Danger,
+                    "내비가 아직 준비되지 않았어요",
+                    Modifier.width(560.dp),
+                    message = "내비 열기를 누른 뒤 다시 시도해 주세요.",
+                    actions = listOf(HeyBannerAction("내비 열기", {}, primary = true), HeyBannerAction("다시 시도", {})),
+                )
                 HeyBanner(HeyStatusTone.Warning, "긴 글", Modifier.fillMaxWidth(), message = GalleryData.LONG_KO + GalleryData.LONG_KO)
             }
         })
@@ -458,6 +466,7 @@ object Stories {
             add(screen("d4-dropoff-$tag", frame) { DropoffScreen() })
             add(screen("d7-arrived-$tag", frame) { ArrivedScreen() })
             add(screen("empty-$tag", frame) { EmptyScreen() })
+            add(screen("banner-long-title-$tag", frame) { BannerLongTitleScreen() })
         }
     }
 
@@ -467,6 +476,31 @@ object Stories {
 @Composable
 private fun HeyCardless(line: ConditionLine) {
     ai.hey.designsystem.component.ConditionLineRow(line, Modifier.fillMaxWidth())
+}
+
+/** The D3 right column at its real width, with the exact titles that wrapped badly ("…않았어 / 요") and undersized actions. */
+@Composable
+private fun BannerLongTitleScreen() {
+    CarFrame(statusStrip = stripFor(2, HeyConnection.Online), driving = false) {
+        HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillMaxSize()) {
+            VStack(HeyGap.G16, modifier = Modifier.grow(3f)) { HeyText("롯데호텔 서울", variant = HeyTextVariant.Hero, maxLines = 1) }
+            VStack(HeyGap.G16, modifier = Modifier.grow(2f)) {
+                HeyBanner(
+                    HeyStatusTone.Danger,
+                    "내비가 아직 준비되지 않았어요",
+                    Modifier.fillMaxWidth(),
+                    message = "내비 열기를 누른 뒤 다시 시도해 주세요.",
+                    actions = listOf(HeyBannerAction("내비 열기", {}, primary = true), HeyBannerAction("다시 시도", {})),
+                )
+                HeyBanner(
+                    HeyStatusTone.Info,
+                    "내비에서 안내 시작을 눌러 주세요",
+                    Modifier.fillMaxWidth(),
+                    actions = listOf(HeyBannerAction("취소", {})),
+                )
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------- screen-level compositions

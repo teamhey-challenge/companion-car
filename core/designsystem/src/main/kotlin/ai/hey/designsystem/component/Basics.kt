@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +47,24 @@ private fun HeyTextAlign.toCompose(): TextAlign = when (this) {
     HeyTextAlign.End -> TextAlign.End
 }
 
+/**
+ * Korean must break between words, never inside one ("준비되지 않았어 / 요"). Android's line breaker may break between
+ * any two Hangul syllables, so a WORD JOINER (U+2060, zero width, default-ignorable) is put between adjacent syllables;
+ * the only break opportunities left in Korean text are the spaces.
+ */
+internal fun keepKoreanWords(text: String): String {
+    if (text.length < 2) return text
+    val out = StringBuilder(text.length * 2)
+    for (i in text.indices) {
+        val c = text[i]
+        out.append(c)
+        if (i + 1 < text.length && c.isHangulSyllable() && text[i + 1].isHangulSyllable()) out.append('\u2060')
+    }
+    return out.toString()
+}
+
+private fun Char.isHangulSyllable() = this in '\uAC00'..'\uD7A3'
+
 /** Text in an arbitrary resolved colour; used by components whose ink is not one of the [HeyTone]s. */
 @Composable
 internal fun InkText(
@@ -57,7 +76,7 @@ internal fun InkText(
     align: HeyTextAlign = HeyTextAlign.Start,
 ) {
     BasicText(
-        text = text,
+        text = remember(text) { keepKoreanWords(text) },
         modifier = modifier,
         style = variant.spec.style(color).copy(textAlign = align.toCompose()),
         overflow = TextOverflow.Ellipsis,

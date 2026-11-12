@@ -53,6 +53,15 @@ class CarPhaseTest {
         assertEquals(phaseOf(view, DrivingStatus.Driving, LocalUi()), phaseOf(view, DrivingStatus.Unknown, LocalUi()))
     }
 
+    /** D3's pill and banners are derived from the phase, which carries the route-start state. */
+    @Test fun cardPhasesCarryTheRouteStartState() {
+        val awaiting = ai.hey.vehicle.RouteStartState.AwaitingNaviConfirm
+        val local = LocalUi(route = awaiting)
+        assertEquals(awaiting, (parked(view(TripState.CARD_SENT, card = true), local) as CarPhase.CardSent).route)
+        assertEquals(awaiting, (parked(view(TripState.IN_TRIP, card = true), local) as CarPhase.InTrip).route)
+        assertEquals(ai.hey.vehicle.RouteStartState.Idle, (parked(view(TripState.CARD_SENT, card = true)) as CarPhase.CardSent).route)
+    }
+
     @Test fun requestedWithoutAJoinIsWaiting() {
         assertEquals(CarPhase.Waiting, parked(view(TripState.REQUESTED)))
     }

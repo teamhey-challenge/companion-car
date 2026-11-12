@@ -5,11 +5,13 @@ import ai.hey.model.PendingJoin
 import ai.hey.model.TripState
 import ai.hey.model.actionableCount
 import ai.hey.vehicle.DrivingStatus
+import ai.hey.vehicle.RouteStartState
 
 /** Local UI flags that influence screen choice but are not server facts. */
 data class LocalUi(
     val panel: Panel = Panel.None,
     val requestsDismissedAt: Int = 0,
+    val route: RouteStartState = RouteStartState.Idle,
 )
 
 /**
@@ -29,6 +31,9 @@ sealed interface CarPhase {
     /** The boarding card screen (D3), one type per trip state because each state accepts different commands. */
     sealed interface Card : Parked {
         val view: CarView
+
+        /** The car's own route-start attempt; D3's status pill and route banners come from here, nowhere else. */
+        val route: RouteStartState get() = RouteStartState.Idle
     }
 
     data object Driving : CarPhase
@@ -47,14 +52,14 @@ sealed interface CarPhase {
     }
 
     /** CARD_SENT: the card is out; the route is not started yet. */
-    data class CardSent(override val view: CarView) : Card {
+    data class CardSent(override val view: CarView, override val route: RouteStartState = RouteStartState.Idle) : Card {
         override val enabled: Set<CarCommand> = setOf(
             CarCommand.Recheck, CarCommand.StartRoute, CarCommand.Propose, CarCommand.DecidePin, CarCommand.Reply, CarCommand.End,
         )
     }
 
     /** IN_TRIP: the route runs. A re-check is not possible any more (the relay refuses `card.recheck`). */
-    data class InTrip(override val view: CarView) : Card {
+    data class InTrip(override val view: CarView, override val route: RouteStartState = RouteStartState.Idle) : Card {
         override val enabled: Set<CarCommand> = setOf(
             CarCommand.StartRoute, CarCommand.Propose, CarCommand.DecidePin, CarCommand.Reply, CarCommand.Arrive, CarCommand.End,
         )
@@ -101,12 +106,12 @@ fun phaseOf(view: CarView?, driving: DrivingStatus, local: LocalUi): CarPhase {
         TripState.CARD_SENT -> when {
             dropoffOpen -> CarPhase.DropoffProposal(view)
             questionsWait -> CarPhase.Requests(view)
-            else -> CarPhase.CardSent(view)
+            else -> CarPhase.CardSent(view, local.route)
         }
         TripState.IN_TRIP -> when {
             dropoffOpen -> CarPhase.DropoffProposal(view)
             questionsWait -> CarPhase.Requests(view)
-            else -> CarPhase.InTrip(view)
+            else -> CarPhase.InTrip(view, local.route)
         }
         TripState.ARRIVED -> if (questionsWait) CarPhase.Requests(view) else CarPhase.Arrived(view)
     }
