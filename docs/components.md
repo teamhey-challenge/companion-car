@@ -13,24 +13,23 @@
 | P0 | 차량 확인·시작 | QR `/c/<carCode>` | 언어 고르기, 탑승 인원(1~4) 고르기 → HEY의 Y가 늘어남, 연결 요청 |
 | P0g | 일행 참여 | 초대 링크 `/t/<inviteCode>` | 언어 고르기, 참여 |
 | P1 | 기사 승인 대기 | P0 연결 요청 | 기다림(5분 카운트다운), 취소. 거절·만료·차량 바쁨 상태 |
-| P2 | 탑승 카드 작성 | 승인됨(대표 승객) | 목적지 검색·선택, 조건 고르기(짐·덜 걷기·만날 입구·실내 온도), 기사님께 보내기 |
+| P2 | 탑승 카드 작성 | 승인됨(대표 승객) | 목적지 검색·선택, 조건 고르기(만날 입구·실내 온도·조용히·음악), 기사님께 보내기 |
 | P3 | 기사 확인 중 | 카드 보냄 | 보낸 카드 보기, 고치기(바뀐 부분만 전달), 기사 재확인 요청 띠 |
 | P4 | 운행 중 | 경로 시작됨 | 탑승 카드, 남은 시간·거리(stale 표시), 통행료 안내, 요청 보내기(프리셋 8개·직접 입력), 대화 내역(상태 셋), 일행 초대, 메뉴(목적지 바꾸기·언어·나가기) |
-| P5 | 하차 위치 확인 | 기사 제안 도착(시트) | 지도에 제안 지점·이유, 여기 좋아요/다른 곳을 원해요/위치를 모르겠어요 |
-| P5p | (삭제됨) 3.0.0에서 승객 핀·내릴 곳 직접 고르기가 없어졌다 | — |
-| P6 | 도착 카드 | 도착 | 합의된 하차 위치, 짐 안내, 이동 시간·거리, 미터기·영수증 확인 안내, 불편 신고 안내, 닫기 |
+| P5 | 하차 위치 확인 | 기사 제안 도착(시트) | 제안 지점 이름·이유·목적지로부터 거리(글만, 지도 없음), 여기 좋아요/다른 곳을 원해요/위치를 모르겠어요 |
+| P6 | 도착 카드 | 도착 | 합의된 하차 위치, 이동 시간·거리, 미터기·영수증 확인 안내, 불편 신고 안내, 닫기 |
 | P7 | 연결 끝·오류 | 종료, 오류 코드 | 끝난 운행, 차량 오프라인, 찾을 수 없는 QR, 운행 정원 초과 |
 
 ### 기사 차량 앱 (D, 가로 2560×1440 @160dpi = 1600×900dp 기준, 1280×720dp도 깨지지 않음)
 
 | ID | 이름 | 진입 | 핵심 동작 |
 |---|---|---|---|
-| D1 | 대기 | 앱 실행, 운행 끝 | QR(고정 차량 코드)과 4개 언어 안내, 연결 상태, 설정 |
+| D1 | 대기 | 앱 실행, 운행 끝 | QR(고정 차량 코드)과 6개 언어 안내, 연결 상태, 설정 |
 | D2 | 연결 요청 | 승객 연결 요청 | 언어·인원 보기, 승인/거절(정차 중만). 주행 중이면 음성만, 정차하면 화면 |
 | D3 | 탑승 카드 확인 | 카드 받음 | 한국어 요약(목적지 크게·주소·원어 이름 작게·조건), 경로 시작, 다시 확인 요청, 내릴 곳 제안하기, 다시 듣기 |
 | D4 | 내릴 곳 제안 | D3, D6 | 후보(출입구 목록 + 목적지 기본 위치) 고르기, 이유 고르기, 보내기. 승객 응답 상태 |
 | D5 | 주행 중 | 주행 전환 | 상태 "주행 중 · 음성으로 알려 드려요", 방금 읽은 요청 1줄, 목적지·남은 시간, 대기 요청 수. 입력 없음 |
-| D6 | 정차 중 요청 | 주행→정차 시 답할 것이 있을 때 | 요청 목록(다시 듣기), 빠른 답장 6개, 승객 핀 제안 수락/어려움 |
+| D6 | 정차 중 요청 | 주행→정차 시 답할 것이 있을 때, 또는 D3에서 "답장하기" | 요청 목록(다시 듣기), 빠른 답장(답장 3개는 열린 질문이 있을 때만·기사님이 먼저 3개), 음성으로 답하기(정차 중) |
 | D7 | 도착·운행 끝 | 도착 | 합의된 하차 위치, 운행 요약, 운행 끝내기(확인), 다음 승객 |
 | D8 | 설정 | D1 | 받을 프리셋 켜기/끄기, 음성 간격, 음성 속도, 화면 테마, 차량 번호 뒤 4자리 |
 
@@ -56,7 +55,7 @@
 | `Wordmark` | `partySize: 1\|2\|3\|4`, `size: "md"\|"lg"`, `animate?` | 1~4, 늘어나는 동작(움직임 줄이기 시 즉시) |
 | `Icon` | `name: IconName`, `size?: "md"\|"lg"`, `label?` | 전체 아이콘 표 |
 
-`IconName`: `arrow-left, arrow-right, check, close, chevron-down, chevron-right, search, pin, flag, door, mic, volume-off, music, thermometer-cool, thermometer-warm, car, clock, route, toll, speaker, message, send, user, users, globe, menu, info, warning, error, refresh, map, qr, card, plus, minus, link, logout`.
+`IconName`: `arrow-left, arrow-right, check, close, chevron-down, chevron-right, search, pin, flag, door, luggage, thermometer-cool, thermometer-warm, car, clock, route, toll, speaker, message, send, user, users, globe, menu, info, warning, error, refresh, qr, card, plus, minus, link, logout, music, quiet`.
 
 ### 행동
 | 부품 | 주요 prop | 상황 |
@@ -70,7 +69,7 @@
 | `PresetTile` | `icon`, `label`, `kind: "notice"\|"question"`, `onPress`, `disabled?` | 긴 라벨, 비활성(보낸 직후 중복 방지) |
 | `PresetGrid` | `children` (2열 고정) | 8개 |
 | `LanguageOption` | `lang`, `nativeName`, `selected`, `onSelect` | — |
-| `LanguageList` | `children` | 4개 |
+| `LanguageList` | `children` | 6개 |
 
 ### 입력
 | 부품 | 주요 prop | 상황 |
@@ -101,17 +100,16 @@
 | `PlaceResultRow` | `nameLocal`, `nameKo`, `area`, `lang?`, `selected?`, `onSelect` | 긴 이름, 원어=한국어 같을 때 |
 | `PlaceResultList` | `children`, 상태(`loading`/`empty`)는 부모가 EmptyState·Skeleton으로 | 0·1·8개 |
 | `DestinationSummary` | `nameLocal`, `nameKo`, `addressKo`, `area?` | 긴 주소 |
-| `ConditionSummary` | `items: {icon,label}[]` | 0·1·4개 |
+| `ConditionSummary` | `items: [item, ...item[]]`(빈 목록 불가, `asConditionItems`로 좁힘) | 1·4개 |
 | `BoardingCard` | `destination`, `dropoff?`, `conditions`, `status`, `footer?` | 작성 중·보냄·확인됨·운행 중, 하차 미정/제안 중/합의 |
 | `ShowDriverCard` | `textKo`, `caption` (기사님께 보여 주는 큰 한국어) | 긴 한국어 |
 | `TripProgress` | `etaMin`, `distanceKm`, `stale`, `labels` | 정상·stale·없음 |
 | `TollNotice` | `hasToll`, `tollFare?`, `labels` | 통행료 있음/없음 |
 | `MessageBubble` | `from: "me"\|"driver"\|"system"`, `text`, `lang?`, `subText?`(원문), `status?`·`replyExpected?`·`statusLabels?`, `time`, `listen?`, `retry?` | 긴 글, 각 상태, 실패(다시 보내기) |
 | `MessageList` | `children`, 새 항목 도착 시 아래로(사용자가 위로 스크롤했으면 유지) | 0·1·많음 |
-| `MapView` | `label`, `center`, `zoom?`, `markers: {id,kind: "destination"\|"candidate"\|"proposal"\|"mine", point, label}[]`, `selectedId?`, `onSelect?`, `onPlacePin?`(핀 모드), `locked?`, `height: "md"\|"lg"`, `fallbackText`(타일 실패 시 문구, 화면이 `t()`로 넘김), `tileUrl?`. Leaflet + OSM 타일(저작자 표시 필수), 차량 실시간 위치는 그리지 않는다 | 마커 1·여러 개·핀 모드·잠금, 지도 타일 실패(대체 표시) |
 | `DropoffCandidateRow` | `label`, `distanceLabel?`, `selected`, `onSelect` | 긴 라벨 |
 | `DropoffProposalCard` | `proposal: {label,status}`, `reasonText?`, `distanceLabel?`, `labels`, `onRespond`, `onLater?`, `responding?`, `disabled?` | 대기·응답 중·잠김·응답함(ok/elsewhere/unsure)·대체됨 |
-| `ArrivalSummary` | `dropoff: {heading,label}`, `duration?`, `distance?`, `conditions`, `notes` | 짐 있음/없음, 값 없음 |
+| `ArrivalSummary` | `dropoff: {heading,label}`, `stats: {state:'none'\|'time'\|'distance'}`, `conditions`, `notes` | 조건 있음/없음, 값 없음 |
 | `InviteCard` | `url`, `title`, `message`, `copyLabel`, `copiedLabel`, `onCopy`, `copied` | 복사 전·후, 긴 링크 |
 
 ### 겹침

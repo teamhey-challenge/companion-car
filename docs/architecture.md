@@ -16,7 +16,7 @@
 
 ## 1. 기획자 답변 전 기본값
 
-기획자 질문 Q1~Q30(`pleos-challenge` 브랜치 `heyyy`의 `HANDOFF-planner.md`)에 답이 오기 전까지는 각 질문의 추천안을 기본값으로 구현한다. 답이 오면 이 표를 고치고 해당 값만 바꾼다. 값은 코드 한 곳(`packages/protocol/src/config.ts`, 차량 앱 `core/model/HeyConfig.kt`)에만 둔다.
+기획자 질문 Q1~Q30(`pleos-challenge` 브랜치 `heyyy`의 `HANDOFF-planner.md`)의 추천안을 기본값으로 구현해 왔고, 기획자 답변(2026-11-12, `HANDOFF-planner-answers.md`)이 도착해 아래 값이 바뀌었다. 값은 코드 한 곳(`packages/protocol/src/config.ts`, 차량 앱 `core/model/HeyConfig.kt`)에만 둔다.
 
 | Q | 값 (planner answers 2026-11-12, 프로토콜 3.0.0) | 코드에 닿는 곳 |
 |---|---|---|
@@ -28,12 +28,13 @@
 | Q12 | 빠른 답장 두 묶음: 답장(네·어려워요·잠시만요, 열린 질문이 있을 때만), 기사님이 먼저(여기서 세울게요·5분 걸려요·카드 돼요, 정차 중 언제든) | `QuickReplyId.set`, `QuickReplyGroup` |
 | Q13 | 요금은 경로 통행료가 있을 때만 승객 언어로 안내, 미터 요금은 표시하지 않음 | `TollNotice` |
 | Q14 | 승객 화면에 지도 없음. 하차 지점은 글(이름+이유+목적지에서 거리) | 차량 영향 없음 |
-| Q15 | 기사 음성 답장 있음: 정차 중 한국어 음성(Pleos STT ON_DEVICE `Locale.KOREA`) → 확인 → `reply.send kind voice` → 릴레이 번역. 버튼도 유지, 주행 중에는 음성 출력만 | `VoiceInput`, `PleosVoiceInput`, `VoiceConfirmDialog` |
+| Q15 | 기사 음성 답장 있음: 정차 중 한국어 음성(Pleos STT ON_DEVICE `Locale.KOREA`) → 확인 → `reply.send kind voice` → 릴레이가 승객 언어로 번역(실패하면 한국어 원문, `ReplyItem.translated=false`). 버튼도 유지. 모든 답장은 정차 중에만, 주행 중에는 음성 출력만 | `VoiceInput`, `PleosVoiceInput`, `VoiceConfirmDialog` |
 | Q16 | 하차 위치는 기사만 제안한다. 승객 핀·핀 결정 없음, `elsewhere`는 다른 곳 제안 요청 | `DropoffProposal` |
 | Q18 | Y 늘리기는 승객 웹 상단과 차량 화면 모두 | 두 Wordmark |
 | Q19 | 슬로건 "내 취향대로, 내릴 곳까지." | `copy` |
 | Q21 | 저장소 4개로 분리(`hey-shared`·`hey-relay`·`hey-passenger-web`·`hey-car`) + `hey-e2e` | — |
-| Q6·Q7 | 기사 무료, 승객 화면 여행 광고(차량에는 광고 없음) | 승객 웹만 |
+| Q6·Q7 | 기사 무료, 승객 화면 여행 광고(차량에는 광고 없음; `AdItem`에 장소 이름 없음, 광고주는 샘플 표시) | 승객 웹만 |
+
 ## 2. 상태와 흐름
 
 ### 2.1 차량과 QR
@@ -77,6 +78,8 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 
 승객 요청은 프리셋 또는 직접 입력이다. 프리셋 한국어 음성 문장은 검수된 고정 문장(`packages/copy/ko.ts`의 `speech.*`)을 쓰고, 직접 입력은 서버가 번역해 한국어 문장으로 만든다. 요청 상태는 셋을 구분해 보여 준다: `received`(차량 수신) → `spoken`(음성 전달) → `answered`(기사 응답). 알림형 프리셋은 `spoken`에서 끝나고, 질문형과 직접 입력은 `answered`까지 간다. 음성 완료를 기사 수락으로 표시하지 않는다. 차량이 오프라인이라 전달하지 못한 요청은 `failed`이며 승객 화면에 다시 보내기가 붙는다. 번역에 실패한 직접 입력은 요청으로 저장하지 않는다: 서버는 그 요청의 `clientRef`를 실은 `error(TRANSLATE_FAILED)`만 돌려주고 분당 한도(3회)를 쓰지 않는다. 클라이언트는 입력창에 쓴 글을 되살리고 오류를 보여 준다(`RATE_LIMITED`·`TOO_LONG`과 같은 경로). 직접 입력 분당 3회 제한은 기기별이다.
 
+기사님 답장(`reply.send`)은 정차 중에만 받는다(서버도 확인, 주행 중이면 `BAD_REQUEST`). `answer` 묶음 버튼은 열린 질문이 있을 때만이고 `requestId`가 없으면 열린 질문 중 가장 오래된 것에 붙는다(차량도 같은 규칙). 음성 답장은 서버가 승객 기기 언어마다 번역해 저장하며, 번역 실패는 발신 봉투의 `ref`를 실은 `TRANSLATE_FAILED`로 차량에 돌려준다(D6 확인 창에 표시). 나중에 언어를 바꾼 기기에는 줄을 막지 않고 따라잡기 번역을 하고, 실패하면 한국어 원문과 `ReplyItem.translated: false`를 준다.
+
 음성 우선순위 `high`는 탑승 카드 도착·변경, 하차 제안 응답, `stopHere` 프리셋이다. 나머지는 `normal`이며 도착 순서대로 `speech.gapSec` 간격을 둔다.
 
 도착(`trip.arrive`)은 차량 앱이 내비 `onDestinationArrived`를 받거나, 이 이벤트가 오지 않는 경우를 대비해 기사님이 D5·D6의 "도착" 버튼을 누를 때 보낸다. 기사님이 끌 수 없는 프리셋은 `stopHere`와 `card`다.
@@ -95,6 +98,7 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 | POST | `/v1/t/{inviteCode}/join` | 일행 | `{ lang }` | `{ tripId, deviceToken }` |
 | GET | `/v1/places?q=&lang=` | 승객 | `Authorization: Device <token>` | `Place[]` 최대 8개 (Nominatim) |
 | GET | `/v1/places/{placeId}/entrances` | 승객·차량 | 토큰 | `DropoffCandidate[]` (Overpass) |
+| GET | `/v1/ads?placeId=&lang=` | 승객 웹(P4·P6) | 인증 없음 | `AdItem[]` = `{ id, kind, title, subtitle, distanceM?, sponsor }` (`placeName` 없음; 차량은 부르지 않는다) |
 | GET | `/healthz` | — | — | `{ ok: true }` |
 
 ### 3.2 WebSocket
@@ -122,7 +126,7 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 | `dropoff.respond` | 승객→서버 | `{ version, response: "ok" \| "elsewhere" \| "unsure" }` — `elsewhere`는 기사님께 다른 곳을 제안해 달라는 요청 |
 | `request.send` | 승객→서버 | `{ kind: "preset" \| "free", presetId?, text?, clientRef }` — `clientRef`(1~80자)는 보낸 기기의 `RequestItem.clientRef`와 오류의 `clientRef`로 돌아온다 |
 | `request.spoken` | 차량→서버 | `{ requestId }` |
-| `reply.send` | 차량→서버 | `{ kind: "button", replyId, requestId? }` 또는 `{ kind: "voice", textKo(1~100자), requestId? }` — `answer` 묶음 버튼은 열린 질문의 `requestId`가 필요, `driverFirst` 묶음과 음성은 질문 없이도 보낸다. 음성은 정차 중 인식 문장을 기사님이 확인한 뒤에만 |
+| `reply.send` | 차량→서버 | `{ kind: "button", replyId, requestId? }` 또는 `{ kind: "voice", textKo(1~100자), requestId? }` — 정차 중에만(주행 중 `BAD_REQUEST`). `answer` 묶음 버튼은 열린 질문이 있어야 하고 `requestId`가 없으면 가장 오래된 열린 질문에 붙는다, `driverFirst` 묶음과 음성은 질문 없이도 보낸다. 음성은 정차 중 인식 문장을 기사님이 확인한 뒤에만 |
 | `driving.state` | 차량→서버 | `{ driving: boolean }` |
 | `trip.arrive` / `trip.end` | 차량→서버 | `{}` |
 | `trip.leave` | 승객→서버 | `{}` |
@@ -134,7 +138,7 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 - `ConditionId`: `meetEntrance`, `temperature`, `quiet`, `music` (`CardInput.quiet?: boolean`, `music?: "off" | "low"`; 목록에 있는 조건은 값 필드와 맞아야 한다)
 - `PresetId`(승객→기사): `slower`, `cooler`, `warmer`, `window`(질문), `card`(질문), `howLong`(질문), `stopHere`, `trunk`
 - `QuickReplyId`(기사→승객): `yes`, `cannot`, `moment`(묶음 `answer`, 열린 질문이 있을 때만), `stopHere`, `fiveMin`, `cardOk`(묶음 `driverFirst`, 기사님이 먼저). 정본 `QUICK_REPLY_META[id].set`, 차량은 `QuickReplyId.set`
-- `ReplyKind`: `button`(`replyId`), `voice`(`textKo`, 릴레이가 승객 언어로 번역)
+- `ReplyKind`: `button`(`replyId`), `voice`(`textKo`, 릴레이가 승객 언어로 번역). 승객 뷰의 `ReplyItem`은 `translated: boolean`을 더 가진다(차량 뷰는 항상 `true`)
 - `DropoffReasonId`: `frontNoStop`, `sideCloser`, `luggageEasier`, `parkingEntrance`, `acrossSafer`, `construction`
 - `ErrorCode`: `CAR_NOT_FOUND`, `CAR_BUSY`, `CAR_OFFLINE`, `JOIN_DECLINED`, `JOIN_EXPIRED`, `TRIP_FULL`, `TRIP_ENDED`, `NOT_LEAD`, `RATE_LIMITED`, `TOO_LONG`, `TRANSLATE_FAILED`, `PLACE_NOT_FOUND`, `ROUTE_FAILED`, `STALE_VERSION`, `PROTOCOL_MISMATCH`, `BAD_REQUEST`
 

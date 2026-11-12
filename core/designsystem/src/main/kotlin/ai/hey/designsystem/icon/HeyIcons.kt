@@ -67,7 +67,6 @@ object HeyIcons {
     val Warning = icon("warning", "M12 3L2.5 20h19L12 3z", "M12 10v4.5", "M12 17.5v.5")
     val Error = icon("error", CIRCLE, "M12 7.5v5.5", "M12 16v.5")
     val Refresh = icon("refresh", "M20 12a8 8 0 1 1-2.4-5.7", "M20 4v4h-4")
-    val Map = icon("map", "M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z", "M9 4v14", "M15 6v14")
     val Qr = icon("qr", "M4 4h6v6H4z", "M14 4h6v6h-6z", "M4 14h6v6H4z", "M14 14h2v2h-2z", "M18 14h2", "M14 18h2v2", "M20 18v2")
     val Card = icon("card", "M3 6h18v12H3z", "M3 10h18", "M6 15h4")
     val Plus = icon("plus", "M12 5v14", "M5 12h14")
@@ -79,6 +78,6 @@ object HeyIcons {
     val all: List<ImageVector> = listOf(
         ArrowLeft, ArrowRight, Check, Close, ChevronDown, ChevronRight, Search, Pin, Flag, Door, Mic, VolumeOff, Music,
         ThermometerCool, ThermometerWarm, Car, Clock, Route, Toll, Speaker, Message, Send, User, Users, Globe,
-        Menu, Info, Warning, Error, Refresh, Map, Qr, Card, Plus, Minus, Link, Logout,
+        Menu, Info, Warning, Error, Refresh, Qr, Card, Plus, Minus, Link, Logout,
     )
 }
