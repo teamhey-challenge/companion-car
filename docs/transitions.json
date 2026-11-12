@@ -61,6 +61,10 @@
     {
       "type": "device.lang",
       "role": "passenger"
+    },
+    {
+      "type": "invite.rotate",
+      "role": "lead"
     }
   ],
   "CARD_SENT": [
@@ -127,6 +131,10 @@
     {
       "type": "device.lang",
       "role": "passenger"
+    },
+    {
+      "type": "invite.rotate",
+      "role": "lead"
     }
   ],
   "IN_TRIP": [
@@ -193,6 +201,10 @@
     {
       "type": "device.lang",
       "role": "passenger"
+    },
+    {
+      "type": "invite.rotate",
+      "role": "lead"
     }
   ],
   "ARRIVED": [
@@ -223,6 +235,10 @@
     {
       "type": "device.lang",
       "role": "passenger"
+    },
+    {
+      "type": "invite.rotate",
+      "role": "lead"
     }
   ],
   "ENDED": [
