@@ -45,9 +45,20 @@ class ModelFixturesTest {
         assertEquals(null, view.replies.single().replyId)
     }
 
+    /** The set of every quick reply is read from hey-shared's fixture (generated from QUICK_REPLY_META), so drift on either side fails here. */
     @Test fun quickReplySetsFollowTheCatalog() {
+        val catalog = HeyJson.parseToJsonElement(fixture("quick-replies.json")).jsonObject
+        val fromShared = catalog.entries.associate { (id, set) ->
+            HeyJson.decodeFromJsonElement(QuickReplyId.serializer(), JsonPrimitive(id)) to
+                when (set.jsonPrimitive.content) {
+                    "answer" -> QuickReplySet.Answer
+                    "driverFirst" -> QuickReplySet.DriverFirst
+                    else -> error("unknown set $set")
+                }
+        }
+        assertEquals(QuickReplyId.entries.toSet(), fromShared.keys)
+        assertEquals(fromShared, QuickReplyId.entries.associateWith { it.set })
         assertEquals(listOf(QuickReplyId.Yes, QuickReplyId.Cannot, QuickReplyId.Moment), quickRepliesOf(QuickReplySet.Answer))
-        assertEquals(listOf(QuickReplyId.StopHere, QuickReplyId.FiveMin, QuickReplyId.CardOk), quickRepliesOf(QuickReplySet.DriverFirst))
     }
 
     @Test fun replySendEncodesButtonAndVoiceFlat() {

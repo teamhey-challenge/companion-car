@@ -34,6 +34,7 @@ import ai.hey.model.ServerMessage
 import ai.hey.model.TripState
 import ai.hey.model.actionableCount
 import ai.hey.model.replyTarget
+import ai.hey.model.codePointSlice
 import ai.hey.model.nextClockOffset
 import ai.hey.model.routeDestination
 import ai.hey.vehicle.DrivingStatus
@@ -237,7 +238,14 @@ class TripRepository(
             HeyLog.w(TAG, "relay refused an unattended message: ${code.name}")
             return
         }
-        _state.update { old -> old.copy(error = code, commands = old.commands + (key to CommandState.Failed(code.name))) }
+        _state.update { old ->
+            old.copy(
+                error = code,
+                commands = old.commands + (key to CommandState.Failed(code.name)),
+                // The confirm dialog hides the banner behind its scrim: the reason is told inside the dialog.
+                voice = if (key is CommandKey.Voice && old.voice is VoiceState.Confirm) old.voice.copy(failure = code) else old.voice,
+            )
+        }
         errorJob?.cancel()
         errorJob = scope.launch {
             delay(ERROR_SHOWN_MS)
@@ -334,6 +342,7 @@ class TripRepository(
         new.conditions.filterTo(out) { it !in old.conditions }
         if (old.entranceNote != new.entranceNote && ConditionId.MeetEntrance in new.conditions) out += ConditionId.MeetEntrance
         if (old.temperature != new.temperature && ConditionId.Temperature in new.conditions) out += ConditionId.Temperature
+        if (old.music != new.music && ConditionId.Music in new.conditions) out += ConditionId.Music
         return out
     }
 
@@ -551,7 +560,7 @@ class TripRepository(
             _state.update {
                 it.copy(
                     voice = when (result) {
-                        is VoiceResult.Text -> VoiceState.Confirm(result.text.take(HeyConfig.FREE_MAX_CHARS))
+                        is VoiceResult.Text -> VoiceState.Confirm(result.text.codePointSlice(HeyConfig.FREE_MAX_CHARS))
                         VoiceResult.NoSpeech -> VoiceState.Failed(VoiceState.Reason.NoSpeech)
                         VoiceResult.PermissionDenied -> VoiceState.Failed(VoiceState.Reason.PermissionDenied)
                         is VoiceResult.Unavailable -> VoiceState.Failed(VoiceState.Reason.Unavailable)
@@ -576,6 +585,7 @@ class TripRepository(
         val s = _state.value
         val confirm = s.voice as? VoiceState.Confirm ?: return
         if (s.voiceInFlight || s.replyInFlight != null) return
+        _state.update { it.copy(voice = confirm.copy(failure = null)) }
         val target = s.view?.replyTarget?.requestId
         sendCommand(
             ClientType.REPLY_SEND,

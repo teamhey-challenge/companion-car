@@ -333,6 +333,8 @@ fun VoiceConfirmDialog(
     modifier: Modifier = Modifier,
     sending: Boolean = false,
     enabled: Boolean = true,
+    /** Why the last send was refused (e.g. translation down); drawn inside the card, where the scrim cannot hide it. */
+    notice: String? = null,
 ) {
     val colors = HeyTheme.colors
     val shape = RoundedCornerShape(HeyTokens.Radius.xl)
@@ -357,6 +359,7 @@ fun VoiceConfirmDialog(
                 HeyText(title, variant = HeyTextVariant.Title, maxLines = 2)
             }
             HeyText(textKo, variant = HeyTextVariant.Heading, maxLines = 4)
+            if (notice != null) HeyBanner(HeyStatusTone.Warning, notice, Modifier.fillMaxWidth())
             HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
                 HeyButton(cancel.text, cancel.onClick, Modifier.grow(0.8f), variant = HeyButtonVariant.Ghost, size = HeyButtonSize.Large, enabled = enabled && !sending)
                 HeyButton(retry.text, retry.onClick, Modifier.grow(1.3f), variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, icon = HeyIcons.Mic, enabled = enabled && !sending)

@@ -102,6 +102,7 @@ internal fun errorText(code: ErrorCode): String = stringResource(
         ErrorCode.PROTOCOL_MISMATCH -> R.string.trip_error_protocol
         ErrorCode.STALE_VERSION -> R.string.trip_error_stale
         ErrorCode.TRIP_ENDED -> R.string.trip_error_ended
+        ErrorCode.TRANSLATE_FAILED -> R.string.trip_error_translate_failed
         else -> R.string.trip_error_generic
     },
 )

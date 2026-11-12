@@ -17,7 +17,7 @@
 | P3 | 기사 확인 중 | 카드 보냄 | 보낸 카드 보기, 고치기(바뀐 부분만 전달), 기사 재확인 요청 띠 |
 | P4 | 운행 중 | 경로 시작됨 | 탑승 카드, 남은 시간·거리(stale 표시), 통행료 안내, 요청 보내기(프리셋 8개·직접 입력), 대화 내역(상태 셋), 일행 초대, 메뉴(목적지 바꾸기·언어·나가기) |
 | P5 | 하차 위치 확인 | 기사 제안 도착(시트) | 지도에 제안 지점·이유, 여기 좋아요/다른 곳을 원해요/위치를 모르겠어요 |
-| P5p | 내릴 곳 직접 고르기 | P4 메뉴, P5 "다른 곳" | 지도에 핀 놓기 또는 후보 고르기, 기사님께 제안. 상태: 보냄→기사 확인 중→수락/어려움 |
+| P5p | (삭제됨) 3.0.0에서 승객 핀·내릴 곳 직접 고르기가 없어졌다 | — |
 | P6 | 도착 카드 | 도착 | 합의된 하차 위치, 짐 안내, 이동 시간·거리, 미터기·영수증 확인 안내, 불편 신고 안내, 닫기 |
 | P7 | 연결 끝·오류 | 종료, 오류 코드 | 끝난 운행, 차량 오프라인, 찾을 수 없는 QR, 운행 정원 초과 |
 
@@ -56,7 +56,7 @@
 | `Wordmark` | `partySize: 1\|2\|3\|4`, `size: "md"\|"lg"`, `animate?` | 1~4, 늘어나는 동작(움직임 줄이기 시 즉시) |
 | `Icon` | `name: IconName`, `size?: "md"\|"lg"`, `label?` | 전체 아이콘 표 |
 
-`IconName`: `arrow-left, arrow-right, check, close, chevron-down, chevron-right, search, pin, flag, door, luggage, walk, thermometer-cool, thermometer-warm, car, clock, route, toll, speaker, message, send, user, users, globe, menu, info, warning, error, refresh, map, qr, card, plus, minus, link, logout`.
+`IconName`: `arrow-left, arrow-right, check, close, chevron-down, chevron-right, search, pin, flag, door, mic, volume-off, music, thermometer-cool, thermometer-warm, car, clock, route, toll, speaker, message, send, user, users, globe, menu, info, warning, error, refresh, map, qr, card, plus, minus, link, logout`.
 
 ### 행동
 | 부품 | 주요 prop | 상황 |
@@ -171,7 +171,7 @@ val HeyLightColors: HeyColors; val HeyDarkColors: HeyColors
 | `RequestRow` | `textKo`, `kind(Notice,Question,Free)`, `state`, `time`, `onReplay` | 각 상태, 긴 직접 입력 |
 | `QuickReplyGrid` | `replies: List<QuickReplyUi>`, `onReply`, `enabled` | 3개, 비활성 |
 | `QuickReplyGroup` | `title`, `replies`, `onReply`, `enabled`, `loadingId?` — 제목 있는 한 묶음. "답장"(yes·cannot·moment, 열린 질문이 있을 때만)과 "기사님이 먼저"(stopHere·fiveMin·cardOk, `QUICK_REPLY_META` 묶음) 둘 다 이 부품 | 답장·기사님이 먼저·로딩 |
-| `VoiceConfirmDialog` | `title`, `textKo`, `send`, `retry`, `cancel`, `sending`, `enabled` — 인식된 한국어 문장을 보내기 전에 확인(정차 중 D6). `HeyDialog`와 같은 막+카드 | 기본·긴 문장·보내는 중 |
+| `VoiceConfirmDialog` | `title`, `textKo`, `send`, `retry`, `cancel`, `sending`, `enabled`, `notice?`(보내기가 거절된 이유, 예: 번역 실패. 막 뒤 배너에 가려지지 않게 카드 안에 그린다) — 인식된 한국어 문장을 보내기 전에 확인(정차 중 D6). `HeyDialog`와 같은 막+카드 | 기본·긴 문장·보내는 중 |
 | `PassengerPinCard` | (삭제됨) 3.0.0에서 승객 핀 제안이 없어져 부품도 없다 | — |
 | `DrivingPanel` | `lastSpokenKo?`, `destinationKo`, `etaText`, `pendingCount` | 요청 없음·있음 |
 | `EtaBlock` | `etaText`, `distanceText`, `stale` | — |

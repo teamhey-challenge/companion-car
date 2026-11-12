@@ -26,6 +26,7 @@ import ai.hey.designsystem.layout.fillWidth
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTone
+import ai.hey.model.ErrorCode
 import ai.hey.model.QuickReplyId
 import ai.hey.model.QuickReplySet
 import ai.hey.model.HeyConfig
@@ -98,6 +99,7 @@ internal fun RequestsScreen(
                         modifier = Modifier.fillSize(),
                         sending = state.voiceInFlight,
                         enabled = canReply,
+                        notice = confirm.failure?.let { errorText(it) },
                     )
                 }
             },

@@ -24,7 +24,11 @@ import ai.hey.vehicle.SpeechDropReason
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
+import ai.hey.model.ConditionId
+import ai.hey.model.MusicPref
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -36,18 +40,19 @@ import java.util.concurrent.TimeUnit
 
 /** Plays the relay: records what the repository sends and lets a test deliver messages through the real listener. */
 private class RecordingTransport(val listener: RelayTransport.Listener) : RelayTransport {
-    class Sent(val type: String, val id: String)
+    class Sent(val type: String, val id: String, val data: JsonElement? = null)
 
     val sent = ArrayList<Sent>()
     override fun connect(baseUrl: String, token: String) = Unit
     override fun close() = Unit
     override fun send(type: String, data: JsonElement, supersedeKey: String?, id: String): String {
-        sent += Sent(type, id)
+        sent += Sent(type, id, data)
         return id
     }
 
     fun types() = sent.map { it.type }
     fun deliver(message: ServerMessage) = listener.onMessage(message)
+    fun lastData(type: String) = sent.last { it.type == type }.data!!.jsonObject
 }
 
 /** The repository's own rules, without a relay: driving locks, phase gates, command clearing, vehicle issues, clocks. */
@@ -348,13 +353,13 @@ class TripRepositoryTest {
     /** m4: the relay keeps only the newest replies, so after the cap the count stalls; the newest reply changing still releases the button. */
     @Test fun aReplyIsSettledEvenWhenTheRelayListIsAtItsCap() = runTest {
         val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
-        val full = (1..100).map { ReplyItem(ReplyKind.Button, QuickReplyId.Yes, null, "네", ts = it.toLong()) }
+        val full = (1..100).map { ReplyItem(ReplyKind.Button, QuickReplyId.Yes, null, "네", true, ts = it.toLong()) }
         snapshot(rig, cardView.copy(state = TripState.CARD_SENT, requests = listOf(question), replies = full))
         rig.repo.state.value.parked!!.sendReply("req_1", QuickReplyId.Moment)
         assertNotNull(rig.repo.state.value.replyInFlight)
 
         // 100 replies in, 100 replies out: the oldest dropped, the new one last.
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, requests = listOf(question), replies = full.drop(1) + ReplyItem(ReplyKind.Button, QuickReplyId.Moment, null, "잠시만요", ts = 101)))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, requests = listOf(question), replies = full.drop(1) + ReplyItem(ReplyKind.Button, QuickReplyId.Moment, null, "잠시만요", true, ts = 101)))
 
         assertNull(rig.repo.state.value.replyInFlight)
     }
@@ -542,7 +547,7 @@ class TripRepositoryTest {
         assertTrue(ClientType.REPLY_SEND in rig.transport.types())
         assertTrue(rig.repo.state.value.voiceInFlight)
         // the snapshot shows the new reply: the button releases and the screen says it was delivered
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, replies = listOf(ReplyItem(ReplyKind.Voice, null, null, "네, 입구 앞에서 기다릴게요.", 1))))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, replies = listOf(ReplyItem(ReplyKind.Voice, null, null, "네, 입구 앞에서 기다릴게요.", true, 1))))
         assertFalse(rig.repo.state.value.voiceInFlight)
         assertEquals(VoiceState.Sent, rig.repo.state.value.voice)
     }
@@ -599,6 +604,51 @@ class TripRepositoryTest {
         rig.repo.state.value.parked!!.startVoiceReply()
         advanceTimeBy(50)
         assertEquals(100, (rig.repo.state.value.voice as VoiceState.Confirm).textKo.length)
+    }
+
+    @Test fun aVoiceTextIsCutByCodePointsNotUtf16Units() = runTest {
+        val rig = voiceRig(backgroundScope, FakeVehicleGateway(backgroundScope), ScriptedVoiceInput(text = "가".repeat(99) + "😀😀"))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startVoiceReply()
+        advanceTimeBy(50)
+        assertEquals("가".repeat(99) + "😀", (rig.repo.state.value.voice as VoiceState.Confirm).textKo)
+    }
+
+    /** M2: translation down — the dialog stays open and says why itself (the banner is behind the scrim); sending again clears it. */
+    @Test fun aTranslateFailedVoiceReplyKeepsTheDialogWithTheReason() = runTest {
+        val rig = voiceRig(backgroundScope, FakeVehicleGateway(backgroundScope), ScriptedVoiceInput(text = "네"))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startVoiceReply()
+        advanceTimeBy(50)
+        rig.repo.state.value.parked!!.sendVoiceReply()
+        val envelope = rig.transport.sent.last { it.type == ClientType.REPLY_SEND }.id
+        rig.transport.deliver(ServerMessage.Error("e1", ErrorData(ErrorCode.TRANSLATE_FAILED, ref = envelope)))
+        assertEquals(VoiceState.Confirm("네", ErrorCode.TRANSLATE_FAILED), rig.repo.state.value.voice)
+        assertFalse(rig.repo.state.value.voiceInFlight)
+        rig.repo.state.value.parked!!.sendVoiceReply()
+        assertEquals(VoiceState.Confirm("네", null), rig.repo.state.value.voice)
+        assertTrue(rig.repo.state.value.voiceInFlight)
+    }
+
+    /** M4: with no chosen question the voice reply answers the OLDEST open one (same rule as the relay). */
+    @Test fun aVoiceReplyTargetsTheOldestOpenQuestion() = runTest {
+        val rig = voiceRig(backgroundScope, FakeVehicleGateway(backgroundScope), ScriptedVoiceInput(text = "네"))
+        val answered = question.copy(requestId = "req_0", state = RequestState.Answered)
+        val newer = question.copy(requestId = "req_2")
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, requests = listOf(answered, question, newer)))
+        rig.repo.state.value.parked!!.startVoiceReply()
+        advanceTimeBy(50)
+        rig.repo.state.value.parked!!.sendVoiceReply()
+        assertEquals("req_1", rig.transport.lastData(ClientType.REPLY_SEND)["requestId"]?.jsonPrimitive?.content)
+    }
+
+    /** M5: a changed music value alone is highlighted on D3. */
+    @Test fun aMusicOnlyChangeIsHighlighted() = runTest {
+        val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
+        val low = card.copy(conditions = listOf(ConditionId.Music), music = MusicPref.Low)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, card = low))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, card = low.copy(music = MusicPref.Off)))
+        assertEquals(setOf(ConditionId.Music), rig.repo.state.value.changedConditions)
     }
 
     /** The driver opens the reply screen without any question: D6 shows and closes by itself. */

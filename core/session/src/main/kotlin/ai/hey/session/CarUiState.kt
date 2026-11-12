@@ -40,7 +40,8 @@ sealed interface VoiceState {
     data object Listening : VoiceState
     /** The confirmed sentence reached the relay (the snapshot shows the new reply). */
     data object Sent : VoiceState
-    data class Confirm(val textKo: String) : VoiceState
+    /** The recognized sentence waits for the driver; [failure] is why the last send was refused (e.g. translation down), shown inside the dialog. */
+    data class Confirm(val textKo: String, val failure: ai.hey.model.ErrorCode? = null) : VoiceState
     /** Nothing recognized (or the permission was refused / the recognizer failed); the driver can try again. */
     data class Failed(val reason: Reason) : VoiceState
     enum class Reason { NoSpeech, PermissionDenied, Unavailable }

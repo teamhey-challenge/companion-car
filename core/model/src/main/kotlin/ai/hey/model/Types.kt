@@ -257,7 +257,15 @@ data class RequestItem(
 
 /** [kind] button: [replyId] names the quick reply; voice: [text] is the driver's recognized Korean sentence (the car's own words). */
 @Serializable
-data class ReplyItem(val kind: ReplyKind, val replyId: QuickReplyId? = null, val requestId: String? = null, val text: String, val ts: Long)
+data class ReplyItem(
+    val kind: ReplyKind,
+    val replyId: QuickReplyId? = null,
+    val requestId: String? = null,
+    val text: String,
+    /** False: the relay could not translate a voice reply, so [text] is the driver's Korean original. */
+    val translated: Boolean,
+    val ts: Long,
+)
 
 @Serializable
 data class RouteInfo(val durationSec: Int, val distanceM: Int, val tollFare: Int)

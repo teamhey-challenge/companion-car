@@ -249,6 +249,9 @@ object TripSamples {
     val requestsVoiceSending = state(inTrip.copy(requests = requests)) {
         copy(voice = VoiceState.Confirm("네, 입구 앞에서 기다릴게요."), commands = mapOf(CommandKey.Voice(null) to CommandState.InFlight("env")))
     }
+    val requestsVoiceTranslateFailed = state(inTrip.copy(requests = requests)) {
+        copy(voice = VoiceState.Confirm("네, 입구 앞에서 기다릴게요.", ai.hey.model.ErrorCode.TRANSLATE_FAILED), error = ai.hey.model.ErrorCode.TRANSLATE_FAILED)
+    }
     val requestsVoiceNoSpeech = state(inTrip.copy(requests = requests)) { copy(voice = VoiceState.Failed(VoiceState.Reason.NoSpeech)) }
     val requestsVoicePermission = state(inTrip.copy(requests = requests)) { copy(voice = VoiceState.Failed(VoiceState.Reason.PermissionDenied)) }
     val requestsVoiceSent = state(inTrip.copy(requests = requests)) { copy(voice = VoiceState.Sent) }

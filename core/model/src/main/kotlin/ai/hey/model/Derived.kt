@@ -25,6 +25,10 @@ val CarView.pendingRequestCount: Int
 val CarView.replyTarget: RequestItem?
     get() = requests.firstOrNull { it.isOpenQuestion }
 
+/** The first [max] Unicode code points (the relay counts code points, so a surrogate pair is never cut in half). */
+fun String.codePointSlice(max: Int): String =
+    if (codePointCount(0, length) <= max) this else substring(0, offsetByCodePoints(0, max))
+
 /** Destination as handed to navigation: the agreed drop-off point wins over the passenger's destination. */
 fun CarView.routeDestination(): Place? {
     val dest = card?.destination ?: return null

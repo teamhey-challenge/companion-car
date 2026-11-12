@@ -60,6 +60,7 @@ private val shots: List<Pair<String, CarUiState>> = listOf(
     "d6-voice-listening" to TripSamples.requestsListening,
     "d6-voice-confirm" to TripSamples.requestsVoiceConfirm,
     "d6-voice-sending" to TripSamples.requestsVoiceSending,
+    "d6-voice-translate-failed" to TripSamples.requestsVoiceTranslateFailed,
     "d6-voice-no-speech" to TripSamples.requestsVoiceNoSpeech,
     "d6-voice-permission" to TripSamples.requestsVoicePermission,
     "d6-voice-sent" to TripSamples.requestsVoiceSent,

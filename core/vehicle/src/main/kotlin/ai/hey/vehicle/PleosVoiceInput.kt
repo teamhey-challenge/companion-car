@@ -30,7 +30,7 @@ class PleosVoiceInput(private val context: Context) : VoiceInput {
     private val lock = Mutex()
     @Volatile private var stt: SpeechToText? = null
     private val current = AtomicReference<CompletableDeferred<VoiceResult>?>(null)
-    private var lastPartial = ""
+    @Volatile private var lastPartial = ""
 
     private val results = object : ResultListener {
         override fun onUpdated(text: String, isFinal: Boolean) {
