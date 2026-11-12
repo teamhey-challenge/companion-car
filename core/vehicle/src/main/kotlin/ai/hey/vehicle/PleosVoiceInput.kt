@@ -71,42 +71,34 @@ class PleosVoiceInput(private val context: Context) : VoiceInput {
 
     private suspend fun ensureReady(): ErrorType? {
         if (stt != null) return null
-        val init = CompletableDeferred<ErrorType?>()
-        val engine = try {
-            SpeechToText(app, Mode.ON_DEVICE)
-        } catch (t: Throwable) {
-            HeyLog.w(TAG, "stt unavailable: ${t.javaClass.simpleName}: ${t.message}")
-            return ErrorType.UNKNOWN
-        }
-        try {
-            engine.initialize(object : OnInitializeListener {
-                override fun onSuccess() {
-                    try {
-                        engine.addListener(results)
-                        engine.setLocale(Locale.KOREA)
-                        init.complete(null)
-                    } catch (t: Throwable) {
-                        HeyLog.w(TAG, "stt setup threw ${t.javaClass.simpleName}: ${t.message}")
-                        init.complete(ErrorType.UNKNOWN)
+        val init = initEngine(
+            timeoutMs = INIT_TIMEOUT_MS,
+            create = { SpeechToText(app, Mode.ON_DEVICE) },
+            start = { engine, report ->
+                engine.initialize(object : OnInitializeListener {
+                    override fun onSuccess() {
+                        try {
+                            engine.addListener(results)
+                            engine.setLocale(Locale.KOREA)
+                            report(EngineInit.Ready(engine))
+                        } catch (t: Throwable) {
+                            HeyLog.w(TAG, "stt setup threw ${t.javaClass.simpleName}: ${t.message}")
+                            report(EngineInit.Failed(ErrorType.UNKNOWN))
+                        }
                     }
-                }
 
-                override fun onFailure(e: ErrorType) {
-                    HeyLog.w(TAG, "stt init failed $e")
-                    init.complete(e)
-                }
-            })
-        } catch (t: Throwable) {
-            HeyLog.w(TAG, "stt initialize threw ${t.javaClass.simpleName}: ${t.message}")
-            return ErrorType.UNKNOWN
+                    override fun onFailure(e: ErrorType) {
+                        HeyLog.w(TAG, "stt init failed $e")
+                        report(EngineInit.Failed(e))
+                    }
+                })
+            },
+            release = { it.release() },
+        )
+        return when (init) {
+            is EngineInit.Ready -> { stt = init.engine; null }
+            is EngineInit.Failed -> init.error
         }
-        val failure = withTimeoutOrNull(INIT_TIMEOUT_MS) { init.await() } ?: ErrorType.TIMEOUT
-        if (failure == null) {
-            stt = engine
-        } else {
-            try { engine.release() } catch (_: Throwable) { }
-        }
-        return failure
     }
 
     override suspend fun listen(): VoiceResult = lock.withLock {
