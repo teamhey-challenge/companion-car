@@ -23,7 +23,7 @@ import ai.hey.designsystem.component.RequestState as UiRequestState
 fun ConnectionStatus.toStrip(): HeyConnection = when (this) {
     ConnectionStatus.Online -> HeyConnection.Online
     ConnectionStatus.Connecting, ConnectionStatus.Reconnecting -> HeyConnection.Reconnecting
-    ConnectionStatus.Registering, ConnectionStatus.RegistrationFailed, ConnectionStatus.Rejected -> HeyConnection.Offline
+    ConnectionStatus.Registering, ConnectionStatus.RegistrationFailed, ConnectionStatus.Rejected, ConnectionStatus.ProtocolMismatch -> HeyConnection.Offline
 }
 
 fun Lang.labelRes(): Int = when (this) {
@@ -94,6 +94,7 @@ internal fun quickReplies(): List<QuickReplyUi> = QuickReplyId.entries.map {
 @Composable
 internal fun errorText(code: ErrorCode): String = stringResource(
     when (code) {
+        ErrorCode.PROTOCOL_MISMATCH -> R.string.trip_error_protocol
         ErrorCode.STALE_VERSION -> R.string.trip_error_stale
         ErrorCode.TRIP_ENDED -> R.string.trip_error_ended
         else -> R.string.trip_error_generic

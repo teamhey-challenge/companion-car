@@ -151,6 +151,7 @@ object TripSamples {
     val waiting = state()
     val waitingOffline = state(connection = ConnectionStatus.Reconnecting)
     val registerFailed = state(view = null, connection = ConnectionStatus.RegistrationFailed, qr = null)
+    val protocolMismatch = state(view = null, connection = ConnectionStatus.ProtocolMismatch, qr = null)
     val waitingSpeechIssue = state { copy(issues = setOf(VehicleIssue.Speech(SpeechDropReason.EngineUnavailable))) }
     val waitingNaviIssue = state { copy(issues = setOf(VehicleIssue.Navi("NAVI_UNAVAILABLE"))) }
 

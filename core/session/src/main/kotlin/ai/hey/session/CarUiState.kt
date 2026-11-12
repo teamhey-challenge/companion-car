@@ -21,6 +21,9 @@ enum class ConnectionStatus {
 
     /** The relay rejected the stored token (its data was wiped or the car was removed): the QR no longer works. */
     Rejected,
+
+    /** The relay speaks another protocol major than this app (HTTP 426). Retrying cannot help: the app needs an update. */
+    ProtocolMismatch,
 }
 
 /** Which panel the driver opened on top of the trip screen. */

@@ -16,6 +16,7 @@ private fun Shown(state: CarUiState, dark: Boolean = true) {
 @Preview(name = "D1 waiting", device = SPEC) @Composable private fun D1Waiting() = Shown(TripSamples.waiting)
 @Preview(name = "D1 offline", device = SPEC) @Composable private fun D1Offline() = Shown(TripSamples.waitingOffline)
 @Preview(name = "D1 register failed", device = SPEC) @Composable private fun D1RegisterFailed() = Shown(TripSamples.registerFailed)
+@Preview(name = "D1 protocol mismatch", device = SPEC) @Composable private fun D1ProtocolMismatch() = Shown(TripSamples.protocolMismatch)
 @Preview(name = "D1 speech unavailable", device = SPEC) @Composable private fun D1Speech() = Shown(TripSamples.waitingSpeechIssue)
 @Preview(name = "D1 navi unavailable", device = SPEC) @Composable private fun D1Navi() = Shown(TripSamples.waitingNaviIssue)
 @Preview(name = "D2 join parked", device = SPEC) @Composable private fun D2Join() = Shown(TripSamples.join)

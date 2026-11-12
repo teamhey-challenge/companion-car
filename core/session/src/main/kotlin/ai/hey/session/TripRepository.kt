@@ -83,6 +83,8 @@ class TripRepository(
     private val vehicle: VehicleGateway,
     private val storage: CarStorage,
     private val http: OkHttpClient = newHttpClient(),
+    /** Sent as `Authorization: Provision <secret>` when registering; empty sends no header. */
+    private val provisionSecret: String = "",
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val progressPollMs: Long = HeyConfig.TRIP_PROGRESS_POLL_SEC * 1000L,
     private val backoffSec: List<Long> = HeyConfig.RECONNECT_BACKOFF_SEC,
@@ -157,8 +159,12 @@ class TripRepository(
         while (reg == null) {
             val plate = storage.settings.value.plateSuffix
             reg = try {
-                val created = registerCar(http, relayUrl, plate)
+                val created = registerCar(http, relayUrl, plate, provisionSecret = provisionSecret)
                 Registration(created.carCode, created.driverToken, created.qrUrl, relayUrl, plate).also { storage.saveRegistration(it) }
+            } catch (e: ProtocolMismatchException) {
+                // Another protocol major: registering again gets the same answer, so no backoff loop.
+                _state.update { it.copy(connection = ConnectionStatus.ProtocolMismatch, view = null, commands = emptyMap()) }
+                return
             } catch (e: Exception) {
                 HeyLog.w(TAG, "registration failed: ${e.javaClass.simpleName}")
                 _state.update { it.copy(connection = ConnectionStatus.RegistrationFailed) }
@@ -184,6 +190,10 @@ class TripRepository(
 
         override fun onTokenRejected() {
             _state.update { it.copy(connection = ConnectionStatus.Rejected, view = null, commands = emptyMap()) }
+        }
+
+        override fun onProtocolMismatch() {
+            _state.update { it.copy(connection = ConnectionStatus.ProtocolMismatch, view = null, commands = emptyMap()) }
         }
 
         override fun onMessage(message: ServerMessage) {

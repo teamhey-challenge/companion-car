@@ -246,6 +246,58 @@ class RelayIntegrationTest {
         repo.stop()
     }
 
+    private class CountingListener : RelayTransport.Listener {
+        val connected = java.util.concurrent.atomic.AtomicInteger()
+        val mismatches = java.util.concurrent.atomic.AtomicInteger()
+        val rejected = java.util.concurrent.atomic.AtomicInteger()
+        override fun onConnection(connected: Boolean) { if (connected) this.connected.incrementAndGet() }
+        override fun onTokenRejected() { rejected.incrementAndGet() }
+        override fun onProtocolMismatch() { mismatches.incrementAndGet() }
+        override fun onMessage(message: ai.hey.model.ServerMessage) = Unit
+    }
+
+    private fun registerWith(version: String) = runBlocking { registerCar(http, base, "1111", version) }
+
+    /** The relay refuses another major with 426 PROTOCOL_MISMATCH; registration reports it instead of looping. */
+    @Test fun registrationWithAnotherProtocolMajorIsRefusedAndNotRetried() {
+        val other = "${ai.hey.protocol.ProtocolVersion.MAJOR + 1}.0.0"
+        try {
+            registerWith(other)
+            org.junit.Assert.fail("expected ProtocolMismatchException")
+        } catch (e: ProtocolMismatchException) {
+            assertTrue(e.message!!.contains("protocol mismatch"))
+        }
+    }
+
+    @Test fun aNewerMinorOfTheSameMajorIsAcceptedForRegistration() {
+        val newerMinor = "${ai.hey.protocol.ProtocolVersion.MAJOR}.99.0"
+        assertNotNull(registerWith(newerMinor).driverToken)
+    }
+
+    /** WebSocket: the 426 on upgrade stops the link after exactly one attempt (no retry loop). */
+    @Test fun aSocketWithAnotherProtocolMajorReportsMismatchOnceAndStops() = runBlocking {
+        val reg = registerWith(ai.hey.protocol.ProtocolVersion.CURRENT)
+        val listener = CountingListener()
+        val link = RelayLink(http, scope, listener, backoffSec = listOf(0L), protocolVersion = "${ai.hey.protocol.ProtocolVersion.MAJOR + 1}.0.0")
+        link.connect(base, reg.driverToken)
+        eventually("mismatch") { listener.mismatches.get().takeIf { it > 0 } }
+        delay(500)
+        assertEquals(1, listener.mismatches.get())
+        assertEquals(0, listener.connected.get())
+        assertEquals(0, listener.rejected.get())
+        link.close()
+    }
+
+    @Test fun aSocketWithANewerMinorConnects() = runBlocking {
+        val reg = registerWith(ai.hey.protocol.ProtocolVersion.CURRENT)
+        val listener = CountingListener()
+        val link = RelayLink(http, scope, listener, protocolVersion = "${ai.hey.protocol.ProtocolVersion.MAJOR}.99.0")
+        link.connect(base, reg.driverToken)
+        eventually("connected") { listener.connected.get().takeIf { it > 0 } }
+        assertEquals(0, listener.mismatches.get())
+        link.close()
+    }
+
     /**
      * The relay answers BAD_REQUEST with the envelope's ref when it refuses join.approve (here: a join request it no longer
      * has; the same answer it gives while it believes the car is driving). The car must release the button and show the error.

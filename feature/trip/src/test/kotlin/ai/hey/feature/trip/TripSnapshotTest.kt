@@ -25,6 +25,7 @@ private val shots: List<Pair<String, CarUiState>> = listOf(
     "d1-waiting" to TripSamples.waiting,
     "d1-waiting-offline" to TripSamples.waitingOffline,
     "d1-register-failed" to TripSamples.registerFailed,
+    "d1-protocol-mismatch" to TripSamples.protocolMismatch,
     "d1-speech-unavailable" to TripSamples.waitingSpeechIssue,
     "d1-navi-unavailable" to TripSamples.waitingNaviIssue,
     "d2-join-parked" to TripSamples.join,

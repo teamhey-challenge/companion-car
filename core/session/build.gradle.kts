@@ -35,6 +35,8 @@ dependencies {
     api(project(":core:model"))
     api(project(":core:vehicle"))
     api(libs.kotlinx.coroutines.core)
+    // Generated protocol version constant (hey-shared, submodule `shared/`); substituted by includeBuild in settings.gradle.kts.
+    implementation("ai.hey:tokens-compose")
     api(libs.okhttp)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

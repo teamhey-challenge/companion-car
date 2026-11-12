@@ -48,6 +48,14 @@ internal fun WaitingScreen(state: CarUiState, commands: CarCommands, nowMillis: 
     ) {
         val qr = state.qrUrl
         when {
+            state.connection == ConnectionStatus.ProtocolMismatch -> VStack(HeyGap.G24, align = HeyAlign.Center, arrange = HeyArrange.Center, modifier = Modifier.fillSize()) {
+                EmptyPanel(
+                    icon = HeyIcons.Warning,
+                    title = stringResource(R.string.trip_waiting_protocol_title),
+                    message = stringResource(R.string.trip_waiting_protocol_message),
+                )
+                VehicleIssueBanners(state, commands)
+            }
             state.connection == ConnectionStatus.Rejected -> VStack(HeyGap.G24, align = HeyAlign.Center, arrange = HeyArrange.Center, modifier = Modifier.fillSize()) {
                 EmptyPanel(
                     icon = HeyIcons.Warning,

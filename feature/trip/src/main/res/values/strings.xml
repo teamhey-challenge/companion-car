@@ -8,6 +8,8 @@
     <string name="trip_waiting_title">QR을 찍어 주세요</string>
     <string name="trip_waiting_rejected_title">이 차량 등록이 서버에 없어요</string>
     <string name="trip_waiting_rejected_message">새로 등록하면 QR 스티커도 새 것으로 바꿔야 해요</string>
+    <string name="trip_waiting_protocol_title">앱 버전이 서버와 맞지 않아요</string>
+    <string name="trip_waiting_protocol_message">차량 앱을 업데이트한 뒤 다시 열어 주세요</string>
     <string name="trip_waiting_reregister">다시 등록하기</string>
     <string name="trip_lang_en">English</string>
     <string name="trip_lang_ja">日本語</string>
@@ -134,5 +136,6 @@
     <!-- errors (code -> what the driver can do) -->
     <string name="trip_error_generic">처리하지 못했어요. 잠시 뒤 다시 눌러 주세요</string>
     <string name="trip_error_stale">승객 화면이 바뀌었어요. 다시 확인해 주세요</string>
+    <string name="trip_error_protocol">앱 버전이 서버와 맞지 않아요. 앱을 업데이트해 주세요</string>
     <string name="trip_error_ended">이미 끝난 운행이에요</string>
 </resources>

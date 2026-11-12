@@ -2,6 +2,7 @@ package ai.hey.session
 
 import ai.hey.model.CreateCarRequest
 import ai.hey.model.CreateCarResponse
+import ai.hey.protocol.ProtocolVersion
 import ai.hey.model.HeyConfig
 import ai.hey.model.HeyJson
 import ai.hey.model.HeyLog
@@ -39,14 +40,30 @@ fun newHttpClient(): OkHttpClient = OkHttpClient.Builder()
     .pingInterval(20, TimeUnit.SECONDS)
     .build()
 
-/** First-launch registration: POST /v1/cars. Throws IOException on any failure. */
-suspend fun registerCar(http: OkHttpClient, baseUrl: String, plateSuffix: String): CreateCarResponse =
+private const val PROTOCOL_MISMATCH_STATUS = 426
+private const val CLOSE_UNAUTHORIZED = 4401
+private const val CLOSE_PROTOCOL_MISMATCH = 4426
+
+/** The relay answered 426 PROTOCOL_MISMATCH: this app and the relay have different protocol majors. Never retried. */
+class ProtocolMismatchException(message: String) : IOException(message)
+
+/** First-launch registration: POST /v1/cars. Throws [ProtocolMismatchException] on 426, IOException on any other failure. */
+suspend fun registerCar(
+    http: OkHttpClient,
+    baseUrl: String,
+    plateSuffix: String,
+    protocolVersion: String = ProtocolVersion.CURRENT,
+    provisionSecret: String = "",
+): CreateCarResponse =
     withContext(Dispatchers.IO) {
         val url = baseUrl.toHttpUrl().newBuilder().addPathSegments("v1/cars").build()
         val body = HeyJson.encodeToString(CreateCarRequest.serializer(), CreateCarRequest(plateSuffix))
             .toRequestBody("application/json".toMediaType())
-        http.newCall(Request.Builder().url(url).post(body).build()).execute().use { res ->
+        val request = Request.Builder().url(url).post(body).header(ProtocolVersion.HEADER, protocolVersion)
+            .apply { if (provisionSecret.isNotEmpty()) header("Authorization", "Provision $provisionSecret") }.build()
+        http.newCall(request).execute().use { res ->
             val text = res.body?.string().orEmpty()
+            if (res.code == PROTOCOL_MISMATCH_STATUS) throw ProtocolMismatchException("register refused: protocol mismatch")
             if (!res.isSuccessful) throw IOException("register failed: HTTP ${res.code}")
             HeyJson.decodeFromString(CreateCarResponse.serializer(), text)
         }
@@ -60,6 +77,9 @@ interface RelayTransport {
 
         /** The relay answered 401 on upgrade: the stored registration is no longer valid. Reconnecting stops. */
         fun onTokenRejected()
+
+        /** The relay answered 426 PROTOCOL_MISMATCH on upgrade: another protocol major. Reconnecting stops (no retry loop). */
+        fun onProtocolMismatch()
 
         fun onMessage(message: ServerMessage)
     }
@@ -89,6 +109,7 @@ class RelayLink(
     private val ackTimeoutMs: Long = HeyConfig.WS_ACK_TIMEOUT_MS,
     private val backoffSec: List<Long> = HeyConfig.RECONNECT_BACKOFF_SEC,
     private val clock: () -> Long = { System.currentTimeMillis() },
+    private val protocolVersion: String = ProtocolVersion.CURRENT,
 ) : RelayTransport {
     private class Outgoing(val id: String, val key: String?, val json: String, var sentAt: Long)
 
@@ -98,6 +119,14 @@ class RelayLink(
     private var socket: WebSocket? = null
 
     @Volatile private var tokenRejected = false
+    @Volatile private var protocolMismatch = false
+
+    /** The relay refuses a bad first frame by closing 4401 (token) or 4426 (protocol major): neither is retried. */
+    private fun noteClose(code: Int) {
+        if (code == CLOSE_UNAUTHORIZED) tokenRejected = true
+        if (code == CLOSE_PROTOCOL_MISMATCH) protocolMismatch = true
+    }
+
     private var job: Job? = null
 
     override fun connect(baseUrl: String, token: String) {
@@ -136,17 +165,26 @@ class RelayLink(
     }
 
     private suspend fun run(baseUrl: String, token: String) {
-        val url = baseUrl.toHttpUrl().newBuilder().addPathSegments("v1/ws").addQueryParameter("token", token).build()
+        // The token is never part of the URL (access logs); it goes in the first frame after the upgrade.
+        val url = baseUrl.toHttpUrl().newBuilder().addPathSegments("v1/ws")
+            .addQueryParameter(ProtocolVersion.QUERY, protocolVersion).build()
+        val authFrame = kotlinx.serialization.json.buildJsonObject {
+            put("type", kotlinx.serialization.json.JsonPrimitive("auth"))
+            put("token", kotlinx.serialization.json.JsonPrimitive(token))
+            put("protocol", kotlinx.serialization.json.JsonPrimitive(protocolVersion))
+        }.toString()
         var failures = 0
         while (scope.isActive) {
             val closed = CompletableDeferred<Unit>()
             val opened = java.util.concurrent.atomic.AtomicBoolean(false)
             tokenRejected = false
+            protocolMismatch = false
             val ws = http.newWebSocket(
-                Request.Builder().url(url).build(),
+                Request.Builder().url(url).header(ProtocolVersion.HEADER, protocolVersion).build(),
                 object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
                         opened.set(true)
+                        webSocket.send(authFrame)
                         synchronized(lock) {
                             socket = webSocket
                             // Everything unacked goes out again on a fresh socket.
@@ -158,16 +196,19 @@ class RelayLink(
                     override fun onMessage(webSocket: WebSocket, text: String) = receive(webSocket, text)
 
                     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                        noteClose(code)
                         webSocket.close(code, reason)
                     }
 
                     override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                        noteClose(code)
                         closed.complete(Unit)
                     }
 
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                         HeyLog.w(TAG, "socket failure: ${t.javaClass.simpleName}")
                         if (response?.code == 401) tokenRejected = true
+                        if (response?.code == PROTOCOL_MISMATCH_STATUS) protocolMismatch = true
                         closed.complete(Unit)
                     }
                 },
@@ -182,6 +223,11 @@ class RelayLink(
                     synchronized(lock) { if (socket === ws) socket = null }
                     ws.cancel()
                 }
+            }
+            if (protocolMismatch) {
+                // Another protocol major: every retry gets the same 426.
+                listener.onProtocolMismatch()
+                return
             }
             if (tokenRejected) {
                 // The relay does not know this token (data wiped, car removed): retrying cannot help.

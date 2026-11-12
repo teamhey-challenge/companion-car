@@ -330,6 +330,18 @@ class TripRepositoryTest {
         assertNull(rig.repo.state.value.error)
     }
 
+    /** Handshake: a 426 on the socket is its own state (not Rejected, not Reconnecting) and clears the trip view. */
+    @Test fun aProtocolMismatchFromTheLinkIsItsOwnConnectionState() = runTest {
+        val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+
+        rig.transport.listener.onProtocolMismatch()
+
+        assertEquals(ConnectionStatus.ProtocolMismatch, rig.repo.state.value.connection)
+        assertNull(rig.repo.state.value.view)
+        assertFalse(rig.repo.state.value.online)
+    }
+
     /** m4: the relay keeps only the newest replies, so after the cap the count stalls; the newest reply changing still releases the button. */
     @Test fun aReplyIsSettledEvenWhenTheRelayListIsAtItsCap() = runTest {
         val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))

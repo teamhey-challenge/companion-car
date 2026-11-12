@@ -32,7 +32,7 @@ class PhaseMatrixTest {
 
     @Test fun everySampleChoosesTheSameScreenThroughTheStateAndThroughThePhase() {
         listOf(
-            TripSamples.waiting, TripSamples.waitingOffline, TripSamples.registerFailed,
+            TripSamples.waiting, TripSamples.waitingOffline, TripSamples.registerFailed, TripSamples.protocolMismatch,
             TripSamples.join, TripSamples.joinDriving,
             TripSamples.cardWaiting, TripSamples.cardOk, TripSamples.cardRouteStarted, TripSamples.cardRouteFailed,
             TripSamples.dropoffDefault, TripSamples.dropoffSelected, TripSamples.dropoffNone,
