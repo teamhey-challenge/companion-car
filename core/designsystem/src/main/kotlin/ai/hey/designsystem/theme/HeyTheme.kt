@@ -37,7 +37,7 @@ enum class HeyTextVariant(internal val spec: HeyTypeSpec) {
     Caption(HeyTokens.CarType.caption),
 }
 
-enum class HeyTone { Default, Muted, Subtle, Accent, Danger, Success, OnAccent }
+enum class HeyTone { Default, Muted, Subtle, Disabled, Accent, Danger, Success, OnAccent }
 
 internal val HeyFontFamily = FontFamily(
     Font(R.font.pretendard_regular, FontWeight.Normal),
@@ -63,6 +63,7 @@ internal fun HeyTone.resolve(colors: HeyColors): Color = when (this) {
     HeyTone.Default -> colors.fgDefault
     HeyTone.Muted -> colors.fgMuted
     HeyTone.Subtle -> colors.fgSubtle
+    HeyTone.Disabled -> colors.fgDisabled
     HeyTone.Accent -> colors.primary
     HeyTone.Danger -> colors.danger
     HeyTone.Success -> colors.success

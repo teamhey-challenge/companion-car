@@ -55,7 +55,7 @@ fun HeyTextField(
                 .padding(horizontal = HeyTokens.Space.s24, vertical = HeyTokens.Space.s8),
             contentAlignment = Alignment.CenterStart,
         ) {
-            val textColor = if (enabled) colors.fgDefault else colors.fgSubtle
+            val textColor = if (enabled) colors.fgDefault else colors.fgDisabled
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,

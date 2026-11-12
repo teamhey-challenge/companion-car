@@ -40,7 +40,7 @@ enum class HeyButtonSize { Regular, Large }
 private class ButtonInk(val container: Color, val content: Color, val border: Color?)
 
 private fun HeyColors.ink(variant: HeyButtonVariant, pressed: Boolean, enabled: Boolean): ButtonInk {
-    if (!enabled) return ButtonInk(bgSunken, fgSubtle, borderDefault)
+    if (!enabled) return ButtonInk(bgSunken, fgDisabled, borderDefault)
     return when (variant) {
         HeyButtonVariant.Primary -> ButtonInk(if (pressed) primaryPressed else primary, fgOnPrimary, null)
         HeyButtonVariant.Accent -> ButtonInk(if (pressed) accentPressed else accent, fgOnAccent, null)
@@ -149,7 +149,7 @@ fun HeySwitchRow(
             .heightIn(min = HeyTokens.Size.touchCarPrimary)
             .padding(horizontal = HeyTokens.Space.s24, vertical = HeyTokens.Space.s16),
     ) {
-        HeyText(label, Modifier.grow(), tone = if (enabled) HeyTone.Default else HeyTone.Subtle)
+        HeyText(label, Modifier.grow(), tone = if (enabled) HeyTone.Default else HeyTone.Disabled)
         val track = when {
             !enabled -> colors.bgSunken
             checked -> colors.primary
