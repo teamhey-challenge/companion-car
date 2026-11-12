@@ -55,8 +55,17 @@ data class DropoffProposeData(
 @Serializable data class ReplySendData(val requestId: String? = null, val replyId: QuickReplyId)
 @Serializable data class DrivingStateData(val driving: Boolean)
 
-/** `{}` payload (card.recheck, trip.arrive, trip.end). */
+/** `{}` payload (card.recheck, trip.arrive, trip.end, invite.rotate). */
 @Serializable class EmptyData
+
+/** First frame on the socket, before any envelope: `{ type: "auth", token, protocol }`. Not an envelope (no id/ts/data). */
+@Serializable
+data class AuthMessage(val type: String = TYPE, val token: String, val protocol: String) {
+    companion object { const val TYPE = "auth" }
+}
+
+/** `invite.rotate` carries `{}`. */
+typealias InviteRotate = EmptyData
 
 /** Message types the car sends. */
 object ClientType {

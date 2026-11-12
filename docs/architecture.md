@@ -99,9 +99,9 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 
 ### 3.2 WebSocket
 
-연결: `wss://<서버>/v1/ws?token=<driverToken|deviceToken>`. 봉투는 `{ type, id, ts, data }`이고 받는 쪽은 `{ type: "ack", id }`를 돌려준다. 같은 `id`는 한 번만 처리한다.
+연결: `wss://<서버>/v1/ws` — 토큰과 버전을 URL에 싣지 않는다(액세스 로그). 업그레이드 직후 첫 프레임은 `{ type: "auth", token, protocol }`(`AuthMessage`)이고, 서버는 이 프레임을 받기 전까지 아무것도 보내지 않으며 그 전에 온 봉투는 버린다. 서버의 첫 메시지가 인증 수락의 증거다. 봉투는 `{ type, id, ts, data }`이고 받는 쪽은 `{ type: "ack", id }`를 돌려준다. 같은 `id`는 한 번만 처리한다.
 
-프로토콜 버전 핸드셰이크: 모든 클라이언트는 자기 `PROTOCOL_VERSION`(정본 `packages/protocol/src/version.ts`)을 REST에는 `X-Hey-Protocol` 헤더로, WebSocket 업그레이드에는 `?v=`로 싣는다. 서버는 major가 다르거나 형식이 틀리면 연결·요청을 받지 않고 HTTP 426 `{ error: { code: "PROTOCOL_MISMATCH", server, client } }`로 답한다(`/healthz` 제외). minor·patch 차이는 받아 준다. 버전을 싣지 않은 요청은 통과한다. 클라이언트는 426을 받으면 재시도하지 않고 전용 상태를 보인다(웹 P7 `protocolMismatch`, 차량 D1 배너).
+프로토콜 버전 핸드셰이크: 모든 클라이언트는 자기 `PROTOCOL_VERSION`(정본 `packages/protocol/src/version.ts`)을 REST에는 `X-Hey-Protocol` 헤더로, WebSocket에는 첫 `auth` 프레임의 `protocol`로 싣는다. 서버는 major가 다르거나 형식이 틀리면 연결·요청을 받지 않고 HTTP 426 `{ error: { code: "PROTOCOL_MISMATCH", server, client } }`로 답한다(`/healthz` 제외). minor·patch 차이는 받아 준다. 버전을 싣지 않은 요청은 통과한다. 클라이언트는 426을 받으면 재시도하지 않고 전용 상태를 보인다(웹 P7 `protocolMismatch`, 차량 D1 배너).
 
 읽기 모델은 하나다. 서버는 변경이 있을 때마다 역할별 `trip.snapshot`을 보낸다. 승객용은 그 기기 언어로, 차량용은 한국어로 채워져 있다. 화면은 스냅숏만 그린다. 별도 이벤트는 음성(`say`)과 일회성 알림(`notice`)뿐이다.
 
@@ -111,8 +111,9 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 | `say` | 서버→차량 | `{ speechId, textKo, priority: "high" \| "normal" }` |
 | `notice` | 서버→기기 | `{ noticeId, kind }` |
 | `join.approve` / `join.decline` | 차량→서버 | `{ joinRequestId }` |
-| `card.submit` | 대표 승객→서버 | `{ destination: Place, conditions: ConditionId[], entranceNote?, temperature?: "cooler" \| "warmer" }` |
-| `card.update` | 승객→서버 | `card.submit`의 일부 필드. 바뀐 부분만 기사에게 음성 |
+| `card.submit` | 대표 승객→서버 | `{ destinationPlaceId, conditions: ConditionId[], entranceNote?, temperature?: "cooler" \| "warmer" }` — 목적지는 장소 전체가 아니라 `GET /v1/places`가 돌려준 `placeId` |
+| `card.update` | 승객→서버 | `card.submit`의 일부 필드(`destinationPlaceId?`, `conditions?`, `entranceNote?`, `temperature?`). 바뀐 부분만 기사에게 음성 |
+| `invite.rotate` | 대표 승객→서버 | `{}` — 초대 링크(`inviteCode`)를 새로 발급한다 |
 | `card.recheck` | 차량→서버 | `{}` |
 | `route.started` | 차량→서버 | `{ durationSec, distanceM, tollFare }` |
 | `route.failed` | 차량→서버 | `{ code }` |

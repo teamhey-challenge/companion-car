@@ -4,12 +4,14 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.serializer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Parses the shared protocol fixtures and checks that decode -> encode reproduces them. */
@@ -44,6 +46,14 @@ class ModelFixturesTest {
         roundTrip<PassengerTripView>(HeyJson.parseToJsonElement(fixture("passenger-view-in-trip.json")))
     }
 
+    /** 2.0.0 put the per-device join check code on the passenger view; it must survive the round trip, not be dropped. */
+    @Test fun passengerViewKeepsTheJoinCheckCode() {
+        val element = HeyJson.parseToJsonElement(fixture("passenger-view-in-trip.json")).jsonObject
+        val withCode = JsonObject(element + ("joinCheckCode" to JsonPrimitive("42")))
+        roundTrip<PassengerTripView>(withCode)
+        assertEquals("42", HeyJson.decodeFromJsonElement(serializer<PassengerTripView>(), withCode).joinCheckCode)
+    }
+
     @Test fun arrivedPassengerViewRoundTripsWithTheNewSummaryFields() {
         val element = HeyJson.parseToJsonElement(fixture("passenger-view-arrived.json"))
         roundTrip<PassengerTripView>(element)
@@ -68,14 +78,16 @@ class ModelFixturesTest {
     }
 
     @Test fun clientEnvelopesRoundTrip() {
-        val list = HeyJson.parseToJsonElement(fixture("envelopes.json")).jsonObject.getValue("clientToServer").jsonArray
-        assertEquals(20, list.size)
+        val fixtures = HeyJson.parseToJsonElement(fixture("envelopes.json")).jsonObject
+        val list = fixtures.getValue("clientToServer").jsonArray
+        assertTrue("the fixture lists client envelopes", list.isNotEmpty())
+        val types = list.map { it.jsonObject.getValue("type").jsonPrimitive.content }.toSet()
         for (envelope in list) {
             val obj = envelope.jsonObject
             val data = obj.getValue("data")
             when (val type = obj.getValue("type").jsonPrimitive.content) {
                 "join.approve", "join.decline" -> roundTrip<JoinDecision>(data)
-                "card.submit" -> roundTrip<CardInput>(data)
+                "card.submit" -> roundTrip<CardSubmit>(data)
                 "card.update" -> roundTrip<CardUpdate>(data)
                 "route.started" -> roundTrip<RouteInfo>(data)
                 "route.failed" -> roundTrip<RouteFailedData>(data)
@@ -85,12 +97,32 @@ class ModelFixturesTest {
                 "request.spoken" -> roundTrip<RequestSpokenData>(data)
                 "reply.send" -> roundTrip<ReplySendData>(data)
                 "driving.state" -> roundTrip<DrivingStateData>(data)
-                "card.recheck", "trip.arrive", "trip.end", "trip.leave" -> assertEquals(JsonObject(emptyMap()), data)
+                "card.recheck", "trip.arrive", "trip.end", "trip.leave" -> roundTrip<EmptyData>(data)
+                "invite.rotate" -> roundTrip<InviteRotate>(data)
                 "dropoff.respond", "request.send", "device.lang" -> assertNotNull(data) // passenger-only, not modelled on the car
                 else -> error("fixture message type not covered: $type")
             }
         }
+        // no drift: every type the car can send is in the fixture, and every fixture type is decoded above
+        val carTypes = ClientType::class.java.declaredFields
+            .filter { it.type == String::class.java && java.lang.reflect.Modifier.isStatic(it.modifiers) }
+            .map { it.isAccessible = true; it.get(null) as String }
+        assertTrue("ClientType values: $carTypes", carTypes.isNotEmpty())
+        assertEquals("car types without a fixture", emptySet<String>(), carTypes.toSet() - types)
     }
+
+    /** The first frame on the socket is not an envelope: `{ type: "auth", token, protocol }`. */
+    @Test fun authFirstFrameRoundTrips() {
+        val auth = fixtures().getValue("auth").jsonObject
+        assertEquals(AuthMessage.TYPE, auth.getValue("type").jsonPrimitive.content)
+        roundTrip<AuthMessage>(auth)
+        assertEquals(
+            AuthMessage(token = "tok_example", protocol = "2.0.0"),
+            HeyJson.decodeFromString(AuthMessage.serializer(), """{"type":"auth","token":"tok_example","protocol":"2.0.0"}"""),
+        )
+    }
+
+    private fun fixtures() = HeyJson.parseToJsonElement(fixture("envelopes.json")).jsonObject
 
     @Test fun carBuiltEnvelopeMatchesFixtureShape() {
         val built = envelopeOf(ClientType.ROUTE_STARTED, "e6", 1794320000005, RouteInfo(3120, 52300, 7900))

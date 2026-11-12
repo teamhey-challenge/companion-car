@@ -271,9 +271,18 @@ data class CardInput(
     val temperature: Temperature? = null,
 )
 
+/** `card.submit` payload: the destination is referenced by the id of a place the relay already resolved. */
+@Serializable
+data class CardSubmit(
+    val destinationPlaceId: String,
+    val conditions: List<ConditionId>,
+    val entranceNote: String? = null,
+    val temperature: Temperature? = null,
+)
+
 @Serializable
 data class CardUpdate(
-    val destination: Place? = null,
+    val destinationPlaceId: String? = null,
     val conditions: List<ConditionId>? = null,
     val entranceNote: String? = null,
     val temperature: Temperature? = null,
@@ -346,6 +355,8 @@ data class PassengerTripView(
     val car: PassengerCar,
     val driving: DrivingState,
     val joinExpiresAt: Long? = null,
+    /** REQUESTED only: the two-digit code this device's request carries; the driver sees the same as `pendingJoin.checkCode`. */
+    val joinCheckCode: String? = null,
     val card: CardInput? = null,
     val route: RouteInfo? = null,
     val routeFailed: Boolean,

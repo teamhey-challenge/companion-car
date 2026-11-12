@@ -1,5 +1,6 @@
 package ai.hey.session
 
+import ai.hey.model.AuthMessage
 import ai.hey.model.CreateCarRequest
 import ai.hey.model.CreateCarResponse
 import ai.hey.protocol.ProtocolVersion
@@ -167,11 +168,7 @@ class RelayLink(
     private suspend fun run(baseUrl: String, token: String) {
         // The token is never part of the URL (access logs); it goes in the first frame after the upgrade.
         val url = baseUrl.toHttpUrl().newBuilder().addPathSegments("v1/ws").build()
-        val authFrame = kotlinx.serialization.json.buildJsonObject {
-            put("type", kotlinx.serialization.json.JsonPrimitive("auth"))
-            put("token", kotlinx.serialization.json.JsonPrimitive(token))
-            put("protocol", kotlinx.serialization.json.JsonPrimitive(protocolVersion))
-        }.toString()
+        val authFrame = HeyJson.encodeToString(AuthMessage.serializer(), AuthMessage(token = token, protocol = protocolVersion))
         var failures = 0
         while (scope.isActive) {
             val closed = CompletableDeferred<Unit>()
