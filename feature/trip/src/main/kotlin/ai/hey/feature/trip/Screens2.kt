@@ -33,11 +33,12 @@ import ai.hey.model.DropoffKind
 import ai.hey.model.DropoffReasonId
 import ai.hey.model.LatLng
 import ai.hey.model.Temperature
-import ai.hey.model.TripState
 import ai.hey.model.distanceTo
-import ai.hey.session.Busy
 import ai.hey.session.CarCommands
+import ai.hey.session.CarPhase
 import ai.hey.session.CarUiState
+import ai.hey.session.CommandKey
+import ai.hey.session.ParkedCommands
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -70,11 +71,17 @@ private fun conditionLines(card: CarCardView, changed: Set<ConditionId>): List<C
 }
 
 @Composable
-internal fun CardScreen(state: CarUiState, commands: CarCommands, nowMillis: Long, modifier: Modifier = Modifier) {
-    val view = state.view
-    val card = view?.card
-    val routeStarted = view?.route != null
-    val parked = state.parked
+internal fun CardScreen(
+    state: CarUiState,
+    phase: CarPhase.BoardingCard,
+    parked: ParkedCommands,
+    commands: CarCommands,
+    nowMillis: Long,
+    modifier: Modifier = Modifier,
+) {
+    val view = phase.view
+    val card = view.card
+    val routeStarted = view.route != null
     val replayLine = replayText(card)
     TripFrame(
         state = state,
@@ -84,20 +91,20 @@ internal fun CardScreen(state: CarUiState, commands: CarCommands, nowMillis: Lon
             HStack(HeyGap.G16, modifier = Modifier.fillWidth()) {
                 HeyButton(
                     stringResource(R.string.trip_card_recheck),
-                    commands::recheckCard,
+                    parked::recheckCard,
                     variant = HeyButtonVariant.Secondary,
                     size = HeyButtonSize.Large,
                     icon = HeyIcons.Refresh,
-                    enabled = parked && card != null && state.online,
-                    loading = state.isBusy(Busy.RECHECK),
+                    enabled = card != null && state.online,
+                    loading = state.isLoading(CommandKey.Recheck),
                 )
                 HeyButton(
                     stringResource(R.string.trip_card_propose),
-                    commands::openDropoff,
+                    parked::openDropoff,
                     variant = HeyButtonVariant.Secondary,
                     size = HeyButtonSize.Large,
                     icon = HeyIcons.Flag,
-                    enabled = parked && card != null,
+                    enabled = card != null,
                 )
                 HeyButton(
                     stringResource(R.string.trip_card_replay),
@@ -109,22 +116,22 @@ internal fun CardScreen(state: CarUiState, commands: CarCommands, nowMillis: Lon
                 )
                 HeyButton(
                     stringResource(if (routeStarted) R.string.trip_card_restart_route else R.string.trip_card_start_route),
-                    commands::startRoute,
+                    parked::startRoute,
                     Modifier.grow(),
                     size = HeyButtonSize.Large,
                     icon = HeyIcons.Route,
-                    enabled = parked && card != null,
+                    enabled = card != null,
                     loading = state.routeStarting,
                 )
-                if (view?.state == TripState.IN_TRIP) {
+                if (phase.inTrip) {
                     HeyButton(
                         stringResource(R.string.trip_card_arrived),
-                        commands::arrive,
+                        parked::arrive,
                         variant = HeyButtonVariant.Secondary,
                         size = HeyButtonSize.Large,
                         icon = HeyIcons.Flag,
-                        enabled = parked && state.online,
-                        loading = state.isBusy(Busy.ARRIVE),
+                        enabled = state.online,
+                        loading = state.isLoading(CommandKey.Arrive),
                     )
                 }
             }
@@ -152,9 +159,8 @@ internal fun CardScreen(state: CarUiState, commands: CarCommands, nowMillis: Lon
                         HeyBanner(HeyStatusTone.Danger, stringResource(R.string.trip_card_route_failed), Modifier.fillWidth())
                         HeyButton(
                             stringResource(R.string.trip_card_retry),
-                            commands::startRoute,
+                            parked::startRoute,
                             variant = HeyButtonVariant.Secondary,
-                            enabled = parked,
                         )
                     }
                     if (view.routeStale) {
@@ -167,7 +173,7 @@ internal fun CardScreen(state: CarUiState, commands: CarCommands, nowMillis: Lon
                     }
                     val route = view.route
                     val progress = view.progress
-                    if (view.state == TripState.IN_TRIP && progress != null) {
+                    if (phase.inTrip && progress != null) {
                         EtaBlock(durationText(progress.etaSec), distanceText(progress.distanceM), progress.stale)
                     } else if (route != null && route.durationSec > 0) {
                         EtaBlock(durationText(route.durationSec), distanceText(route.distanceM), stale = false)
@@ -189,9 +195,16 @@ private fun replayText(card: CarCardView?): String =
 // ================================================================ D4 dropoff proposal
 
 @Composable
-internal fun DropoffScreen(state: CarUiState, commands: CarCommands, nowMillis: Long, modifier: Modifier = Modifier) {
-    val view = state.view
-    val card = view?.card
+internal fun DropoffScreen(
+    state: CarUiState,
+    phase: CarPhase.DropoffProposal,
+    parked: ParkedCommands,
+    commands: CarCommands,
+    nowMillis: Long,
+    modifier: Modifier = Modifier,
+) {
+    val view = phase.view
+    val card = view.card
     val draft = state.activeDraft
     val candidates = state.candidates
     val reasons = reasonLabels()
@@ -214,9 +227,8 @@ internal fun DropoffScreen(state: CarUiState, commands: CarCommands, nowMillis: 
         emptyList()
     }
     val selected = items.firstOrNull { it.candidateId == draft.candidateId }
-    val proposal = view?.dropoff
-    val parked = state.parked
-    val pin = view?.pendingPins?.firstOrNull()
+    val proposal = view.dropoff
+    val pin = view.pendingPins.firstOrNull()
     TripFrame(
         state = state,
         nowMillis = nowMillis,
@@ -234,14 +246,14 @@ internal fun DropoffScreen(state: CarUiState, commands: CarCommands, nowMillis: 
                     {
                         if (selected != null) {
                             val reason = draft.reasonIndex?.let { DropoffReasonId.entries.getOrNull(it) }
-                            commands.proposeDropoff(selected, reason)
+                            parked.proposeDropoff(selected, reason)
                         }
                     },
                     Modifier.grow(),
                     size = HeyButtonSize.Large,
                     icon = HeyIcons.Send,
-                    enabled = parked && selected != null && state.online,
-                    loading = state.isBusy(Busy.PROPOSE),
+                    enabled = selected != null && state.online,
+                    loading = state.proposeInFlight,
                 )
             }
         },
@@ -288,8 +300,8 @@ internal fun DropoffScreen(state: CarUiState, commands: CarCommands, nowMillis: 
                         PassengerPinCard(
                             label = pin.label,
                             distanceText = from?.let { distanceText(it.distanceTo(pin.point)) }.orEmpty(),
-                            onAccept = { commands.decidePin(pin.version, true) },
-                            onDecline = { commands.decidePin(pin.version, false) },
+                            onAccept = { parked.decidePin(pin.version, true) },
+                            onDecline = { parked.decidePin(pin.version, false) },
                             modifier = Modifier.fillWidth(),
                         )
                     }

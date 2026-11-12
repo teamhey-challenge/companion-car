@@ -6,9 +6,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** One utterance at a time. [speak] returns true only when the text was read to the end. */
+/** One utterance at a time. [speak] reports whether the text was read to the end, and why not when it was not. */
 interface SpeechEngine {
-    suspend fun speak(text: String): Boolean
+    suspend fun speak(text: String): SpeechResult
 }
 
 /**
@@ -20,7 +20,7 @@ interface SpeechEngine {
  *   In both cases the copy's [VehicleEvent.SpeechDone] is emitted only once the text was really heard, never at enqueue.
  *   High priority (stopHere, card, pin, drop-off answers) is never de-duplicated;
  * - more than [queueMax] waiting: the oldest normal one (else the oldest) is dropped and every id on it gets
- *   [VehicleEvent.SpeechDropped].
+ *   [VehicleEvent.SpeechDropped] with [SpeechDropReason.QueueOverflow].
  * [now] is injected so tests drive time with the coroutine scheduler.
  */
 class SpeechQueue(
@@ -49,7 +49,7 @@ class SpeechQueue(
 
     fun enqueue(text: String, priority: SpeechPriority, id: String?, force: Boolean = false) {
         if (text.isBlank()) {
-            if (id != null) emit(VehicleEvent.SpeechDone(id))
+            if (id != null) emit(VehicleEvent.SpeechDropped(id, SpeechDropReason.Blank))
             return
         }
         val dedupe = id != null && priority == SpeechPriority.Normal && !force
@@ -73,7 +73,7 @@ class SpeechQueue(
             }
         }
         if (heardRecently) emit(VehicleEvent.SpeechDone(id!!))
-        dropped.forEach { emit(VehicleEvent.SpeechDropped(it)) }
+        dropped.forEach { emit(VehicleEvent.SpeechDropped(it, SpeechDropReason.QueueOverflow)) }
         wake.trySend(Unit)
     }
 
@@ -103,14 +103,18 @@ class SpeechQueue(
                 removed
             }
             if (!taken) continue
-            val ok = engine.speak(item.text)
+            val result = engine.speak(item.text)
+            val delivered = result is SpeechResult.Delivered
+            val reason = (result as? SpeechResult.Dropped)?.reason ?: SpeechDropReason.EngineError
             val ids = synchronized(lock) {
                 current = null
-                if (ok && item.dedupe) heard[item.text] = now()
+                if (delivered && item.dedupe) heard[item.text] = now()
                 item.ids.toList()
             }
             lastDoneAt = now()
-            ids.forEach { emit(if (ok) VehicleEvent.SpeechDone(it) else VehicleEvent.SpeechDropped(it)) }
+            ids.forEach { id ->
+                emit(if (delivered) VehicleEvent.SpeechDone(id) else VehicleEvent.SpeechDropped(id, reason))
+            }
         }
     }
 }

@@ -23,12 +23,12 @@ class SpeechQueueTest {
         val queue = SpeechQueue(
             scope = scope.backgroundScope,
             engine = object : SpeechEngine {
-                override suspend fun speak(text: String): Boolean {
-                    if (!works) return false
+                override suspend fun speak(text: String): SpeechResult {
+                    if (!works) return SpeechResult.Dropped(SpeechDropReason.EngineUnavailable)
                     said += "$text@${scope.currentTime}"
                     gate?.await()
                     if (speakMillis > 0) kotlinx.coroutines.delay(speakMillis)
-                    return true
+                    return SpeechResult.Delivered
                 }
             },
             settings = { SpeechSettings(gapSec = gapSec) },
@@ -110,7 +110,7 @@ class SpeechQueueTest {
         advanceTimeBy(1)
         rig.queue.enqueue("느린 요청", SpeechPriority.Normal, "iA")
         rig.queue.enqueue("다음 요청", SpeechPriority.Normal, "iB") // pushes iA out of the queue
-        assertTrue(rig.events.contains(VehicleEvent.SpeechDropped("iA")))
+        assertTrue(rig.events.contains(VehicleEvent.SpeechDropped("iA", SpeechDropReason.QueueOverflow)))
         advanceTimeBy(60_000)
         rig.queue.enqueue("느린 요청", SpeechPriority.Normal, "iC")
         advanceTimeBy(60_000)
@@ -123,7 +123,7 @@ class SpeechQueueTest {
         rig.works = false
         rig.queue.enqueue("창문", SpeechPriority.Normal, "r1")
         advanceTimeBy(100)
-        assertTrue(rig.events.contains(VehicleEvent.SpeechDropped("r1")))
+        assertTrue(rig.events.contains(VehicleEvent.SpeechDropped("r1", SpeechDropReason.EngineUnavailable)))
         assertFalse(rig.events.any { it is VehicleEvent.SpeechDone })
     }
 
@@ -143,6 +143,14 @@ class SpeechQueueTest {
         listOf("1", "2", "3").forEach { rig.queue.enqueue(it, SpeechPriority.Normal, "i$it") }
         advanceTimeBy(60_000)
         assertEquals(listOf("0", "2", "3"), rig.texts())
-        assertTrue(rig.events.contains(VehicleEvent.SpeechDropped("i1")))
+        assertTrue(rig.events.contains(VehicleEvent.SpeechDropped("i1", SpeechDropReason.QueueOverflow)))
+    }
+
+    @Test fun blankTextIsDroppedNotReportedAsHeard() = runTest {
+        val rig = Rig(this)
+        rig.queue.enqueue("   ", SpeechPriority.Normal, "r1")
+        advanceTimeBy(10)
+        assertTrue(rig.events.contains(VehicleEvent.SpeechDropped("r1", SpeechDropReason.Blank)))
+        assertFalse(rig.events.any { it is VehicleEvent.SpeechDone })
     }
 }

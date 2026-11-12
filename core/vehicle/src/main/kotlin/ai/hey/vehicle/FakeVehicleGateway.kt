@@ -1,6 +1,5 @@
 package ai.hey.vehicle
 
-import ai.hey.model.DrivingState
 import ai.hey.model.HeyConfig
 import ai.hey.model.Place
 import ai.hey.model.RouteInfo
@@ -20,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class FakeVehicleGateway(
     scope: CoroutineScope,
-    initialDriving: DrivingState = DrivingState.PARKED,
+    initialDriving: DrivingStatus = DrivingStatus.Parked,
     now: () -> Long = { System.currentTimeMillis() },
     /** How long a fake utterance "takes". */
     private val speechMillis: Long = 0,
@@ -35,6 +34,8 @@ class FakeVehicleGateway(
     private val _spoken = ArrayList<String>()
     private val _routes = ArrayList<Place>()
     @Volatile private var settings = SpeechSettings()
+    @Volatile private var speechRetryCount = 0
+    @Volatile private var navigationRetryCount = 0
 
     /** Texts that were read, in order. */
     val spoken: List<String> get() = synchronized(_spoken) { _spoken.toList() }
@@ -48,7 +49,11 @@ class FakeVehicleGateway(
     /** Set to false to make the speaker fail: texts are then dropped instead of heard. */
     @Volatile var speakerWorks: Boolean = true
 
-    override val drivingState: StateFlow<DrivingState> = _driving.asStateFlow()
+    /** How often the D1 retry was used, so a screen test can prove the button is wired. */
+    val speechRetries: Int get() = speechRetryCount
+    val navigationRetries: Int get() = navigationRetryCount
+
+    override val drivingState: StateFlow<DrivingStatus> = _driving.asStateFlow()
     override val gear: StateFlow<VehicleGear> = _gear.asStateFlow()
     override val doors: StateFlow<Set<VehicleDoor>> = _doors.asStateFlow()
     override val events: SharedFlow<VehicleEvent> = _events.asSharedFlow()
@@ -56,11 +61,11 @@ class FakeVehicleGateway(
     private val queue = SpeechQueue(
         scope = scope,
         engine = object : SpeechEngine {
-            override suspend fun speak(text: String): Boolean {
-                if (!speakerWorks) return false
+            override suspend fun speak(text: String): SpeechResult {
+                if (!speakerWorks) return SpeechResult.Dropped(SpeechDropReason.EngineUnavailable)
                 synchronized(_spoken) { _spoken += text }
                 if (speechMillis > 0) delay(speechMillis)
-                return true
+                return SpeechResult.Delivered
             }
         },
         settings = { settings },
@@ -71,7 +76,11 @@ class FakeVehicleGateway(
     )
 
     fun setDriving(driving: Boolean) {
-        _driving.value = if (driving) DrivingState.DRIVING else DrivingState.PARKED
+        _driving.value = if (driving) DrivingStatus.Driving else DrivingStatus.Parked
+    }
+
+    fun setDrivingStatus(status: DrivingStatus) {
+        _driving.value = status
     }
 
     fun setGear(value: VehicleGear) {
@@ -84,6 +93,16 @@ class FakeVehicleGateway(
 
     fun arrive() {
         _events.tryEmit(VehicleEvent.Arrived)
+    }
+
+    /** Simulates the gateway reporting that a text could not be read (no engine, engine error). */
+    fun emitSpeechDropped(speechId: String, reason: SpeechDropReason) {
+        _events.tryEmit(VehicleEvent.SpeechDropped(speechId, reason))
+    }
+
+    /** Simulates the navigation service failing outside a route request (init failure, lost connection). */
+    fun emitNavigationUnavailable(code: String) {
+        _events.tryEmit(VehicleEvent.NavigationUnavailable(code))
     }
 
     override fun speak(textKo: String, priority: SpeechPriority, speechId: String?) = queue.enqueue(textKo, priority, speechId)
@@ -101,6 +120,16 @@ class FakeVehicleGateway(
     }
 
     override suspend fun requestTrip(place: Place): TripInfo? = tripInfo
+
+    override fun retrySpeech() {
+        speechRetryCount++
+        speakerWorks = true
+    }
+
+    override fun retryNavigation() {
+        navigationRetryCount++
+        routeFailure = null
+    }
 
     override fun release() = Unit
 }

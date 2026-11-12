@@ -1,13 +1,18 @@
 package ai.hey.session
 
-import ai.hey.model.DrivingState
+import ai.hey.model.DropoffCandidate
+import ai.hey.model.DropoffKind
+import ai.hey.model.LatLng
+import ai.hey.model.QuickReplyId
 import ai.hey.model.TripState
+import ai.hey.vehicle.DrivingStatus
 import ai.hey.vehicle.FakeVehicleGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -169,14 +174,18 @@ class RelayIntegrationTest {
 
         // a driving car must not approve; parked it can
         vehicle.setDriving(true)
-        eventually("driving") { repo.state.value.takeIf { it.driving == DrivingState.DRIVING } }
+        eventually("driving") { repo.state.value.takeIf { it.driving == DrivingStatus.Driving } }
         repo.approveJoin(joinId)
         delay(500)
         assertEquals(TripState.REQUESTED, repo.state.value.view?.state)
         vehicle.setDriving(false)
-        eventually("parked") { repo.state.value.takeIf { it.driving == DrivingState.PARKED } }
-        repo.approveJoin(joinId)
-        eventually("CONNECTED") { repo.state.value.takeIf { it.view?.state == TripState.CONNECTED } }
+        eventually("parked") { repo.state.value.takeIf { it.driving == DrivingStatus.Parked } }
+        // The relay learns about the stop through driving.state; a refusal (it still believed the car was moving)
+        // clears the button, so a second tap is what the driver would do. Retrying here removes that ordering race.
+        eventually("CONNECTED after a parked approve") {
+            if (!repo.state.value.joinInFlight) repo.approveJoin(joinId)
+            repo.state.value.takeIf { it.view?.state == TripState.CONNECTED }
+        }
 
         // lead passenger sends the card
         val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=ja").header("Authorization", "Device $deviceToken").build())
@@ -253,7 +262,51 @@ class RelayIntegrationTest {
         repo.approveJoin("jr_does_not_exist")
         val refused = eventually("error shown") { repo.state.value.takeIf { it.error != null } }
         assertEquals(ai.hey.model.ErrorCode.BAD_REQUEST, refused.error)
-        assertTrue("the join button must be released", !refused.isBusy(Busy.JOIN))
+        assertTrue("the join button must be released", !refused.joinInFlight)
+        repo.stop()
+    }
+
+    /**
+     * Three hands-on commands at once: a stale approve (refused), a drop-off proposal (accepted) and a reply
+     * (accepted). Every key must resolve — none may stay in flight — and the accepted effects must be in the state.
+     */
+    @Test fun concurrentHandsOnCommandsAllResolveTheirKeys() = runBlocking {
+        val vehicle = FakeVehicleGateway(scope)
+        val storage = InMemoryCarStorage(ai.hey.model.CarSettings(plateSuffix = "8765", relayUrl = base))
+        val repo = TripRepository(scope, vehicle, storage, http = http, progressPollMs = 3_600_000)
+        repo.start()
+        eventually("online idle") { repo.state.value.takeIf { it.online && it.view?.state == TripState.IDLE } }
+        val registration = storage.loadRegistration(base)!!
+        val join = post("/v1/c/${registration.carCode}/join", """{"lang":"en","partySize":1}""")
+        val deviceToken = join.getValue("deviceToken").jsonPrimitive.content
+        val joinId = join.getValue("joinRequestId").jsonPrimitive.content
+        val passenger = Passenger(http, base.replace("http", "ws") + "/v1/ws?token=$deviceToken")
+        passenger.open()
+        eventually("REQUESTED") { repo.state.value.takeIf { it.view?.state == TripState.REQUESTED } }
+
+        repo.approveJoin(joinId)
+        eventually("CONNECTED") { repo.state.value.takeIf { it.view?.state == TripState.CONNECTED } }
+        val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=en").header("Authorization", "Device $deviceToken").build())
+            .execute().use { it.body!!.string() }
+        val place = Json.parseToJsonElement(found).jsonArray.first().toString()
+        passenger.send("card.submit", """{"destination":$place,"conditions":["luggage"]}""")
+        eventually("CARD_SENT") { repo.state.value.takeIf { it.view?.state == TripState.CARD_SENT } }
+        passenger.send("request.send", """{"kind":"preset","presetId":"window","clientRef":"race-1"}""")
+        val open = eventually("open question") { repo.state.value.view?.requests?.firstOrNull { it.replyExpected } }
+
+        val candidate = DropoffCandidate("default", DropoffKind.Default, null, null, null, "기본 위치", "기본 위치", LatLng(37.5655, 126.9811), 0.0)
+        val beforeVersion = repo.state.value.view?.dropoff?.version ?: 0
+        val beforeReplies = repo.state.value.view?.replies?.size ?: 0
+        listOf(
+            launch(Dispatchers.IO) { repo.approveJoin("jr_stale_${UUID.randomUUID()}") },
+            launch(Dispatchers.IO) { repo.proposeDropoff(candidate, null) },
+            launch(Dispatchers.IO) { repo.sendReply(open.requestId, QuickReplyId.Yes) },
+        ).forEach { it.join() }
+
+        // The proposal and reply clear through snapshots; the stale approve clears through its error ref.
+        eventually("all command keys cleared") { repo.state.value.takeIf { it.commands.isEmpty() } }
+        assertEquals(beforeVersion + 1, repo.state.value.view?.dropoff?.version)
+        assertTrue("the reply must land", (repo.state.value.view?.replies?.size ?: 0) > beforeReplies)
         repo.stop()
     }
 }

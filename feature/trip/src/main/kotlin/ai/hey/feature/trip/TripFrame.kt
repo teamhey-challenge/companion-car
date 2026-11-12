@@ -4,7 +4,7 @@ import ai.hey.designsystem.component.CarFrame
 import ai.hey.designsystem.component.HeyBanner
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.StatusStrip
-import ai.hey.model.DrivingState
+import ai.hey.session.CarPhase
 import ai.hey.session.CarUiState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,7 +23,7 @@ internal fun TripFrame(
     content: @Composable () -> Unit,
 ) {
     val view = state.view
-    val driving = state.driving == DrivingState.DRIVING
+    val driving = state.phase is CarPhase.Driving
     val label = stringResource(
         when {
             driving -> R.string.trip_status_driving

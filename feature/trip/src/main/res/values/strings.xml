@@ -21,6 +21,8 @@
     <string name="trip_waiting_registering">차량을 등록하고 있어요</string>
     <string name="trip_waiting_register_failed_title">차량을 등록하지 못했어요</string>
     <string name="trip_waiting_register_failed_message">인터넷을 확인한 뒤 앱을 다시 열어 주세요</string>
+    <string name="trip_waiting_speech_unavailable">음성 안내를 사용할 수 없어요. 다시 시도해 주세요</string>
+    <string name="trip_waiting_navi_unavailable">내비게이션을 사용할 수 없어요. 다시 시도해 주세요</string>
     <string name="trip_greeting_en">Scan the QR code to ride with HEY</string>
     <string name="trip_greeting_ja">QRコードを読み取ってください</string>
     <string name="trip_greeting_zh">请扫描二维码</string>

@@ -6,7 +6,6 @@ import ai.hey.feature.trip.TripScreen
 import ai.hey.feature.trip.clockLabel
 import ai.hey.feature.trip.rememberNowMillis
 import ai.hey.feature.trip.toStrip
-import ai.hey.model.DrivingState
 import ai.hey.model.TripState
 import ai.hey.session.Panel
 import android.Manifest
@@ -31,7 +30,7 @@ class MainActivity : ComponentActivity() {
             HeyTheme(dark = state.settings.dark) {
                 // Settings only while parked, and a connection request always wins over it: its 5 minutes keep running.
                 val joinWaiting = state.view?.state == TripState.REQUESTED && state.view?.pendingJoin != null
-                val showSettings = state.panel == Panel.Settings && state.driving == DrivingState.PARKED && !joinWaiting
+                val showSettings = state.panel == Panel.Settings && state.parked && !joinWaiting
                 if (showSettings) {
                     BackHandler(onBack = repository::closeSettings)
                     SettingsScreen(
@@ -43,7 +42,7 @@ class MainActivity : ComponentActivity() {
                         clock = clockLabel(now),
                     )
                 } else {
-                    TripScreen(state, repository, now)
+                    TripScreen(state, repository, repository, now)
                 }
             }
         }

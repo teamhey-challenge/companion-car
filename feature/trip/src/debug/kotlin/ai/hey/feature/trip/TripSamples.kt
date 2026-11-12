@@ -19,6 +19,7 @@ import ai.hey.model.Place
 import ai.hey.model.PresetId
 import ai.hey.model.ProgressInfo
 import ai.hey.model.ProposalStatus
+import ai.hey.model.QuickReplyId
 import ai.hey.model.RequestItem
 import ai.hey.model.RequestKind
 import ai.hey.model.RequestState
@@ -27,9 +28,14 @@ import ai.hey.model.Temperature
 import ai.hey.model.TripState
 import ai.hey.session.Candidates
 import ai.hey.session.CarUiState
+import ai.hey.session.CommandKey
+import ai.hey.session.CommandState
 import ai.hey.session.ConnectionStatus
 import ai.hey.session.DropoffDraft
 import ai.hey.session.Panel
+import ai.hey.session.VehicleIssue
+import ai.hey.vehicle.DrivingStatus
+import ai.hey.vehicle.SpeechDropReason
 
 /**
  * States every screen is previewed and snapshotted in. Real-shaped data (a hotel in Jung-gu, long Korean names),
@@ -121,14 +127,14 @@ object TripSamples {
 
     fun state(
         view: CarView? = base,
-        driving: DrivingState = DrivingState.PARKED,
+        driving: DrivingStatus = DrivingStatus.Parked,
         connection: ConnectionStatus = ConnectionStatus.Online,
         panel: Panel = Panel.None,
         qr: String? = "https://hey.example/c/K7M2QX4R",
         build: CarUiState.() -> CarUiState = { this },
     ): CarUiState = CarUiState(
         connection = connection,
-        view = view?.copy(driving = driving),
+        view = view?.copy(driving = if (driving == DrivingStatus.Parked) DrivingState.PARKED else DrivingState.DRIVING),
         driving = driving,
         qrUrl = qr,
         panel = panel,
@@ -138,6 +144,8 @@ object TripSamples {
     val waiting = state()
     val waitingOffline = state(connection = ConnectionStatus.Reconnecting)
     val registerFailed = state(view = null, connection = ConnectionStatus.RegistrationFailed, qr = null)
+    val waitingSpeechIssue = state { copy(issues = setOf(VehicleIssue.Speech(SpeechDropReason.EngineUnavailable))) }
+    val waitingNaviIssue = state { copy(issues = setOf(VehicleIssue.Navi("NAVI_UNAVAILABLE"))) }
 
     // ---- D2
     private val requested = base.copy(
@@ -147,7 +155,7 @@ object TripSamples {
         passengerLang = Lang.En,
     )
     val join = state(requested)
-    val joinDriving = state(requested, DrivingState.DRIVING)
+    val joinDriving = state(requested, DrivingStatus.Driving)
 
     // ---- D3
     private val connected = base.copy(state = TripState.CONNECTED, tripId = "trp_1", partySize = 2, passengerLang = Lang.Ja, deviceCount = 1)
@@ -157,10 +165,10 @@ object TripSamples {
     val cardFourConditions = state(cardSent.copy(card = fourConditionsCard)) { copy(changedConditions = setOf(ConditionId.Temperature)) }
     val cardLong = state(cardSent.copy(card = longCard))
     val cardRouteStarted = state(cardSent.copy(route = route))
-    val cardRouteFailed = state(cardSent) { copy(routeFailed = true) }
+    val cardRouteFailed = state(cardSent) { copy(commands = mapOf(CommandKey.StartRoute to CommandState.Failed("NAVI_UNAVAILABLE"))) }
     val cardRouteStale = state(
         cardSent.copy(route = route, routeStale = true, agreedDropoff = AgreedDropoff(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구")),
-        driving = DrivingState.PARKED,
+        driving = DrivingStatus.Parked,
     )
 
     // ---- D4
@@ -184,12 +192,12 @@ object TripSamples {
         route = route,
         progress = ProgressInfo(1_380, 14_200, stale = false),
     )
-    val drivingNone = state(inTrip, DrivingState.DRIVING)
-    val drivingRequest = state(inTrip.copy(requests = requests), DrivingState.DRIVING) { copy(lastSpokenKo = "창문을 열어도 될까요?", progressAt = NOW) }
-    val drivingStale = state(inTrip.copy(requests = requests), DrivingState.DRIVING) {
+    val drivingNone = state(inTrip, DrivingStatus.Driving)
+    val drivingRequest = state(inTrip.copy(requests = requests), DrivingStatus.Driving) { copy(lastSpokenKo = "창문을 열어도 될까요?", progressAt = NOW) }
+    val drivingStale = state(inTrip.copy(requests = requests), DrivingStatus.Driving) {
         copy(lastSpokenKo = "창문을 열어도 될까요?", progressAt = NOW - 600_000)
     }
-    val drivingLong = state(inTrip.copy(card = longCard, requests = manyRequests), DrivingState.DRIVING) {
+    val drivingLong = state(inTrip.copy(card = longCard, requests = manyRequests), DrivingStatus.Driving) {
         copy(lastSpokenKo = manyRequests.last().text)
     }
 
@@ -197,7 +205,9 @@ object TripSamples {
     val requestsPlain = state(inTrip.copy(requests = requests))
     val requestsMany = state(inTrip.copy(requests = manyRequests))
     val requestsPin = state(inTrip.copy(requests = requests, dropoff = pin, pendingPins = listOf(pin)))
-    val requestsReplying = state(inTrip.copy(requests = requests)) { copy(busy = setOf("reply:req_2:Yes")) }
+    val requestsReplying = state(inTrip.copy(requests = requests)) {
+        copy(commands = mapOf(CommandKey.Reply("req_2", QuickReplyId.Yes, 0) to CommandState.InFlight("env")))
+    }
     val requestsNoticeOnly = state(inTrip.copy(requests = requests.filter { !it.replyExpected }))
 
     // ---- D7

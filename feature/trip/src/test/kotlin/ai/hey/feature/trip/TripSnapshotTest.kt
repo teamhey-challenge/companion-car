@@ -25,6 +25,8 @@ private val shots: List<Pair<String, CarUiState>> = listOf(
     "d1-waiting" to TripSamples.waiting,
     "d1-waiting-offline" to TripSamples.waitingOffline,
     "d1-register-failed" to TripSamples.registerFailed,
+    "d1-speech-unavailable" to TripSamples.waitingSpeechIssue,
+    "d1-navi-unavailable" to TripSamples.waitingNaviIssue,
     "d2-join-parked" to TripSamples.join,
     "d2-join-driving-d5" to TripSamples.joinDriving,
     "d3-card-waiting" to TripSamples.cardWaiting,
@@ -60,7 +62,7 @@ private fun Paparazzi.recordAll() {
     shots.forEach { (name, state) ->
         listOf(true, false).forEach { dark ->
             snapshot("$name-${if (dark) "dark" else "light"}") {
-                HeyTheme(dark) { TripScreen(state, NoCommands, TripSamples.NOW) }
+                HeyTheme(dark) { TripScreen(state, NoCommands, NoCommands, TripSamples.NOW) }
             }
         }
     }

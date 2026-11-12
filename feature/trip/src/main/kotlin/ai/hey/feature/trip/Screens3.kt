@@ -28,15 +28,14 @@ import ai.hey.designsystem.theme.HeyTone
 import ai.hey.model.HeyConfig
 import ai.hey.model.LatLng
 import ai.hey.model.QuickReplyId
-import ai.hey.model.isOpenQuestion
+import ai.hey.model.distanceTo
 import ai.hey.model.pendingRequestCount
 import ai.hey.model.replyTarget
-import ai.hey.model.distanceTo
-import ai.hey.session.Busy
 import ai.hey.session.CarCommands
+import ai.hey.session.CarPhase
 import ai.hey.session.CarUiState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import ai.hey.session.CommandKey
+import ai.hey.session.ParkedCommands
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -74,13 +73,20 @@ internal fun DrivingScreen(state: CarUiState, nowMillis: Long, modifier: Modifie
 // ================================================================ D6 requests while parked
 
 @Composable
-internal fun RequestsScreen(state: CarUiState, commands: CarCommands, nowMillis: Long, modifier: Modifier = Modifier) {
-    val view = state.view
-    val requests = view?.requests.orEmpty().reversed()
-    val target = view?.replyTarget
-    val pin = view?.pendingPins?.firstOrNull()
+internal fun RequestsScreen(
+    state: CarUiState,
+    phase: CarPhase.Requests,
+    parked: ParkedCommands,
+    commands: CarCommands,
+    nowMillis: Long,
+    modifier: Modifier = Modifier,
+) {
+    val view = phase.view
+    val requests = view.requests.reversed()
+    val target = view.replyTarget
+    val pin = view.pendingPins.firstOrNull()
     val replies = quickReplies()
-    val busyReply = state.busy.firstOrNull { it.startsWith("reply:") }?.split(':')?.getOrNull(2)
+    val busyReply = state.replyInFlight?.replyId?.name
     TripFrame(
         state = state,
         nowMillis = nowMillis,
@@ -89,12 +95,12 @@ internal fun RequestsScreen(state: CarUiState, commands: CarCommands, nowMillis:
             HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
                 HeyButton(
                     stringResource(R.string.trip_requests_arrive),
-                    commands::arrive,
+                    parked::arrive,
                     variant = HeyButtonVariant.Secondary,
                     size = HeyButtonSize.Large,
                     icon = HeyIcons.Flag,
-                    loading = state.isBusy(Busy.ARRIVE),
-                    enabled = state.parked,
+                    loading = state.isLoading(CommandKey.Arrive),
+                    enabled = state.online,
                 )
                 HeyButton(
                     stringResource(R.string.trip_requests_close),
@@ -127,9 +133,9 @@ internal fun RequestsScreen(state: CarUiState, commands: CarCommands, nowMillis:
                 VStack(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
                     QuickReplyGrid(
                         replies = replies,
-                        onReply = { reply -> commands.sendReply(target?.requestId, QuickReplyId.valueOf(reply.id)) },
+                        onReply = { reply -> parked.sendReply(target?.requestId, QuickReplyId.valueOf(reply.id)) },
                         modifier = Modifier.fillWidth(),
-                        enabled = state.parked && state.online,
+                        enabled = state.online,
                         loadingId = busyReply,
                     )
                     if (pin != null) {
@@ -137,8 +143,8 @@ internal fun RequestsScreen(state: CarUiState, commands: CarCommands, nowMillis:
                         PassengerPinCard(
                             label = pin.label,
                             distanceText = from?.let { distanceText(it.distanceTo(pin.point)) }.orEmpty(),
-                            onAccept = { commands.decidePin(pin.version, true) },
-                            onDecline = { commands.decidePin(pin.version, false) },
+                            onAccept = { parked.decidePin(pin.version, true) },
+                            onDecline = { parked.decidePin(pin.version, false) },
                             modifier = Modifier.fillWidth(),
                         )
                     }
@@ -152,19 +158,26 @@ internal fun RequestsScreen(state: CarUiState, commands: CarCommands, nowMillis:
 // ================================================================ D7 arrived
 
 @Composable
-internal fun ArrivedScreen(state: CarUiState, commands: CarCommands, nowMillis: Long, modifier: Modifier = Modifier) {
-    val view = state.view
-    val summary = view?.summary
-    val agreed = view?.agreedDropoff
+internal fun ArrivedScreen(
+    state: CarUiState,
+    phase: CarPhase.Arrived,
+    parked: ParkedCommands,
+    commands: CarCommands,
+    nowMillis: Long,
+    modifier: Modifier = Modifier,
+) {
+    val view = phase.view
+    val summary = view.summary
+    val agreed = view.agreedDropoff
     val none = stringResource(R.string.trip_arrived_none)
     val rows = buildList {
-        val destination = summary?.destination ?: view?.card?.destination
+        val destination = summary?.destination ?: view.card?.destination
         add(stringResource(R.string.trip_arrived_row_destination) to (destination?.nameKo ?: none))
         if (agreed != null) add(stringResource(R.string.trip_arrived_row_dropoff) to agreed.label)
         summary?.elapsedSec?.let { add(stringResource(R.string.trip_arrived_row_duration) to durationText(it)) }
         summary?.routeDistanceM?.let { add(stringResource(R.string.trip_arrived_row_distance) to distanceText(it)) }
-        add(stringResource(R.string.trip_arrived_row_requests) to stringResource(R.string.trip_format_count, view?.requests?.size ?: 0))
-        add(stringResource(R.string.trip_arrived_row_replies) to stringResource(R.string.trip_format_count, view?.replies?.size ?: 0))
+        add(stringResource(R.string.trip_arrived_row_requests) to stringResource(R.string.trip_format_count, view.requests.size))
+        add(stringResource(R.string.trip_arrived_row_replies) to stringResource(R.string.trip_format_count, view.replies.size))
     }
     val navDiffers = agreed != null && view.card != null && view.routeStale
     HeyLayered(
@@ -174,7 +187,7 @@ internal fun ArrivedScreen(state: CarUiState, commands: CarCommands, nowMillis: 
                 HeyDialog(
                     title = stringResource(R.string.trip_end_dialog_title),
                     message = stringResource(R.string.trip_end_dialog_message),
-                    confirm = HeyDialogAction(stringResource(R.string.trip_end_dialog_confirm), commands::endTrip),
+                    confirm = HeyDialogAction(stringResource(R.string.trip_end_dialog_confirm), parked::endTrip),
                     dismiss = HeyDialogAction(stringResource(R.string.trip_end_dialog_cancel), commands::closeEndDialog),
                     modifier = Modifier.fillSize(),
                     danger = true,
@@ -192,11 +205,11 @@ internal fun ArrivedScreen(state: CarUiState, commands: CarCommands, nowMillis: 
                 HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
                     HeyButton(
                         stringResource(R.string.trip_arrived_end),
-                        commands::openEndDialog,
+                        parked::openEndDialog,
                         size = HeyButtonSize.Large,
                         icon = HeyIcons.Check,
-                        enabled = state.parked && state.online,
-                        loading = state.isBusy(Busy.END),
+                        enabled = state.online,
+                        loading = state.isLoading(CommandKey.End),
                     )
                 }
             },

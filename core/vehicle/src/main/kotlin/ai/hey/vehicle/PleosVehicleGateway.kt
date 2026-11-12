@@ -1,6 +1,5 @@
 package ai.hey.vehicle
 
-import ai.hey.model.DrivingState
 import ai.hey.model.HeyConfig
 import ai.hey.model.HeyLog
 import ai.hey.model.Place
@@ -65,15 +64,15 @@ class PleosVehicleGateway(
     private val app = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
 
-    // Fails closed: DRIVING until android.car says PARKED.
-    private val _driving = MutableStateFlow(DrivingState.DRIVING)
+    // Fails closed: Unknown (treated as Driving) until android.car says Parked.
+    private val _driving = MutableStateFlow<DrivingStatus>(DrivingStatus.Unknown)
     private val _gear = MutableStateFlow(VehicleGear.Unknown)
     private val _doors = MutableStateFlow<Set<VehicleDoor>>(emptySet())
     private val _events = MutableSharedFlow<VehicleEvent>(extraBufferCapacity = 64)
 
     @Volatile private var settings = SpeechSettings()
 
-    override val drivingState: StateFlow<DrivingState> = _driving.asStateFlow()
+    override val drivingState: StateFlow<DrivingStatus> = _driving.asStateFlow()
     override val gear: StateFlow<VehicleGear> = _gear.asStateFlow()
     override val doors: StateFlow<Set<VehicleDoor>> = _doors.asStateFlow()
     override val events: SharedFlow<VehicleEvent> = _events.asSharedFlow()
@@ -111,7 +110,9 @@ class PleosVehicleGateway(
             if (errorCode == NaviErrorCode.CAUSE_SEARCH_TRIP) {
                 pendingTrip.getAndSet(null)?.complete(null)
             } else {
-                pendingRoute.getAndSet(null)?.complete(RouteResult.Failed(errorCode.name))
+                val route = pendingRoute.getAndSet(null)
+                if (route != null) route.complete(RouteResult.Failed(errorCode.name))
+                else _events.tryEmit(VehicleEvent.NavigationUnavailable(errorCode.name))
             }
         }
 
@@ -131,8 +132,8 @@ class PleosVehicleGateway(
             CarUx.start(
                 app,
                 main,
-                onDriving = { _driving.value = if (it) DrivingState.DRIVING else DrivingState.PARKED },
-                onLost = { _driving.value = DrivingState.DRIVING },
+                onDriving = { _driving.value = if (it) DrivingStatus.Driving else DrivingStatus.Parked },
+                onLost = { _driving.value = DrivingStatus.Unknown },
             )
         }
         guard("navigation") { connectNavi() }
@@ -152,7 +153,10 @@ class PleosVehicleGateway(
         helper.addListener(naviListener)
         helper.initialize(
             { naviReady = true },
-            { e -> HeyLog.w(TAG, "navigation service not connected: ${e.message}") },
+            { e ->
+                HeyLog.w(TAG, "navigation service not connected: ${e.message}")
+                _events.tryEmit(VehicleEvent.NavigationUnavailable("NAVI_INIT_FAILED"))
+            },
         )
         navi = helper
     }
@@ -212,6 +216,7 @@ class PleosVehicleGateway(
         val helper = navi
         if (helper == null || !naviReady) {
             HeyLog.w(TAG, "startRoute: navigation service not connected")
+            _events.tryEmit(VehicleEvent.NavigationUnavailable("NAVI_UNAVAILABLE"))
             return@withLock RouteResult.Failed("NAVI_UNAVAILABLE")
         }
         val result = CompletableDeferred<RouteResult>()
@@ -257,6 +262,20 @@ class PleosVehicleGateway(
         val outcome = withTimeoutOrNull(TRIP_TIMEOUT_MS) { result.await() }
         pendingTrip.compareAndSet(result, null)
         outcome
+    }
+
+    override fun retrySpeech() {
+        ttsEngine.reset()
+    }
+
+    override fun retryNavigation() {
+        guard("retry navigation") {
+            navi?.removeListener(naviListener)
+            navi?.release()
+            navi = null
+            naviReady = false
+            connectNavi()
+        }
     }
 
     override fun release() {
@@ -327,10 +346,10 @@ internal class PleosSpeechEngine(private val context: Context) : SpeechEngine {
         return ready
     }
 
-    override suspend fun speak(text: String): Boolean {
+    override suspend fun speak(text: String): SpeechResult {
         if (!ensureReady()) {
             HeyLog.w(TAG, "speech engine not available, text not read")
-            return false
+            return SpeechResult.Dropped(SpeechDropReason.EngineUnavailable)
         }
         val done = CompletableDeferred<Boolean>()
         current.set(done)
@@ -339,11 +358,20 @@ internal class PleosSpeechEngine(private val context: Context) : SpeechEngine {
         } catch (t: Throwable) {
             HeyLog.w(TAG, "tts speak threw ${t.javaClass.simpleName}: ${t.message}")
             current.compareAndSet(done, null)
-            return false
+            return SpeechResult.Dropped(SpeechDropReason.EngineError)
         }
         val ok = withTimeoutOrNull(SPEECH_TIMEOUT_MS) { done.await() } ?: false
         current.compareAndSet(done, null)
-        return ok
+        return if (ok) SpeechResult.Delivered else SpeechResult.Dropped(SpeechDropReason.EngineError)
+    }
+
+    /** D1 retry: forget the backoff and drop the engine, so the next utterance initialises it again. */
+    fun reset() {
+        tts?.removeEventListener(events)
+        tts?.release()
+        tts = null
+        ready = false
+        retryAfter = 0
     }
 
     fun release() {

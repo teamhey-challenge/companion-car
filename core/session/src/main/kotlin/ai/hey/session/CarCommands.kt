@@ -5,9 +5,33 @@ import ai.hey.model.DropoffCandidate
 import ai.hey.model.DropoffReasonId
 import ai.hey.model.QuickReplyId
 
-/** Everything a screen can ask for. Screens never reach the socket or the vehicle themselves. */
+/**
+ * Commands that are safe in any phase: speech, local view state, settings, and recovering a vehicle service.
+ * Nothing here changes the trip, so a moving car may use all of it.
+ */
 interface CarCommands {
-    // ---- relay commands (all of these need a parked car and are refused otherwise)
+    fun replay(textKo: String)
+
+    /** Reads a request again; a request that was never heard is marked spoken when the reading ends. */
+    fun replayRequest(requestId: String)
+
+    fun closeDropoff()
+    fun selectCandidate(candidateId: String)
+    fun selectReason(index: Int)
+    fun dismissRequests()
+    fun closeSettings()
+    fun closeEndDialog()
+    fun updateSettings(transform: (CarSettings) -> CarSettings)
+
+    /** D1 retry for a navigation or speech problem; safe while moving. */
+    fun retryVehicleIssue(issue: VehicleIssue)
+}
+
+/**
+ * Commands that need the driver's hands. Only [CarPhase.Parked.requireParked] can hand these out, so a screen cannot
+ * reach them from a driving phase even if a stale button tap arrives.
+ */
+interface ParkedCommands {
     fun approveJoin(joinRequestId: String)
     fun declineJoin(joinRequestId: String)
     fun recheckCard()
@@ -19,34 +43,16 @@ interface CarCommands {
     fun sendReply(requestId: String?, replyId: QuickReplyId)
     fun arrive()
     fun endTrip()
+    fun openDropoff()
+    fun openSettings()
+    fun openEndDialog()
 
-    // ---- vehicle
-    fun replay(textKo: String)
-
-    /** Reads a request again; a request that was never heard is marked spoken when the reading ends. */
-    fun replayRequest(requestId: String)
-
-    // ---- registration
     /** Drops the registration this relay no longer knows and registers again (the QR sticker changes). */
     fun reregister()
-
-    // ---- local UI state
-    fun openDropoff()
-    fun closeDropoff()
-    fun selectCandidate(candidateId: String)
-    fun selectReason(index: Int)
-    fun dismissRequests()
-    fun openSettings()
-    fun closeSettings()
-    fun openEndDialog()
-    fun closeEndDialog()
-
-    // ---- settings (device only)
-    fun updateSettings(transform: (CarSettings) -> CarSettings)
 }
 
 /** For previews and snapshots. */
-object NoCommands : CarCommands {
+object NoCommands : CarCommands, ParkedCommands {
     override fun approveJoin(joinRequestId: String) = Unit
     override fun declineJoin(joinRequestId: String) = Unit
     override fun recheckCard() = Unit
@@ -69,4 +75,5 @@ object NoCommands : CarCommands {
     override fun openEndDialog() = Unit
     override fun closeEndDialog() = Unit
     override fun updateSettings(transform: (CarSettings) -> CarSettings) = Unit
+    override fun retryVehicleIssue(issue: VehicleIssue) = Unit
 }

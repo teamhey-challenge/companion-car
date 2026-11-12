@@ -1,7 +1,7 @@
 package ai.hey.feature.trip
 
-import ai.hey.model.DrivingState
 import ai.hey.session.Panel
+import ai.hey.vehicle.DrivingStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -28,7 +28,16 @@ class ScreenChoiceTest {
             TripSamples.waiting, TripSamples.join, TripSamples.cardOk, TripSamples.dropoffSelected,
             TripSamples.requestsPlain, TripSamples.arrivedAgreed,
         ).forEach { s ->
-            assertEquals(TripScreenId.D5Driving, id(s.copy(driving = DrivingState.DRIVING)))
+            assertEquals(TripScreenId.D5Driving, id(s.copy(driving = DrivingStatus.Driving)))
+        }
+    }
+
+    @Test fun unknownDrivingIsTreatedAsDriving() {
+        listOf(
+            TripSamples.waiting, TripSamples.join, TripSamples.cardOk, TripSamples.dropoffSelected,
+            TripSamples.requestsPlain, TripSamples.arrivedAgreed,
+        ).forEach { s ->
+            assertEquals(TripScreenId.D5Driving, id(s.copy(driving = DrivingStatus.Unknown)))
         }
     }
 
@@ -42,4 +51,9 @@ class ScreenChoiceTest {
     @Test fun noticesOnlyStayOnD3() = assertEquals(TripScreenId.D3Card, id(TripSamples.requestsNoticeOnly))
 
     @Test fun arrivedIsD7() = assertEquals(TripScreenId.D7Arrived, id(TripSamples.arrivedAgreed))
+
+    @Test fun theSettingsPanelIsNotATripScreenChoice() {
+        // D8 is chosen by the app before TripScreen; the trip phase still says D3 for the same snapshot.
+        assertEquals(TripScreenId.D3Card, id(TripSamples.cardOk.copy(panel = Panel.Settings)))
+    }
 }

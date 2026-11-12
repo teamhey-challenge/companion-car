@@ -198,11 +198,17 @@ hey-taxi/
 
 ## 6. 차량 앱 구조
 
-- `:core:vehicle` — `VehicleGateway` 인터페이스: `drivingState: StateFlow<DrivingState>`, `speak(textKo, priority)`, `startRoute(place): RouteResult`, `requestTrip(place): TripInfo?`, `gear`, `doors`. 구현 `PleosVehicleGateway`(Pleos SDK: TextToSpeech ON_DEVICE `Locale.KOREA`, NaviHelper `requestRoute`/`requestTrip`, `CarUxRestrictionsManager`, Vehicle Gear·Door)와 `FakeVehicleGateway`(Preview·시험·Pleos가 아닌 기기용). 화면은 이 인터페이스만 안다.
+- `:core:vehicle` — `VehicleGateway` 인터페이스: `drivingState: StateFlow<DrivingStatus>`, `speak(textKo, priority)`, `startRoute(place): RouteResult`, `requestTrip(place): TripInfo?`, `retrySpeech()`, `retryNavigation()`, `gear`, `doors`. 구현 `PleosVehicleGateway`(Pleos SDK: TextToSpeech ON_DEVICE `Locale.KOREA`, NaviHelper `requestRoute`/`requestTrip`, `CarUxRestrictionsManager`, Vehicle Gear·Door)와 `FakeVehicleGateway`(Preview·시험·Pleos가 아닌 기기용). 화면은 이 인터페이스만 안다.
+  - 결과는 참·거짓이 아니라 타입이다. 음성은 `SpeechResult.Delivered` / `Dropped(reason)`(Blank·QueueOverflow·EngineUnavailable·EngineError), 경로는 `RouteResult.Started` / `Failed(code)`. 서비스가 없을 때 성공으로 답하지 않는다.
+  - 주행 상태는 `DrivingStatus.Unknown | Parked | Driving`이다. `Unknown`(차 서비스가 아직 답하지 않았거나 사라짐)은 어디서나 `Driving`과 똑같이 다룬다. 게이트웨이 기본값은 `Unknown`이다.
+  - 내비 초기화 실패·요청 없는 내비 오류·음성 엔진 없음은 `VehicleEvent.NavigationUnavailable` / `SpeechDropped`로 올라가 D1 배너와 "다시 시도"(`retryNavigation`/`retrySpeech`)로 이어진다.
 - `:core:session` — OkHttp WebSocket 클라이언트, 재연결(1·2·4·8·15초), ack, `TripRepository`(`StateFlow<CarUiState>`), 음성 큐(`speech.*` 정책).
-- `:core:model` — 프로토콜 Kotlin 타입(kotlinx.serialization), `HeyConfig`.
+  - 상태 기계는 하나다. `phaseOf(view, driving, local): CarPhase`가 스냅숏·주행 상태·로컬 플래그에서 화면 단계를 계산하고, 화면 선택은 그 결과만 본다(`when`은 빠짐없이, `else` 없음). 새 `TripState`를 더하면 이 함수가 컴파일되지 않는다.
+  - 주행 잠금은 조건문이 아니라 타입이다. 손이 필요한 명령(`approveJoin`·`declineJoin`·`startRoute`·`proposeDropoff`·`decidePin`·`sendReply`·`arrive`·`endTrip`·`recheckCard`·`openDropoff`·`openSettings`·`openEndDialog`·`reregister`)은 `ParkedCommands`에만 있고, 그 값은 `CarPhase.Parked.requireParked(...)`로만 얻는다. `CarPhase.Driving`에는 그 메서드가 없어 주행 분기에서는 컴파일되지 않는다. 저장소도 한 번 더 막는다(테스트 seam 포함).
+  - 버튼 하나의 진행은 `Map<CommandKey, CommandState>` 하나에 있다(`Idle`은 항목 없음). 해제 규칙은 셋뿐이다: ① 그 명령의 결과가 스냅숏에 보임 ② 릴레이가 그 봉투(`ref`)를 거절함 ③ 20초 안전 시간 초과. 무관한 스냅숏은 버튼을 풀지 않는다.
+- `:core:model` — 프로토콜 Kotlin 타입(kotlinx.serialization), `HeyConfig`. 서버와 주고받는 `DrivingState`(`PARKED`/`DRIVING`)는 프로토콜 값이고, 앱 안의 `DrivingStatus`와 다른 타입이다.
 - `:core:designsystem` — Compose 부품, `HeyTheme`, Paparazzi 시험. 토큰(`HeyTokens`)은 `ai.hey:tokens-compose`(hey-shared `android/`, includeBuild)가 준다.
-- `:feature:trip` — D1~D7 화면. `:feature:settings` — D8.
+- `:feature:trip` — D1~D7 화면. 화면은 `CarUiState.phase`로 갈라지고, 정차 단계에서만 `requireParked`로 얻은 `ParkedCommands`를 받는다. `:feature:settings` — D8.
 - `:app` — `MainActivity`(`distractionOptimized`), 내비게이션, DI(수동 생성자 주입), 포그라운드 서비스.
 
 빌드: AGP 8.11.2, Kotlin 2.1.0, Compose BOM 2025.12.01, Paparazzi 2.0.0-alpha02, Gradle 8.13, JDK 17, compileSdk 36, minSdk 28, targetSdk 34. Pleos Maven `https://nexus-playground.pleos.ai/repository/maven-releases/`, `android.car.jar`는 `compileOnly`.

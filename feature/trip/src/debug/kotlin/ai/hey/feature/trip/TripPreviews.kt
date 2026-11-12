@@ -10,12 +10,14 @@ private const val SPEC = "spec:width=1600dp,height=900dp,dpi=160"
 
 @Composable
 private fun Shown(state: CarUiState, dark: Boolean = true) {
-    HeyTheme(dark) { TripScreen(state, NoCommands, TripSamples.NOW) }
+    HeyTheme(dark) { TripScreen(state, NoCommands, NoCommands, TripSamples.NOW) }
 }
 
 @Preview(name = "D1 waiting", device = SPEC) @Composable private fun D1Waiting() = Shown(TripSamples.waiting)
 @Preview(name = "D1 offline", device = SPEC) @Composable private fun D1Offline() = Shown(TripSamples.waitingOffline)
 @Preview(name = "D1 register failed", device = SPEC) @Composable private fun D1RegisterFailed() = Shown(TripSamples.registerFailed)
+@Preview(name = "D1 speech unavailable", device = SPEC) @Composable private fun D1Speech() = Shown(TripSamples.waitingSpeechIssue)
+@Preview(name = "D1 navi unavailable", device = SPEC) @Composable private fun D1Navi() = Shown(TripSamples.waitingNaviIssue)
 @Preview(name = "D2 join parked", device = SPEC) @Composable private fun D2Join() = Shown(TripSamples.join)
 @Preview(name = "D3 no card", device = SPEC) @Composable private fun D3NoCard() = Shown(TripSamples.cardWaiting)
 @Preview(name = "D3 card", device = SPEC) @Composable private fun D3Card() = Shown(TripSamples.cardOk)

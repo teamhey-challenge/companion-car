@@ -1,6 +1,5 @@
 package ai.hey.vehicle
 
-import ai.hey.model.DrivingState
 import ai.hey.model.HeyConfig
 import ai.hey.model.Place
 import ai.hey.model.RouteInfo
@@ -17,6 +16,37 @@ enum class VehicleDoor { DriverRow1, PassengerRow1, Row2Left, Row2Right }
 /** Remaining distance/time of the running navigation, as reported by the navigation service. */
 data class TripInfo(val etaSec: Int, val distanceM: Int)
 
+/**
+ * The car's own motion as the gateway knows it. [Unknown] is not "probably parked": the car service has not answered
+ * yet, or has gone away. Every consumer treats it exactly like [Driving], so no hands-on action is offered on a guess.
+ */
+sealed interface DrivingStatus {
+    data object Unknown : DrivingStatus
+    data object Parked : DrivingStatus
+    data object Driving : DrivingStatus
+}
+
+/** Why a text was not read to the end. */
+enum class SpeechDropReason {
+    /** The text was blank; there was nothing to read. */
+    Blank,
+
+    /** More waiting texts than the queue allows; this one was pushed out. */
+    QueueOverflow,
+
+    /** No on-device speech engine (not installed, not initialised, still backing off). */
+    EngineUnavailable,
+
+    /** The engine started but reported an error or stopped before the end. */
+    EngineError,
+}
+
+/** What the speech engine did with one text. */
+sealed interface SpeechResult {
+    data object Delivered : SpeechResult
+    data class Dropped(val reason: SpeechDropReason) : SpeechResult
+}
+
 sealed interface RouteResult {
     data class Started(val route: RouteInfo) : RouteResult
     data class Failed(val code: String) : RouteResult
@@ -26,11 +56,14 @@ sealed interface VehicleEvent {
     /** The text with this id was heard (read to the end by the speaker). Never emitted for text that was not spoken. */
     data class SpeechDone(val speechId: String) : VehicleEvent
 
-    /** The text with this id was pushed out of a full queue, or the speech engine could not read it. */
-    data class SpeechDropped(val speechId: String) : VehicleEvent
+    /** The text with this id was not heard; [reason] says why. */
+    data class SpeechDropped(val speechId: String, val reason: SpeechDropReason) : VehicleEvent
 
     /** The navigation service reported arrival at the destination. */
     data object Arrived : VehicleEvent
+
+    /** The navigation service is missing, failed to initialise, or reported an error with no request outstanding. */
+    data class NavigationUnavailable(val code: String) : VehicleEvent
 }
 
 /**
@@ -39,10 +72,10 @@ sealed interface VehicleEvent {
  */
 interface VehicleGateway {
     /**
-     * Fails closed: the Pleos gateway reports DRIVING until the car service has said otherwise (and again when it
-     * goes away), so hands-on actions are never offered on a guess.
+     * Fails closed: [DrivingStatus.Unknown] until the car service has said otherwise (and again when it goes away),
+     * so hands-on actions are never offered on a guess.
      */
-    val drivingState: StateFlow<DrivingState>
+    val drivingState: StateFlow<DrivingStatus>
     val gear: StateFlow<VehicleGear>
 
     /** Doors that are currently open. */
@@ -65,6 +98,12 @@ interface VehicleGateway {
 
     /** Null when the navigation service does not answer (no route, service missing). */
     suspend fun requestTrip(place: Place): TripInfo?
+
+    /** D1 retry: forget the speech engine's backoff and try to initialise it again. */
+    fun retrySpeech()
+
+    /** D1 retry: drop the navigation connection and connect again. */
+    fun retryNavigation()
 
     fun release()
 }
