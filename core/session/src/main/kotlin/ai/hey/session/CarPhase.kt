@@ -52,14 +52,14 @@ sealed interface CarPhase {
     }
 
     /** CARD_SENT: the card is out; the route is not started yet. */
-    data class CardSent(override val view: CarView, override val route: RouteStartState = RouteStartState.Idle) : Card {
+    data class CardSent(override val view: CarView, override val route: RouteStartState) : Card {
         override val enabled: Set<CarCommand> = setOf(
             CarCommand.Recheck, CarCommand.StartRoute, CarCommand.Propose, CarCommand.DecidePin, CarCommand.Reply, CarCommand.End,
         )
     }
 
     /** IN_TRIP: the route runs. A re-check is not possible any more (the relay refuses `card.recheck`). */
-    data class InTrip(override val view: CarView, override val route: RouteStartState = RouteStartState.Idle) : Card {
+    data class InTrip(override val view: CarView, override val route: RouteStartState) : Card {
         override val enabled: Set<CarCommand> = setOf(
             CarCommand.StartRoute, CarCommand.Propose, CarCommand.DecidePin, CarCommand.Reply, CarCommand.Arrive, CarCommand.End,
         )

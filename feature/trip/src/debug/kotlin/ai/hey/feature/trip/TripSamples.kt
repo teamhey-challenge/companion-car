@@ -192,6 +192,11 @@ object TripSamples {
     }
     val dropoffNone = state(cardSent, panel = Panel.Dropoff) { copy(candidates = Candidates(hotel.placeId, emptyList())) }
     val dropoffPin = state(withPin, panel = Panel.Dropoff) { copy(candidates = TripSamples.candidates) }
+    /** The pin card's buttons are off while offline and while the answer is on its way. */
+    val dropoffPinOffline = state(withPin, panel = Panel.Dropoff, connection = ConnectionStatus.Reconnecting) { copy(candidates = TripSamples.candidates) }
+    val dropoffPinReplying = state(withPin, panel = Panel.Dropoff) {
+        copy(candidates = TripSamples.candidates, commands = mapOf(CommandKey.Pin(pin.version) to CommandState.InFlight("env")))
+    }
     private fun answered(status: DriverProposalStatus) = cardSent.copy(
         dropoff = DriverProposal(1, LatLng(37.5649, 126.9803), DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구", status = status),
     )

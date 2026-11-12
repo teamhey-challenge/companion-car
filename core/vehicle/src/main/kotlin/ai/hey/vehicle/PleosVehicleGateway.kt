@@ -102,6 +102,7 @@ class PleosVehicleGateway(
         isReady = { naviBound && naviAnswered },
         probe = { probeNavi() },
         send = { sendRoute(it) },
+        abort = { guard("cancel route") { navi?.cancelRoute() } },
     )
 
     private fun probeNavi() {

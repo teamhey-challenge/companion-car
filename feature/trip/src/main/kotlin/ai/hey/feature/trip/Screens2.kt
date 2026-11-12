@@ -129,8 +129,8 @@ internal fun CardScreen(
                         Modifier.grow(),
                         size = HeyButtonSize.Large,
                         icon = HeyIcons.Route,
-                        enabled = CarCommand.StartRoute in phase.enabled && card != null && !state.routeAwaitingConfirm,
-                        loading = state.routeStarting || state.routeAwaitingConfirm,
+                        enabled = CarCommand.StartRoute in phase.enabled && card != null && phase.route != RouteStartState.AwaitingNaviConfirm,
+                        loading = phase.route == RouteStartState.Requested || phase.route == RouteStartState.AwaitingNaviConfirm,
                     )
                     if (inTrip) {
                         HeyButton(

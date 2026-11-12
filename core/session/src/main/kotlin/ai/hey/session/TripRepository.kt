@@ -18,6 +18,7 @@ import ai.hey.model.HeyIds
 import ai.hey.model.HeyJson
 import ai.hey.model.HeyLog
 import ai.hey.model.LocalSpeech
+import ai.hey.model.Place
 import ai.hey.model.SpeechPriority
 
 import ai.hey.model.JoinDecision
@@ -112,6 +113,9 @@ class TripRepository(
 
     /** The route-start attempt whose outcome the relay was already told, so one outcome is sent once. */
     private var routeReported = 0
+
+    /** The place handed to the navigation for the attempt in progress: the attempt dies when the relay's destination moves on. */
+    @Volatile private var routePlace: Place? = null
     private var started = false
 
     fun start() {
@@ -264,11 +268,23 @@ class TripRepository(
             envelopeKeys.clear()
             // The attempt of the last trip must not leak into the next: drop it (a late answer is then ignored).
             vehicle.cancelRoute()
+        } else if (routePlace != null && view.routeDestination() != routePlace && vehicle.routeState.value.let { it == RouteStartState.Requested || it == RouteStartState.AwaitingNaviConfirm }) {
+            // The destination or the agreed drop-off point changed while the preview waits: pressing 안내 시작 would start the old point.
+            vehicle.cancelRoute()
         }
-        // Arrival is the one thing the relay does not say: speak it here, once, when this trip's state first becomes ARRIVED.
         val prior = _state.value.view
+        // Arrival is the one thing the relay does not say: speak it here, once, when this trip's state first becomes ARRIVED.
         if (!tripChanged && prior != null && prior.state != TripState.ARRIVED && view.state == TripState.ARRIVED) {
             vehicle.speak(LocalSpeech.ARRIVED, SpeechPriority.High, null)
+        }
+        // A trip that ends (lead left, 4 h cap, either side) is as silent on the relay as arrival is.
+        if (!tripChanged && prior != null && prior.state != TripState.ENDED && view.state == TripState.ENDED) {
+            vehicle.speak(LocalSpeech.ENDED, SpeechPriority.High, null)
+        }
+        // A join request that lapsed (REQUESTED -> IDLE) without the driver deciding it would otherwise just vanish.
+        val decidedByDriver = _state.value.commands.keys.any { it is CommandKey.Join }
+        if (prior != null && prior.state == TripState.REQUESTED && prior.pendingJoin != null && view.state == TripState.IDLE && !decidedByDriver) {
+            vehicle.speak(LocalSpeech.JOIN_EXPIRED, SpeechPriority.High, null)
         }
         _state.update { old ->
             val previous = old.view
@@ -407,6 +423,7 @@ class TripRepository(
         val destination = _state.value.view?.routeDestination() ?: return
         if (_state.value.route.let { it == RouteStartState.Requested || it == RouteStartState.AwaitingNaviConfirm }) return
         _state.update { it.copy(issues = it.issues.filterNot { issue -> issue is VehicleIssue.Navi }.toSet()) }
+        routePlace = destination
         vehicle.startRoute(destination)
     }
 

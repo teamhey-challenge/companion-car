@@ -20,11 +20,13 @@ class RouteStartMachineTest {
     private class Rig(scope: CoroutineScope, var ready: Boolean = true, var throwOnSend: Boolean = false) {
         val sent = ArrayList<Place>()
         var probes = 0
+        var aborts = 0
         val machine = RouteStartMachine(
             scope = scope,
             isReady = { ready },
             probe = { probes++ },
             send = { if (throwOnSend) throw IllegalStateException("boom") else sent += it },
+            abort = { aborts++ },
         )
         val state get() = machine.state.value
     }
@@ -73,7 +75,47 @@ class RouteStartMachineTest {
         advanceTimeBy(RouteStartMachine.CONFIRM_TIMEOUT_MS + 1)
 
         assertEquals(RouteStartState.Failed(1, RouteFailure.NAVI_CONFIRM_TIMEOUT), r.state)
-        assertEquals(180_000L, RouteStartMachine.CONFIRM_TIMEOUT_MS)
+        assertEquals("the preview is closed on the timeout", 1, r.aborts)
+    }
+
+    @Test fun cancelWhileTheNavigationShowsThePreviewClosesIt() = runTest {
+        val r = rig()
+        r.machine.start(place)
+        advanceTimeBy(1)
+
+        r.machine.cancel()
+
+        assertEquals(1, r.aborts)
+    }
+
+    @Test fun cancelBeforeTheRequestLeftOrAfterStartedClosesNothing() = runTest {
+        val early = rig(ready = false)
+        early.machine.start(place)
+        advanceTimeBy(1_000)
+        early.machine.cancel()
+        assertEquals(0, early.aborts)
+
+        val done = rig()
+        done.machine.start(place)
+        advanceTimeBy(1)
+        done.machine.onRouteStarted(route)
+        done.machine.cancel()
+        assertEquals("a started route belongs to the driver now", 0, done.aborts)
+    }
+
+    @Test fun aNavigationErrorClosesThePreviewAndAnUnrelatedErrorWhileRequestedIsNotConsumed() = runTest {
+        val waiting = rig(ready = false)
+        waiting.machine.start(place)
+        advanceTimeBy(1_000)
+        assertFalse("nothing was sent yet, the error is not ours", waiting.machine.onError("CAUSE_LOW_BATTERY"))
+        assertEquals(RouteStartState.Requested, waiting.state)
+        assertEquals(0, waiting.aborts)
+
+        val sent = rig()
+        sent.machine.start(place)
+        advanceTimeBy(1)
+        assertTrue(sent.machine.onError("CAUSE_SEARCH_ROUTE"))
+        assertEquals(1, sent.aborts)
     }
 
     @Test fun aLateRouteStartedAfterCancelIsIgnored() = runTest {

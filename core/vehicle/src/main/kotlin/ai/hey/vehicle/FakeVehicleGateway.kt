@@ -127,6 +127,7 @@ class FakeVehicleGateway(
             val failure = routeFailure
             if (failure != null) machine.onError(failure) else if (naviConfirms) machine.onRouteStarted(route)
         },
+        abort = { routesAborted++ },
     )
 
     /** Set to false to model Navi42 that was never opened: the attempt waits for it and fails with NAVI_NOT_READY. */
@@ -135,6 +136,9 @@ class FakeVehicleGateway(
     /** Set to false to leave the route waiting in the navigation preview until [confirmRoute]. */
     @Volatile var naviConfirms: Boolean = true
     @Volatile var naviProbes = 0
+
+    /** How many times the navigation was told to close its route preview. */
+    @Volatile var routesAborted = 0
     @Volatile var naviOpened = 0
 
     /** The person pressed 안내 시작 in the navigation. */

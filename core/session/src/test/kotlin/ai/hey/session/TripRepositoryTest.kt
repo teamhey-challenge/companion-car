@@ -16,6 +16,7 @@ import ai.hey.model.RequestState
 import ai.hey.model.ServerMessage
 import ai.hey.model.TripState
 import ai.hey.vehicle.DrivingStatus
+import ai.hey.vehicle.RouteStartState
 import ai.hey.vehicle.FakeVehicleGateway
 import ai.hey.vehicle.SpeechDropReason
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -161,7 +162,7 @@ class TripRepositoryTest {
 
         assertTrue(vehicle.routes.isEmpty())
         assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
-        assertFalse(rig.repo.state.value.routeStarting)
+        assertFalse(rig.repo.state.value.route == RouteStartState.Requested)
     }
 
     @Test fun recheckInTripAndArriveInCardSentAreNotSent() = runTest {
@@ -233,7 +234,7 @@ class TripRepositoryTest {
         rig.repo.state.value.parked!!.startRoute()
         advanceTimeBy(60_000)
 
-        assertTrue(rig.repo.state.value.routeAwaitingConfirm)
+        assertEquals(RouteStartState.AwaitingNaviConfirm, rig.repo.state.value.route)
         assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
         assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
 
@@ -253,14 +254,14 @@ class TripRepositoryTest {
         snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
         rig.repo.state.value.parked!!.startRoute()
         advanceTimeBy(10)
-        assertTrue(rig.repo.state.value.routeAwaitingConfirm)
+        assertEquals(RouteStartState.AwaitingNaviConfirm, rig.repo.state.value.route)
 
         rig.repo.state.value.parked!!.cancelRoute()
         advanceTimeBy(10)
         vehicle.confirmRoute()
         advanceTimeBy(10)
 
-        assertFalse(rig.repo.state.value.routeAwaitingConfirm)
+        assertEquals(RouteStartState.Idle, rig.repo.state.value.route)
         assertFalse(rig.repo.state.value.routeFailed)
         assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
         assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
@@ -275,7 +276,7 @@ class TripRepositoryTest {
         snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
         rig.repo.state.value.parked!!.startRoute()
         advanceTimeBy(10_000)
-        assertTrue(rig.repo.state.value.routeStarting)
+        assertEquals(RouteStartState.Requested, rig.repo.state.value.route)
         assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
 
         advanceTimeBy(6_000)
@@ -493,42 +494,121 @@ class TripRepositoryTest {
         assertFalse(ClientType.REPLY_SEND in rig.transport.types())
     }
 
-    // ---------------------------------------------------------------- speech while driving
+    // ---------------------------------------------------------------- speech the relay does not voice
 
-    private val allStates = TripState.entries
-
-    /** What the relay says for a snapshot change is its own `say`; the car adds a sentence only where the relay has none. */
-    @Test fun everyTripStateTransitionSpeaksLocallyExactlyWhenTheRelayHasNoSentenceForIt() = runTest {
-        for (from in allStates) for (to in allStates) {
+    @Test fun aTripThatEndsForAnyReasonSpeaksTheEndOnce() = runTest {
+        for (from in listOf(TripState.CONNECTED, TripState.CARD_SENT, TripState.IN_TRIP, TripState.ARRIVED)) {
             val vehicle = FakeVehicleGateway(backgroundScope)
             val rig = rig(backgroundScope, vehicle)
             snapshot(rig, view(state = from, card = card))
-            snapshot(rig, view(state = to, card = card))
+            snapshot(rig, view(state = TripState.ENDED, card = card))
+            snapshot(rig, view(state = TripState.ENDED, card = card))
             advanceTimeBy(10)
-            val expected = if (to == TripState.ARRIVED && from != TripState.ARRIVED) listOf(ai.hey.model.LocalSpeech.ARRIVED) else emptyList()
-            assertEquals("$from -> $to", expected, vehicle.spoken)
+            assertEquals("$from -> ENDED", listOf(ai.hey.model.LocalSpeech.ENDED), vehicle.spoken)
         }
     }
 
-    /** The relay's `say` for every driver event is read aloud, whatever the car is doing (priority only orders it). */
-    @Test fun everyRelaySayIsSpoken() = runTest {
-        val events = listOf(
-            "join request" to ("sp_1" to ai.hey.model.SpeechPriority.Normal),
-            "card arrival or change" to ("sp_2" to ai.hey.model.SpeechPriority.High),
-            "passenger pin" to ("sp_3" to ai.hey.model.SpeechPriority.High),
-            "dropoff response" to ("sp_4" to ai.hey.model.SpeechPriority.High),
-            "question request" to ("req_5" to ai.hey.model.SpeechPriority.Normal),
-            "stop here" to ("req_6" to ai.hey.model.SpeechPriority.High),
-        )
-        for (driving in listOf(DrivingStatus.Parked, DrivingStatus.Driving, DrivingStatus.Unknown)) {
-            val vehicle = FakeVehicleGateway(backgroundScope, initialDriving = driving, now = { testScheduler.currentTime })
-            val rig = rig(backgroundScope, vehicle)
-            rig.repo.start()
-            events.forEachIndexed { i, (what, spec) ->
-                rig.transport.deliver(ServerMessage.Say("s$i", ai.hey.model.SayData(spec.first, "$what $driving", spec.second)))
-                advanceTimeBy(20_000) // one at a time: the queue holds five, and this is about each event, not about overflow
-            }
-            assertEquals("every say is heard while $driving", events.map { "${it.first} $driving" }.toSet(), vehicle.spoken.toSet())
-        }
+    @Test fun arrivalSpeaksTheArrivalAndNothingElseSpeaksOnPlainTransitions() = runTest {
+        val vehicle = FakeVehicleGateway(backgroundScope)
+        val rig = rig(backgroundScope, vehicle)
+        snapshot(rig, view(state = TripState.CONNECTED, card = card))
+        snapshot(rig, view(state = TripState.CARD_SENT, card = card))
+        snapshot(rig, view(state = TripState.IN_TRIP, card = card))
+        advanceTimeBy(10)
+        assertTrue(vehicle.spoken.isEmpty())
+        snapshot(rig, view(state = TripState.ARRIVED, card = card))
+        advanceTimeBy(10)
+        assertEquals(listOf(ai.hey.model.LocalSpeech.ARRIVED), vehicle.spoken)
+    }
+
+    @Test fun aJoinRequestThatLapsesIsSpokenButOneTheDriverDecidedIsNot() = runTest {
+        val join = ai.hey.model.PendingJoin("jr_1", ai.hey.model.Lang.En, 1, 0, "47")
+        val lapsed = FakeVehicleGateway(backgroundScope)
+        val a = rig(backgroundScope, lapsed)
+        snapshot(a, view(state = TripState.REQUESTED, pendingJoin = join))
+        snapshot(a, view(state = TripState.IDLE))
+        advanceTimeBy(10)
+        assertEquals(listOf(ai.hey.model.LocalSpeech.JOIN_EXPIRED), lapsed.spoken)
+
+        val declined = FakeVehicleGateway(backgroundScope)
+        val b = rig(backgroundScope, declined)
+        snapshot(b, view(state = TripState.REQUESTED, pendingJoin = join))
+        b.repo.state.value.parked!!.declineJoin("jr_1")
+        snapshot(b, view(state = TripState.IDLE))
+        advanceTimeBy(10)
+        assertTrue(declined.spoken.isEmpty())
+    }
+
+    private fun agreed(lat: Double) = ai.hey.model.AgreedDropoff(
+        1, ai.hey.model.DropoffBy.Driver, ai.hey.model.LatLng(lat, 127.0), ai.hey.model.DropoffKind.Default,
+        null, null, null, "정문", "정문",
+    )
+
+    /** M2: the preview was requested for one point; a changed agreed point makes pressing 안내 시작 start nothing and closes the preview. */
+    @Test fun aRouteWaitingForTheConfirmDiesWhenTheAgreedPointChanges() = runTest {
+        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
+        val rig = rig(backgroundScope, vehicle)
+        rig.repo.start()
+        advanceTimeBy(10)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startRoute()
+        advanceTimeBy(10)
+        assertEquals(RouteStartState.AwaitingNaviConfirm, rig.repo.state.value.route)
+
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, agreedDropoff = agreed(37.6)))
+        advanceTimeBy(10)
+        vehicle.confirmRoute()
+        advanceTimeBy(10)
+
+        assertEquals(RouteStartState.Idle, rig.repo.state.value.route)
+        assertEquals(1, vehicle.routesAborted)
+        assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
+    }
+
+    @Test fun aSnapshotThatKeepsTheDestinationLeavesTheWaitingRouteAlone() = runTest {
+        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
+        val rig = rig(backgroundScope, vehicle)
+        rig.repo.start()
+        advanceTimeBy(10)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startRoute()
+        advanceTimeBy(10)
+
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, partySize = 2))
+        vehicle.confirmRoute()
+        advanceTimeBy(10)
+
+        assertEquals(0, vehicle.routesAborted)
+        assertEquals(1, rig.transport.types().count { it == ClientType.ROUTE_STARTED })
+    }
+
+    /** M1: the previous trip's preview is closed in the navigation when a new trip begins. */
+    @Test fun aNewTripClosesThePreviousTripsPreview() = runTest {
+        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
+        val rig = rig(backgroundScope, vehicle)
+        rig.repo.start()
+        advanceTimeBy(10)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startRoute()
+        advanceTimeBy(10)
+
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, tripId = "t2"))
+        advanceTimeBy(10)
+
+        assertEquals(1, vehicle.routesAborted)
+    }
+
+    @Test fun cancellingInD3ClosesThePreviewInTheNavigation() = runTest {
+        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
+        val rig = rig(backgroundScope, vehicle)
+        rig.repo.start()
+        advanceTimeBy(10)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startRoute()
+        advanceTimeBy(10)
+
+        rig.repo.state.value.parked!!.cancelRoute()
+
+        assertEquals(1, vehicle.routesAborted)
     }
 }

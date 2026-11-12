@@ -47,6 +47,8 @@ private val shots: List<Pair<String, CarUiState>> = listOf(
     "d4-dropoff-selected" to TripSamples.dropoffSelected,
     "d4-dropoff-none" to TripSamples.dropoffNone,
     "d4-dropoff-pin" to TripSamples.dropoffPin,
+    "d4-dropoff-pin-offline" to TripSamples.dropoffPinOffline,
+    "d4-dropoff-pin-replying" to TripSamples.dropoffPinReplying,
     "d4-dropoff-ok" to TripSamples.dropoffOk,
     "d4-dropoff-elsewhere" to TripSamples.dropoffElsewhere,
     "d4-dropoff-unsure" to TripSamples.dropoffUnsure,

@@ -78,7 +78,7 @@ class RelayIntegrationTest {
         dataDir = Files.createTempDirectory("heydata").toFile()
         val builder = ProcessBuilder(bun!!, "run", "src/index.ts")
             .directory(root)
-            .redirectErrorStream(true).redirectOutput(File("/tmp/relay-it.log"))
+            .redirectErrorStream(true)
         builder.environment().apply {
             put("HEY_FAKE_PROVIDERS", "1")
             put("HEY_ENV", "dev") // the relay refuses to start without a provisioning secret unless it runs as dev

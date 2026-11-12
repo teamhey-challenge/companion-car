@@ -129,9 +129,6 @@ data class CarUiState(
 
     fun isLoading(key: CommandKey): Boolean = commandState(key) is CommandState.InFlight
 
-    /** The route start is not a relay command: its spinner, instruction and failure banner come from [route]. */
-    val routeStarting: Boolean get() = route == RouteStartState.Requested
-    val routeAwaitingConfirm: Boolean get() = route == RouteStartState.AwaitingNaviConfirm
     val routeFailed: Boolean get() = route is RouteStartState.Failed
     val routeFailureCode: String? get() = (route as? RouteStartState.Failed)?.code
 

@@ -18,9 +18,9 @@ import kotlinx.coroutines.launch
  *                    |                                   |
  *                    +-- not ready in 15 s --> Failed(NAVI_NOT_READY)
  *                    +-- send threw ---------> Failed(NAVI_ERROR)
- *                                                        +-- onError(code) ----------> Failed(code)
- *                                                        +-- 3 min, no confirm ------> Failed(NAVI_CONFIRM_TIMEOUT)
- * any active state --cancel--> Idle
+ *                                                        +-- onError(code) ----------> Failed(code)      (abort)
+ *                                                        +-- 3 min, no confirm ------> Failed(NAVI_CONFIRM_TIMEOUT) (abort)
+ * any active state --cancel--> Idle   (abort when the request had left)
  * ```
  *
  * The navigation shows a route preview that a person confirms with "안내 시작", so there is deliberately no short
@@ -37,6 +37,8 @@ class RouteStartMachine(
     private val probe: () -> Unit,
     /** Hands the destination to the navigation. May throw. */
     private val send: (Place) -> Unit,
+    /** Closes the navigation's route preview. Called whenever an attempt that was handed over ends without [RouteStartState.Started]. */
+    private val abort: () -> Unit,
     private val readyWaitMs: Long = READY_WAIT_MS,
     private val confirmTimeoutMs: Long = CONFIRM_TIMEOUT_MS,
 ) {
@@ -59,12 +61,15 @@ class RouteStartMachine(
 
     /** Abandons the active attempt (or clears a finished one) so a late navigation answer finds nobody waiting. */
     fun cancel() {
-        synchronized(lock) {
+        val handedOver = synchronized(lock) {
+            val was = _state.value == RouteStartState.AwaitingNaviConfirm
             attempt++
             job?.cancel()
             job = null
             _state.value = RouteStartState.Idle
+            was
         }
+        if (handedOver) abort()
     }
 
     /** The navigation reported the route started. Only completes an attempt that is waiting for the confirmation. */
@@ -77,13 +82,20 @@ class RouteStartMachine(
         }
     }
 
-    /** The navigation reported a route error. Returns true when an attempt consumed it. */
-    fun onError(code: String): Boolean = synchronized(lock) {
-        if (!isActive(_state.value)) return false
-        job?.cancel()
-        job = null
-        _state.value = RouteStartState.Failed(attempt, code)
-        true
+    /**
+     * The navigation reported a route error. Returns true when an attempt consumed it. Only an attempt whose request
+     * already left (AwaitingNaviConfirm) owns an error: while Requested nothing was sent, so the error is somebody else's.
+     */
+    fun onError(code: String): Boolean {
+        val consumed = synchronized(lock) {
+            if (_state.value != RouteStartState.AwaitingNaviConfirm) return false
+            job?.cancel()
+            job = null
+            _state.value = RouteStartState.Failed(attempt, code)
+            true
+        }
+        if (consumed) abort()
+        return consumed
     }
 
     private suspend fun run(place: Place, mine: Int) {
@@ -117,9 +129,14 @@ class RouteStartMachine(
     }
 
     private fun fail(mine: Int, code: String) {
-        synchronized(lock) {
-            if (attempt == mine && isActive(_state.value)) _state.value = RouteStartState.Failed(mine, code)
+        val handedOver = synchronized(lock) {
+            if (attempt == mine && isActive(_state.value)) {
+                val was = _state.value == RouteStartState.AwaitingNaviConfirm
+                _state.value = RouteStartState.Failed(mine, code)
+                was
+            } else false
         }
+        if (handedOver) abort()
     }
 
     private fun isActive(s: RouteStartState) = s == RouteStartState.Requested || s == RouteStartState.AwaitingNaviConfirm
