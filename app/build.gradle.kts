@@ -62,6 +62,17 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = releaseSigning
         }
+        // R8 proof for the field release: minified and shrunk exactly like release, but debug-signed and with plain http to the
+        // e2e relay on the emulator host (res in src/releaseE2e). Never shipped; `assembleRelease` is unaffected.
+        // Build: ./gradlew :app:assembleReleaseE2e [-PrelayUrl=http://10.0.2.2:8787]
+        create("releaseE2e") {
+            initWith(getByName("release"))
+            matchingFallbacks += "release"
+            val relay = providers.gradleProperty("relayUrl").getOrElse("http://10.0.2.2:8787")
+            buildConfigField("String", "RELAY_URL", "\"$relay\"")
+            buildConfigField("String", "PROVISION_SECRET", "\"dev\"")
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
