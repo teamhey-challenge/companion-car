@@ -198,8 +198,8 @@ hey-taxi/
 
 ## 6. 차량 앱 구조
 
-- `:core:vehicle` — `VehicleGateway` 인터페이스: `drivingState: StateFlow<DrivingStatus>`, `speak(textKo, priority)`, `startRoute(place): RouteResult`, `requestTrip(place): TripInfo?`, `retrySpeech()`, `retryNavigation()`, `gear`, `doors`. 구현 `PleosVehicleGateway`(Pleos SDK: TextToSpeech ON_DEVICE `Locale.KOREA`, NaviHelper `requestRoute`/`requestTrip`, `CarUxRestrictionsManager`, Vehicle Gear·Door)와 `FakeVehicleGateway`(Preview·시험·Pleos가 아닌 기기용). 화면은 이 인터페이스만 안다.
-  - 결과는 참·거짓이 아니라 타입이다. 음성은 `SpeechResult.Delivered` / `Dropped(reason)`(Blank·QueueOverflow·EngineUnavailable·EngineError), 경로는 `RouteResult.Started` / `Failed(code)`. 서비스가 없을 때 성공으로 답하지 않는다.
+- `:core:vehicle` — `VehicleGateway` 인터페이스: `drivingState: StateFlow<DrivingStatus>`, `speak(textKo, priority)`, `startRoute(place)` + `routeState: StateFlow<RouteStartState>` + `cancelRoute()` + `openNavi()`, `requestTrip(place): TripInfo?`, `retrySpeech()`, `retryNavigation()`, `gear`, `doors`. 구현 `PleosVehicleGateway`(Pleos SDK: TextToSpeech ON_DEVICE `Locale.KOREA`, NaviHelper `requestRoute`/`requestTrip`, `CarUxRestrictionsManager`, Vehicle Gear·Door)와 `FakeVehicleGateway`(Preview·시험·Pleos가 아닌 기기용). 화면은 이 인터페이스만 안다.
+  - 결과는 참·거짓이 아니라 타입이다. 음성은 `SpeechResult.Delivered` / `Dropped(reason)`(Blank·QueueOverflow·EngineUnavailable·EngineError), 경로는 `RouteStartState`(아래). 서비스가 없을 때 성공으로 답하지 않는다.
   - 주행 상태는 `DrivingStatus.Unknown | Parked | Driving`이다. `Unknown`(차 서비스가 아직 답하지 않았거나 사라짐)은 어디서나 `Driving`과 똑같이 다룬다. 게이트웨이 기본값은 `Unknown`이다.
   - 내비 초기화 실패·요청 없는 내비 오류·음성 엔진 없음은 `VehicleEvent.NavigationUnavailable` / `SpeechDropped`로 올라가 D1 배너와 "다시 시도"(`retryNavigation`/`retrySpeech`)로 이어진다.
 - `:core:session` — OkHttp WebSocket 클라이언트, 재연결(1·2·4·8·15초), ack, `TripRepository`(`StateFlow<CarUiState>`), 음성 큐(`speech.*` 정책).
@@ -210,6 +210,9 @@ hey-taxi/
   - 명령 상태는 운행 하나에 속한다: 스냅숏의 `tripId`가 바뀌면 `commands`와 봉투 대응표를 비운다. 버튼 없이 보낸 메시지(읽음 보고 등)가 거절돼도 배너를 띄우지 않는다.
   - 버튼 하나의 진행은 `Map<CommandKey, CommandState>` 하나에 있다(`Idle`은 항목 없음). 해제 규칙은 셋뿐이다: ① 그 명령의 결과가 스냅숏에 보임 ② 릴레이가 그 봉투(`ref`)를 거절함 ③ 20초 안전 시간 초과. 무관한 스냅숏은 버튼을 풀지 않는다.
 - `:core:model` — 프로토콜 Kotlin 타입(kotlinx.serialization), `HeyConfig`. 서버와 주고받는 `DrivingState`(`PARKED`/`DRIVING`)는 프로토콜 값이고, 앱 안의 `DrivingStatus`와 다른 타입이다.
+- **주행 중에는 화면이 없다 — 음성 전용 (에뮬레이터 실측 2026-11-12, `.review/emu/16-driving.png`).** 주행 중에는 Pleos 시스템이 `distractionOptimized=true`인 서드파티 앱 위에도 "주행 중에는 사용할 수 없습니다" 화면을 덮는다. 그래서 D5(주행 화면)는 지금 빌드에서 승객·기사 누구에게도 보이지 않는다. 코드는 그대로 둔다(나중 빌드가 허용하면 보이고, 해롭지 않다). 대신 제품은 음성만으로 성립해야 한다: 승객 요청은 `say`로 TTS가 읽고, 연결 요청·승객 핀·도착도 음성으로 알리며, 주행 중에 꼭 봐야 하는 것은 없다. 눌러야 하는 것(승인·경로 시작·내릴 곳 확인·종료)은 모두 정차 중 D2·D3·D4·D6·D7에 있다. 새 기능은 "주행 중에 보이는 것"에 기대지 않는다.
+- **경로 시작은 명시적 상태다 (`RouteStartState`, 실측 2026-11-12).** 내비(Navi42)는 `requestRoute`를 받으면 경로 미리보기를 띄우고 사람이 "안내 시작"을 눌러야 `onRouteStarted`가 온다. 한 번도 열린 적 없으면 `navi not ready`로 요청이 버려진다. 그래서 `Requested`(내비가 답할 때까지 최대 15초 기다리며 3초마다 `getRouteStateInfo`/`getCurrentLocationInfo`로 깨운다; 안 오면 `Failed(NAVI_NOT_READY)`) → `AwaitingNaviConfirm`(요청 전달됨, D3가 "내비에서 안내 시작을 눌러 주세요"와 취소를 보임) → `Started`(`onRouteStarted`) | `Failed(code)`(`onError` 코드, 전달 예외 `NAVI_ERROR`, 안내 시작을 3분 안에 안 누르면 `NAVI_CONFIRM_TIMEOUT`)이다. 확인 대기 중에는 짧은 시간 초과 실패가 없다. 취소하면 `Idle`이고 그 뒤에 오는 `onRouteStarted`는 무시한다. 릴레이에는 `Started`일 때만 `route.started`, `Failed`일 때만 `route.failed`를 한 번씩 보낸다(대기 중에는 아무것도 보내지 않는다). `NAVI_NOT_READY`이면 D3가 "내비 열기"(`PackageManager.getLaunchIntentForPackage("ai.umos.maps.android.navigation.app")`)와 "다시 시도"를 보인다. 상태 기계는 SDK에 닿지 않는 `RouteStartMachine`이고 `RouteStartMachineTest`가 검증한다.
+- 시계 글자는 시스템 기본 시간대(`ZoneId.systemDefault()`)로 쓴다(`clockZone()`). 앱이 시간대를 따로 고르지 않는다. 미리보기·스냅숏만 `LocalClockZone`으로 Asia/Seoul을 고정한다.
 - `:core:designsystem` — Compose 부품, `HeyTheme`, Paparazzi 시험. 토큰(`HeyTokens`)은 `ai.hey:tokens-compose`(hey-shared `android/`, includeBuild)가 준다.
 - `:feature:trip` — D1~D7 화면. 화면은 `CarUiState.phase`로 갈라지고, 정차 단계의 버튼은 그 단계의 `enabled`에서만 켜진다. 손이 필요한 호출은 `state.parked?.…`이다. 시험·미리보기용 빈 명령은 `CarCommands` 쪽 `NoTripCommands`(debug)뿐이다. `:feature:settings` — D8.
 - `:app` — `MainActivity`(`distractionOptimized`), 내비게이션, DI(수동 생성자 주입), 포그라운드 서비스.

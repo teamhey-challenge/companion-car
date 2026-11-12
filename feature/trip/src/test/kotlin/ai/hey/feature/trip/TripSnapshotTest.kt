@@ -2,6 +2,7 @@ package ai.hey.feature.trip
 
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.session.CarUiState
+import androidx.compose.runtime.CompositionLocalProvider
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams.RenderingMode
@@ -35,6 +36,10 @@ private val shots: List<Pair<String, CarUiState>> = listOf(
     "d3-in-trip" to TripSamples.cardInTrip,
     "d3-card-long" to TripSamples.cardLong,
     "d3-route-started" to TripSamples.cardRouteStarted,
+    "d3-route-requested" to TripSamples.cardRouteRequested,
+    "d3-route-confirm" to TripSamples.cardRouteConfirm,
+    "d3-route-not-ready" to TripSamples.cardRouteNotReady,
+    "d3-route-confirm-timeout" to TripSamples.cardRouteConfirmTimeout,
     "d3-route-failed" to TripSamples.cardRouteFailed,
     "d3-route-stale" to TripSamples.cardRouteStale,
     "d4-dropoff" to TripSamples.dropoffDefault,
@@ -66,7 +71,9 @@ private fun Paparazzi.recordAll() {
     shots.forEach { (name, state) ->
         listOf(true, false).forEach { dark ->
             snapshot("$name-${if (dark) "dark" else "light"}") {
-                HeyTheme(dark) { TripScreen(state, NoTripCommands, TripSamples.NOW) }
+                CompositionLocalProvider(LocalClockZone provides TripSamples.ZONE) {
+                    HeyTheme(dark) { TripScreen(state, NoTripCommands, TripSamples.NOW) }
+                }
             }
         }
     }

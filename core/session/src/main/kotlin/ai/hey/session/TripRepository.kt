@@ -31,7 +31,8 @@ import ai.hey.model.actionableCount
 import ai.hey.model.nextClockOffset
 import ai.hey.model.routeDestination
 import ai.hey.vehicle.DrivingStatus
-import ai.hey.vehicle.RouteResult
+import ai.hey.vehicle.RouteFailure
+import ai.hey.vehicle.RouteStartState
 import ai.hey.vehicle.SpeechSettings
 import ai.hey.vehicle.VehicleEvent
 import ai.hey.vehicle.VehicleGateway
@@ -101,8 +102,10 @@ class TripRepository(
 
     /** Trip whose arrival was already sent: the navigation event and the manual button must not both fire. */
     @Volatile private var arrivalSentFor: String? = null
-
     private var errorJob: Job? = null
+
+    /** The route-start attempt whose outcome the relay was already told, so one outcome is sent once. */
+    private var routeReported = 0
     private var started = false
 
     fun start() {
@@ -125,6 +128,7 @@ class TripRepository(
             }
         }
         scope.launch { vehicle.events.collect { onVehicleEvent(it) } }
+        scope.launch { vehicle.routeState.collect { onRouteState(it) } }
         scope.launch { progressLoop() }
     }
 
@@ -209,8 +213,8 @@ class TripRepository(
             _state.update { old ->
                 old.copy(
                     error = if (old.error == code) null else old.error,
-                    // Route failure is a persistent banner (cleared by a retry or a route snapshot), not a toast.
-                    commands = old.commands.filterNot { (k, v) -> v is CommandState.Failed && k != CommandKey.StartRoute },
+                    // (the route start has its own state and banner; see CarUiState.route)
+                    commands = old.commands.filterNot { (_, v) -> v is CommandState.Failed },
                 )
             }
         }
@@ -235,9 +239,7 @@ class TripRepository(
                 view.requests.firstOrNull { it.requestId == key.requestId }?.state == RequestState.Answered
         CommandKey.End -> view.state == TripState.IDLE || view.state == TripState.ENDED
         CommandKey.Arrive -> view.state != TripState.IN_TRIP
-        // A route start is a vehicle command, not a relay envelope: only the navigation answer clears it, so a
-        // snapshot that still carries the previous route cannot release the button mid-request.
-        CommandKey.StartRoute -> false
+        // A route start is not a relay command; it lives in CarUiState.route.
     }
 
     private fun onSnapshot(view: CarView, serverTs: Long?) {
@@ -246,6 +248,8 @@ class TripRepository(
         if (tripChanged) {
             arrivalSentFor = null
             envelopeKeys.clear()
+            // The attempt of the last trip must not leak into the next: drop it (a late answer is then ignored).
+            vehicle.cancelRoute()
         }
         _state.update { old ->
             val previous = old.view
@@ -354,6 +358,8 @@ class TripRepository(
         override fun declineJoin(joinRequestId: String) = this@TripRepository.decideJoin(CarCommand.DeclineJoin, ClientType.JOIN_DECLINE, joinRequestId)
         override fun recheckCard() = this@TripRepository.recheck()
         override fun startRoute() = this@TripRepository.beginRoute()
+        override fun cancelRoute() = this@TripRepository.cancelRouteStart()
+        override fun openNavi() = this@TripRepository.openNavi()
         override fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?) = this@TripRepository.propose(candidate, reasonId)
         override fun decidePin(version: Int, accept: Boolean) = this@TripRepository.decide(version, accept)
         override fun sendReply(requestId: String?, replyId: QuickReplyId) = this@TripRepository.reply(requestId, replyId)
@@ -379,37 +385,51 @@ class TripRepository(
 
     private fun beginRoute() {
         if (!allowed(CarCommand.StartRoute)) return
-        val s = _state.value
-        val destination = s.view?.routeDestination() ?: return
-        if (s.routeStarting) return
-        _state.update {
-            it.copy(
-                commands = it.commands + (CommandKey.StartRoute to CommandState.InFlight(UUID.randomUUID().toString())),
-                issues = it.issues.filterNot { issue -> issue is VehicleIssue.Navi }.toSet(),
-            )
-        }
-        scope.launch {
-            when (val result = vehicle.startRoute(destination)) {
-                is RouteResult.Started -> {
-                    link.send(ClientType.ROUTE_STARTED, HeyJson.encodeToJsonElement(RouteInfo.serializer(), result.route))
-                    _state.update {
-                        it.copy(
-                            commands = it.commands - CommandKey.StartRoute,
-                            issues = it.issues.filterNot { issue -> issue is VehicleIssue.Navi }.toSet(),
-                        )
-                    }
+        val destination = _state.value.view?.routeDestination() ?: return
+        if (_state.value.route.let { it == RouteStartState.Requested || it == RouteStartState.AwaitingNaviConfirm }) return
+        _state.update { it.copy(issues = it.issues.filterNot { issue -> issue is VehicleIssue.Navi }.toSet()) }
+        vehicle.startRoute(destination)
+    }
+
+    private fun cancelRouteStart() {
+        if (!allowed(CarCommand.StartRoute)) return
+        vehicle.cancelRoute()
+    }
+
+    private fun openNavi() {
+        if (!allowed(CarCommand.StartRoute)) return
+        if (!vehicle.openNavi()) _state.update { it.copy(issues = it.issues + VehicleIssue.Navi(RouteFailure.NAVI_NOT_READY)) }
+    }
+
+    /**
+     * Follows the vehicle's route-start state. The relay hears about it exactly once per attempt and only from a real
+     * outcome: route.started when the navigation reported the route started, route.failed when the attempt failed.
+     * Waiting for the person to confirm in the navigation sends nothing.
+     */
+    private fun onRouteState(route: RouteStartState) {
+        _state.update { it.copy(route = route) }
+        when (route) {
+            is RouteStartState.Started -> if (routeReported != route.attempt) {
+                routeReported = route.attempt
+                if (relayAccepts(ClientType.ROUTE_STARTED)) {
+                    link.send(ClientType.ROUTE_STARTED, HeyJson.encodeToJsonElement(RouteInfo.serializer(), route.route))
                 }
-                is RouteResult.Failed -> {
-                    link.send(ClientType.ROUTE_FAILED, HeyJson.encodeToJsonElement(RouteFailedData.serializer(), RouteFailedData(result.code)))
-                    _state.update {
-                        it.copy(
-                            commands = it.commands + (CommandKey.StartRoute to CommandState.Failed(result.code)),
-                            issues = it.issues + VehicleIssue.Navi(result.code),
-                        )
-                    }
+                _state.update { it.copy(issues = it.issues.filterNot { issue -> issue is VehicleIssue.Navi }.toSet()) }
+            }
+            is RouteStartState.Failed -> if (routeReported != route.attempt) {
+                routeReported = route.attempt
+                if (relayAccepts(ClientType.ROUTE_FAILED)) {
+                    link.send(ClientType.ROUTE_FAILED, HeyJson.encodeToJsonElement(RouteFailedData.serializer(), RouteFailedData(route.code)))
                 }
             }
+            RouteStartState.Idle, RouteStartState.Requested, RouteStartState.AwaitingNaviConfirm -> Unit
         }
+    }
+
+    /** The relay takes route.started / route.failed only in CARD_SENT and IN_TRIP (docs/transitions.json). */
+    private fun relayAccepts(type: String): Boolean {
+        val state = _state.value.view?.state
+        return (state == TripState.CARD_SENT || state == TripState.IN_TRIP) && CarCommand.StartRoute.wire.contains(type)
     }
 
     private fun propose(candidate: DropoffCandidate, reasonId: DropoffReasonId?) {

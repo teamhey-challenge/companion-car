@@ -37,6 +37,8 @@ import ai.hey.session.DropoffDraft
 import ai.hey.session.Panel
 import ai.hey.session.VehicleIssue
 import ai.hey.vehicle.DrivingStatus
+import ai.hey.vehicle.RouteFailure
+import ai.hey.vehicle.RouteStartState
 import ai.hey.vehicle.SpeechDropReason
 
 /**
@@ -46,6 +48,9 @@ import ai.hey.vehicle.SpeechDropReason
 object TripSamples {
     /** 2026-11-12 23:42 KST */
     const val NOW = 1_794_580_920_000L
+
+    /** The zone previews and snapshots show [NOW] in; the app itself uses the system zone ([clockZone]). */
+    val ZONE: java.time.ZoneId = java.time.ZoneId.of("Asia/Seoul")
 
     val hotel = Place(
         placeId = "fake:lotte-hotel-seoul",
@@ -168,7 +173,11 @@ object TripSamples {
     val cardEndDialog = state(cardSent) { copy(endDialogOpen = true) }
     val cardLong = state(cardSent.copy(card = longCard))
     val cardRouteStarted = state(cardSent.copy(route = route))
-    val cardRouteFailed = state(cardSent) { copy(commands = mapOf(CommandKey.StartRoute to CommandState.Failed("NAVI_UNAVAILABLE"))) }
+    val cardRouteRequested = state(cardSent) { copy(route = RouteStartState.Requested) }
+    val cardRouteConfirm = state(cardSent) { copy(route = RouteStartState.AwaitingNaviConfirm) }
+    val cardRouteFailed = state(cardSent) { copy(route = RouteStartState.Failed(1, "NAVI_ERROR")) }
+    val cardRouteNotReady = state(cardSent) { copy(route = RouteStartState.Failed(1, RouteFailure.NAVI_NOT_READY)) }
+    val cardRouteConfirmTimeout = state(cardSent) { copy(route = RouteStartState.Failed(1, RouteFailure.NAVI_CONFIRM_TIMEOUT)) }
     val cardRouteStale = state(
         cardSent.copy(route = route, routeStale = true, agreedDropoff = AgreedDropoff(1, DropoffBy.Driver, LatLng(37.5649, 126.9803), DropoffKind.Entrance, EntranceType.Side, null, StreetName("을지로", "Eulji-ro"), "을지로 쪽 옆 출입구", "을지로 쪽 옆 출입구")),
         driving = DrivingStatus.Parked,

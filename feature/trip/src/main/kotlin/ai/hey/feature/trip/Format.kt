@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -42,5 +43,14 @@ internal fun distanceText(meters: Int): String =
         stringResource(R.string.trip_format_km, "%.1f".format(Locale.KOREA, meters / 1000.0))
     }
 
-/** Clock text for the status strip, in Korean time. */
-fun clockLabel(epochMs: Long): String = clockText(epochMs, java.time.ZoneId.of("Asia/Seoul"))
+/**
+ * The zone every clock text uses: the system's, read at each use so a zone change on the head unit shows at once.
+ * The one place a zone is chosen; previews and snapshots provide a fixed zone so their images do not depend on the machine.
+ */
+val LocalClockZone = staticCompositionLocalOf<ZoneId?> { null }
+
+@Composable
+internal fun clockZone(): ZoneId = LocalClockZone.current ?: ZoneId.systemDefault()
+
+/** Clock text for the status strip outside composition (MainActivity), in the system zone. */
+fun clockLabel(epochMs: Long, zone: ZoneId = ZoneId.systemDefault()): String = clockText(epochMs, zone)

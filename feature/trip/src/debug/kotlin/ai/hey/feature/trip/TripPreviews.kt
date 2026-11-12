@@ -3,13 +3,14 @@ package ai.hey.feature.trip
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.session.CarUiState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.tooling.preview.Preview
 
 private const val SPEC = "spec:width=1600dp,height=900dp,dpi=160"
 
 @Composable
 private fun Shown(state: CarUiState, dark: Boolean = true) {
-    HeyTheme(dark) { TripScreen(state, NoTripCommands, TripSamples.NOW) }
+    CompositionLocalProvider(LocalClockZone provides TripSamples.ZONE) { HeyTheme(dark) { TripScreen(state, NoTripCommands, TripSamples.NOW) } }
 }
 
 @Preview(name = "D1 waiting", device = SPEC) @Composable private fun D1Waiting() = Shown(TripSamples.waiting)
@@ -22,6 +23,10 @@ private fun Shown(state: CarUiState, dark: Boolean = true) {
 @Preview(name = "D3 card", device = SPEC) @Composable private fun D3Card() = Shown(TripSamples.cardOk)
 @Preview(name = "D3 four conditions", device = SPEC) @Composable private fun D3Four() = Shown(TripSamples.cardFourConditions)
 @Preview(name = "D3 long", device = SPEC) @Composable private fun D3Long() = Shown(TripSamples.cardLong)
+@Preview(name = "D3 route requested", device = SPEC) @Composable private fun D3Requested() = Shown(TripSamples.cardRouteRequested)
+@Preview(name = "D3 route confirm in navi", device = SPEC) @Composable private fun D3Confirm() = Shown(TripSamples.cardRouteConfirm)
+@Preview(name = "D3 route navi not ready", device = SPEC) @Composable private fun D3NotReady() = Shown(TripSamples.cardRouteNotReady)
+@Preview(name = "D3 route confirm timeout", device = SPEC) @Composable private fun D3ConfirmTimeout() = Shown(TripSamples.cardRouteConfirmTimeout)
 @Preview(name = "D3 route failed", device = SPEC) @Composable private fun D3Failed() = Shown(TripSamples.cardRouteFailed)
 @Preview(name = "D3 route stale", device = SPEC) @Composable private fun D3Stale() = Shown(TripSamples.cardRouteStale)
 @Preview(name = "D4 default", device = SPEC) @Composable private fun D4Default() = Shown(TripSamples.dropoffDefault)

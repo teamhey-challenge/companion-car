@@ -207,15 +207,87 @@ class TripRepositoryTest {
     @Test fun aFailedRouteStartDoesNotCarryOverToTheNextTrip() = runTest {
         val vehicle = FakeVehicleGateway(backgroundScope).also { it.routeFailure = "NAVI_UNAVAILABLE" }
         val rig = rig(backgroundScope, vehicle)
+        rig.repo.start()
+        advanceTimeBy(10)
         snapshot(rig, cardView.copy(state = TripState.CARD_SENT, tripId = "t1"))
         rig.repo.state.value.parked!!.startRoute()
         advanceTimeBy(10)
         assertTrue(rig.repo.state.value.routeFailed)
+        assertEquals(listOf(ClientType.ROUTE_FAILED), rig.transport.types().filter { it == ClientType.ROUTE_FAILED })
 
         snapshot(rig, cardView.copy(state = TripState.CARD_SENT, tripId = "t2"))
+        advanceTimeBy(10)
 
         assertFalse("the next trip starts clean", rig.repo.state.value.routeFailed)
         assertTrue(rig.repo.state.value.commands.isEmpty())
+    }
+
+    /** The navigation preview needs a person: nothing goes to the relay until onRouteStarted, then route.started once. */
+    @Test fun routeStartedIsSentOnlyWhenTheNavigationConfirms() = runTest {
+        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
+        val rig = rig(backgroundScope, vehicle)
+        rig.repo.start()
+        advanceTimeBy(10)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+
+        rig.repo.state.value.parked!!.startRoute()
+        advanceTimeBy(60_000)
+
+        assertTrue(rig.repo.state.value.routeAwaitingConfirm)
+        assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
+        assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
+
+        vehicle.confirmRoute()
+        advanceTimeBy(10)
+
+        assertEquals(1, rig.transport.types().count { it == ClientType.ROUTE_STARTED })
+        assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
+    }
+
+    /** A cancel in D3 abandons the attempt; the navigation's late "started" must not reach the relay. */
+    @Test fun aLateRouteStartedAfterCancelSendsNothing() = runTest {
+        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
+        val rig = rig(backgroundScope, vehicle)
+        rig.repo.start()
+        advanceTimeBy(10)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startRoute()
+        advanceTimeBy(10)
+        assertTrue(rig.repo.state.value.routeAwaitingConfirm)
+
+        rig.repo.state.value.parked!!.cancelRoute()
+        advanceTimeBy(10)
+        vehicle.confirmRoute()
+        advanceTimeBy(10)
+
+        assertFalse(rig.repo.state.value.routeAwaitingConfirm)
+        assertFalse(rig.repo.state.value.routeFailed)
+        assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
+        assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
+    }
+
+    /** Navi never opened: after 15 s the car says so (specific code, "open navi" offered), and only then route.failed goes out. */
+    @Test fun anUnreadyNavigationFailsWithItsOwnCodeAndOpeningItAllowsARetry() = runTest {
+        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviReady = false }
+        val rig = rig(backgroundScope, vehicle)
+        rig.repo.start()
+        advanceTimeBy(10)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startRoute()
+        advanceTimeBy(10_000)
+        assertTrue(rig.repo.state.value.routeStarting)
+        assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
+
+        advanceTimeBy(6_000)
+        assertEquals(ai.hey.vehicle.RouteFailure.NAVI_NOT_READY, rig.repo.state.value.routeFailureCode)
+        assertEquals(1, rig.transport.types().count { it == ClientType.ROUTE_FAILED })
+
+        rig.repo.state.value.parked!!.openNavi()
+        assertEquals(1, vehicle.naviOpened)
+        rig.repo.state.value.parked!!.startRoute()
+        advanceTimeBy(10)
+
+        assertEquals(1, rig.transport.types().count { it == ClientType.ROUTE_STARTED })
     }
 
     /** Rule 1: the snapshot shows the effect, so the button is released. */

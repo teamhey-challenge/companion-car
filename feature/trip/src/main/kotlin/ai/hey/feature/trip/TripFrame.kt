@@ -20,9 +20,6 @@ import ai.hey.session.CommandKey
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import java.time.ZoneId
-
-private val KoreaZone: ZoneId = ZoneId.of("Asia/Seoul")
 
 /** The one frame every trip screen uses: status strip on top, content, action rail (hidden by the frame while driving). */
 @Composable
@@ -48,7 +45,7 @@ internal fun TripFrame(
                 wordmarkParty = view?.partySize ?: 1,
                 drivingLabel = label,
                 connection = state.connection.toStrip(),
-                clock = clockText(nowMillis, KoreaZone),
+                clock = clockText(nowMillis, clockZone()),
             )
         },
         driving = driving,

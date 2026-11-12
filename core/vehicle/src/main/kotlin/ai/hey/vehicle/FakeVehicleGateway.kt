@@ -113,10 +113,46 @@ class FakeVehicleGateway(
         this.settings = settings
     }
 
-    override suspend fun startRoute(place: Place): RouteResult {
-        synchronized(_routes) { _routes += place }
-        val failure = routeFailure
-        return if (failure != null) RouteResult.Failed(failure) else RouteResult.Started(route)
+    /**
+     * Drives the same [RouteStartMachine] the real gateway uses. The fake navigation is ready at once and, unless
+     * [naviConfirms] is false, "confirms the preview" immediately, so a started route needs no extra step in tests.
+     * With [naviConfirms] false the attempt waits in AwaitingNaviConfirm until [confirmRoute] / [failRoute] / the 3 min cap.
+     */
+    private val machine: RouteStartMachine = RouteStartMachine(
+        scope = scope,
+        isReady = { naviReady },
+        probe = { naviProbes++ },
+        send = { place ->
+            synchronized(_routes) { _routes += place }
+            val failure = routeFailure
+            if (failure != null) machine.onError(failure) else if (naviConfirms) machine.onRouteStarted(route)
+        },
+    )
+
+    /** Set to false to model Navi42 that was never opened: the attempt waits for it and fails with NAVI_NOT_READY. */
+    @Volatile var naviReady: Boolean = true
+
+    /** Set to false to leave the route waiting in the navigation preview until [confirmRoute]. */
+    @Volatile var naviConfirms: Boolean = true
+    @Volatile var naviProbes = 0
+    @Volatile var naviOpened = 0
+
+    /** The person pressed 안내 시작 in the navigation. */
+    fun confirmRoute() = machine.onRouteStarted(route)
+
+    /** The navigation reported a route error. */
+    fun failRoute(code: String) = machine.onError(code)
+
+    override val routeState: StateFlow<RouteStartState> = machine.state
+
+    override fun startRoute(place: Place) = machine.start(place)
+
+    override fun cancelRoute() = machine.cancel()
+
+    override fun openNavi(): Boolean {
+        naviOpened++
+        naviReady = true
+        return true
     }
 
     override suspend fun requestTrip(place: Place): TripInfo? = tripInfo

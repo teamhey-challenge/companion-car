@@ -47,6 +47,13 @@
     <string name="trip_card_replay_hint">다시 듣기를 누르면 목적지를 다시 읽어 드려요</string>
     <string name="trip_card_replay_text">목적지: %1$s.</string>
     <string name="trip_card_route_failed">경로를 시작하지 못했어요</string>
+    <string name="trip_card_route_confirm">내비에서 안내 시작을 눌러 주세요</string>
+    <string name="trip_card_route_confirm_message">내비 화면에 경로 미리보기가 떠 있어요. 안내 시작을 누르면 출발해요.</string>
+    <string name="trip_card_route_cancel">취소</string>
+    <string name="trip_card_route_not_ready">내비가 아직 준비되지 않았어요</string>
+    <string name="trip_card_route_not_ready_message">내비 열기를 누른 뒤 다시 시도해 주세요.</string>
+    <string name="trip_card_route_confirm_timeout">내비에서 안내 시작을 누르지 않았어요</string>
+    <string name="trip_card_open_navi">내비 열기</string>
     <string name="trip_card_retry">다시 시도</string>
     <string name="trip_card_route_stale">내비 목적지와 합의한 내릴 곳이 달라요</string>
     <string name="trip_card_route_stale_message">경로 다시 시작을 눌러 주세요</string>

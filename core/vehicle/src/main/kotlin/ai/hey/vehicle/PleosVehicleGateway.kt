@@ -42,14 +42,14 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
 
 private const val TAG = "PleosVehicle"
-private const val ROUTE_TIMEOUT_MS = 10_000L
+private const val NAVI_PACKAGE = "ai.umos.maps.android.navigation.app"
 private const val TRIP_TIMEOUT_MS = 5_000L
 private const val SPEECH_TIMEOUT_MS = 30_000L
 private const val TTS_RETRY_BACKOFF_MS = 5_000L
 
 /**
  * Pleos SDK + android.car behind [VehicleGateway]. Every SDK touch is wrapped so a missing service never crashes the
- * app. A missing service is never reported as success: no navigation means [RouteResult.Failed], no speech engine
+ * app. A missing service is never reported as success: no navigation means [RouteStartState.Failed], no speech engine
  * means the text is *not* heard ([VehicleEvent.SpeechDropped]), and no car service means the car is treated as driving.
  *
  * Measured behaviour this relies on (docs/policy/maltong-dev-spec.md 2.4): TTS needs Locale.KOREA, the TTS event
@@ -88,31 +88,46 @@ class PleosVehicleGateway(
         queueMax = HeyConfig.SPEECH_QUEUE_MAX,
     )
 
-    // ---- navigation: at most one outstanding request of each kind, completed only by its own callback
+    // ---- navigation: the route start is one RouteStartMachine; a trip request is one outstanding call
     @Volatile private var navi: NaviHelper? = null
-    @Volatile private var naviReady = false
-    private val routeMutex = Mutex()
+    @Volatile private var naviBound = false
+
+    /** The navigation has sent us something since the connection was made: it is up and answers requests. */
+    @Volatile private var naviAnswered = false
     private val tripMutex = Mutex()
-    private val pendingRoute = AtomicReference<CompletableDeferred<RouteResult>?>(null)
     private val pendingTrip = AtomicReference<CompletableDeferred<TripInfo?>?>(null)
+
+    private val routes = RouteStartMachine(
+        scope = scope,
+        isReady = { naviBound && naviAnswered },
+        probe = { probeNavi() },
+        send = { sendRoute(it) },
+    )
+
+    private fun probeNavi() {
+        guard("probe navigation") { navi?.getCurrentLocationInfo() }
+    }
 
     private val naviListener = object : NaviHelperEventListener {
         override fun onRouteStarted(routeStartInfo: RouteStartInfo) {
+            naviAnswered = true
             // `duration` is seconds, `distance` metres, `tollFare` won (probe: tollFare=700).
-            pendingRoute.getAndSet(null)?.complete(
-                RouteResult.Started(RouteInfo(routeStartInfo.duration, routeStartInfo.distance, routeStartInfo.tollFare)),
-            )
+            routes.onRouteStarted(RouteInfo(routeStartInfo.duration, routeStartInfo.distance, routeStartInfo.tollFare))
         }
 
         // onRouteEnded fires right after onRouteStarted: deliberately not overridden.
 
+        // Ready is signalled ONLY by the reply to getCurrentLocationInfo (probeNavi). Navi42 broadcasts route state and
+        // navigation status on its own while its map is still not complete, and drops requests then ("navi not ready").
+        override fun onCurrentLocationInfo(currentLocationInfo: ai.pleos.playground.navi.data.CurrentLocationInfo) {
+            naviAnswered = true
+        }
+
         override fun onError(errorCode: NaviErrorCode) {
             if (errorCode == NaviErrorCode.CAUSE_SEARCH_TRIP) {
                 pendingTrip.getAndSet(null)?.complete(null)
-            } else {
-                val route = pendingRoute.getAndSet(null)
-                if (route != null) route.complete(RouteResult.Failed(errorCode.name))
-                else _events.tryEmit(VehicleEvent.NavigationUnavailable(errorCode.name))
+            } else if (!routes.onError(errorCode.name)) {
+                _events.tryEmit(VehicleEvent.NavigationUnavailable(errorCode.name))
             }
         }
 
@@ -152,7 +167,7 @@ class PleosVehicleGateway(
         val helper = NaviHelper(app)
         helper.addListener(naviListener)
         helper.initialize(
-            { naviReady = true },
+            { naviBound = true },
             { e ->
                 HeyLog.w(TAG, "navigation service not connected: ${e.message}")
                 _events.tryEmit(VehicleEvent.NavigationUnavailable("NAVI_INIT_FAILED"))
@@ -212,44 +227,56 @@ class PleosVehicleGateway(
         this.settings = settings
     }
 
-    override suspend fun startRoute(place: Place): RouteResult = routeMutex.withLock {
-        val helper = navi
-        if (helper == null || !naviReady) {
-            HeyLog.w(TAG, "startRoute: navigation service not connected")
-            _events.tryEmit(VehicleEvent.NavigationUnavailable("NAVI_UNAVAILABLE"))
-            return@withLock RouteResult.Failed("NAVI_UNAVAILABLE")
+    override fun startRoute(place: Place) {
+        if (navi == null) _events.tryEmit(VehicleEvent.NavigationUnavailable("NAVI_UNAVAILABLE"))
+        // An answer from before this attempt proves nothing: Navi42 may have been closed or killed since. Only a reply
+        // to a probe sent now counts as "ready".
+        naviAnswered = false
+        routes.start(place)
+    }
+
+    override val routeState: StateFlow<RouteStartState> get() = routes.state
+
+    override fun cancelRoute() = routes.cancel()
+
+    /** Navi42 has to be in the foreground once after boot before it answers; its launcher intent is the way to open it. */
+    override fun openNavi(): Boolean = try {
+        val intent = app.packageManager.getLaunchIntentForPackage(NAVI_PACKAGE)
+            ?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (intent == null) {
+            HeyLog.w(TAG, "openNavi: no launcher intent for $NAVI_PACKAGE")
+            false
+        } else {
+            app.startActivity(intent)
+            true
         }
-        val result = CompletableDeferred<RouteResult>()
-        pendingRoute.set(result)
-        try {
-            helper.requestRoute(
-                ai.pleos.playground.navi.data.RouteInfo(
-                    latitude = place.lat,
-                    longitude = place.lng,
-                    displayLatitude = null,
-                    displayLongitude = null,
-                    poiName = place.nameKo,
-                    poiId = place.placeId,
-                    address = place.addressKo,
-                    poiSubId = "",
-                    routeOption = RouteOption.RECOMMENDED,
-                    poiProvider = "hey",
-                    isMobileRequest = false,
-                ),
-            )
-        } catch (t: Throwable) {
-            pendingRoute.compareAndSet(result, null)
-            HeyLog.w(TAG, "requestRoute threw ${t.javaClass.simpleName}: ${t.message}")
-            return@withLock RouteResult.Failed("NAVI_ERROR")
-        }
-        val outcome = withTimeoutOrNull(ROUTE_TIMEOUT_MS) { result.await() } ?: RouteResult.Failed("TIMEOUT")
-        pendingRoute.compareAndSet(result, null)
-        outcome
+    } catch (t: Throwable) {
+        HeyLog.w(TAG, "openNavi threw ${t.javaClass.simpleName}: ${t.message}")
+        false
+    }
+
+    private fun sendRoute(place: Place) {
+        val helper = navi ?: throw IllegalStateException("navigation not connected")
+        helper.requestRoute(
+            ai.pleos.playground.navi.data.RouteInfo(
+                latitude = place.lat,
+                longitude = place.lng,
+                displayLatitude = null,
+                displayLongitude = null,
+                poiName = place.nameKo,
+                poiId = place.placeId,
+                address = place.addressKo,
+                poiSubId = "",
+                routeOption = RouteOption.RECOMMENDED,
+                poiProvider = "hey",
+                isMobileRequest = false,
+            ),
+        )
     }
 
     override suspend fun requestTrip(place: Place): TripInfo? = tripMutex.withLock {
         val helper = navi
-        if (helper == null || !naviReady) return@withLock null
+        if (helper == null || !naviBound) return@withLock null
         val result = CompletableDeferred<TripInfo?>()
         pendingTrip.set(result)
         try {
@@ -273,7 +300,8 @@ class PleosVehicleGateway(
             navi?.removeListener(naviListener)
             navi?.release()
             navi = null
-            naviReady = false
+            naviBound = false
+            naviAnswered = false
             connectNavi()
         }
     }

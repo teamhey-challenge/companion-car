@@ -39,9 +39,6 @@ import ai.hey.session.CarCommand
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import java.time.ZoneId
-
-private val KoreaZone: ZoneId = ZoneId.of("Asia/Seoul")
 
 // ================================================================ D5 driving
 
@@ -127,7 +124,7 @@ internal fun RequestsScreen(
                                 textKo = request.text,
                                 kind = request.uiKind(),
                                 state = request.uiState(),
-                                time = clockText(request.ts, KoreaZone),
+                                time = clockText(request.ts, clockZone()),
                                 onReplay = { commands.replayRequest(request.requestId) },
                                 modifier = Modifier.fillWidth(),
                             )
