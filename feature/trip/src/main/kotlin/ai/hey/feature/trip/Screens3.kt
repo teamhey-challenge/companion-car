@@ -166,6 +166,15 @@ internal fun RequestsScreen(
                             // While listening the banner IS the state (with its cancel), so the start button is not drawn next to it.
                             if (voice is VoiceState.Listening) {
                                 VoiceStatus(voice, commands)
+                            } else if (voice is VoiceState.Failed && voice.reason == VoiceState.Reason.PermissionDenied) {
+                                // Without the microphone the start button cannot work: the warning is the one element, and its action asks again.
+                                HeyBanner(
+                                    HeyStatusTone.Warning,
+                                    stringResource(R.string.trip_voice_permission),
+                                    Modifier.fillWidth(),
+                                    message = stringResource(R.string.trip_voice_permission_hint),
+                                    actions = listOf(HeyBannerAction(stringResource(R.string.trip_voice_permission_retry), { state.parked?.startVoiceReply() }, enabled = canReply)),
+                                )
                             } else {
                                 HeyButton(
                                     stringResource(R.string.trip_voice_start),
@@ -227,8 +236,6 @@ private fun VoiceStatus(voice: VoiceState, commands: CarCommands) {
                 },
             ),
             Modifier.fillWidth(),
-            // Denied: one line on where to switch it back on (the system will not ask again).
-            message = if (voice.reason == VoiceState.Reason.PermissionDenied) stringResource(R.string.trip_voice_permission_hint) else null,
         )
         VoiceState.Idle, is VoiceState.Confirm -> Unit
     }
