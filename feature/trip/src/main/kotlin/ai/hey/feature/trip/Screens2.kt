@@ -329,7 +329,7 @@ internal fun DropoffScreen(
                     }
                 }
                 HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow()) {
-                    HeyText(stringResource(R.string.trip_dropoff_reasons_title), variant = HeyTextVariant.Title, maxLines = 1)
+                    HeyText(stringResource(R.string.trip_dropoff_reasons_title), variant = HeyTextVariant.Heading, maxLines = 1)
                     ReasonChips(reasons, draft.reasonIndex, commands::selectReason, Modifier.fillWidth())
                     (proposal as? DriverProposal)?.let { ProposalStatus(it.status.toUi()) }
                     if (pin != null) {

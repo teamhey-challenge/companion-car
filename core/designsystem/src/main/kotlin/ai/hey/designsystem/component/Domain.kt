@@ -49,15 +49,15 @@ fun JoinRequestCard(
 ) {
     val expires = remember(expiresInSec) { "%d:%02d".format(expiresInSec / 60, expiresInSec % 60) }
     HeyCard(modifier = modifier, tone = HeyCardTone.Raised) {
+        // The screen headline already says "a passenger wants to connect"; the card opens with who and how long.
         HStack(gap = HeyGap.G16, arrange = HeyArrange.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            HeyText(stringResource(R.string.hey_join_title), variant = HeyTextVariant.Title)
+            HStack(gap = HeyGap.G16) {
+                HeyIcon(HeyIcons.Globe, null)
+                HeyText(langLabel, variant = HeyTextVariant.Heading, maxLines = 1)
+                HeyIcon(HeyIcons.Users, null)
+                HeyText(stringResource(R.string.hey_join_party, partySize), variant = HeyTextVariant.Heading, maxLines = 1)
+            }
             HeyStatusPill(stringResource(R.string.hey_join_expires, expires), HeyStatusTone.Warning, icon = HeyIcons.Clock)
-        }
-        HStack(gap = HeyGap.G16) {
-            HeyIcon(HeyIcons.Globe, null)
-            HeyText(langLabel, variant = HeyTextVariant.Heading, maxLines = 1)
-            HeyIcon(HeyIcons.Users, null)
-            HeyText(stringResource(R.string.hey_join_party, partySize), variant = HeyTextVariant.Heading, maxLines = 1)
         }
         // The driver approves only when this number is the one the passenger shows or says: it ties the request to the person in the car.
         VStack(gap = HeyGap.G8, align = HeyAlign.Center, modifier = Modifier.fillMaxWidth()) {

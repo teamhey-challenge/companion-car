@@ -198,7 +198,8 @@ enum class HeyConnection { Online, Reconnecting, Offline }
 @Composable
 fun StatusStrip(
     wordmarkParty: Int,
-    drivingLabel: String,
+    /** Null when the screen's own title already says it (D8), so one fact is not on screen twice. */
+    drivingLabel: String?,
     connection: HeyConnection,
     modifier: Modifier = Modifier,
     clock: String? = null,
@@ -211,7 +212,7 @@ fun StatusStrip(
     }
     HStack(gap = HeyGap.G24, arrange = HeyArrange.SpaceBetween, modifier = modifier.fillMaxWidth()) {
         HeyWordmark(wordmarkParty)
-        HeyStatusPill(drivingLabel, HeyStatusTone.Neutral, icon = HeyIcons.Car)
+        if (drivingLabel != null) HeyStatusPill(drivingLabel, HeyStatusTone.Neutral, icon = HeyIcons.Car)
         HStack(gap = HeyGap.G16) {
             HeyStatusPill(label, tone)
             if (clock != null) InkText(clock, colors.fgMuted, variant = HeyTextVariant.Heading, maxLines = 1)

@@ -59,7 +59,7 @@ fun SettingsScreen(
         statusStrip = {
             StatusStrip(
                 wordmarkParty = wordmarkParty,
-                drivingLabel = stringResource(R.string.settings_title),
+                drivingLabel = null,
                 connection = connection,
                 clock = clock,
             )

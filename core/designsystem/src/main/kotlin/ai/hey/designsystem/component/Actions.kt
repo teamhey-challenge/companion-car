@@ -46,7 +46,7 @@ private fun HeyColors.ink(variant: HeyButtonVariant, pressed: Boolean, enabled: 
         HeyButtonVariant.Accent -> ButtonInk(if (pressed) accentPressed else accent, fgOnAccent, null)
         HeyButtonVariant.Secondary -> ButtonInk(if (pressed) bgSunken else bgRaised, fgDefault, borderStrong)
         HeyButtonVariant.Danger -> ButtonInk(if (pressed) danger.copy(alpha = 0.32f) else dangerContainer, danger, danger)
-        HeyButtonVariant.Ghost -> ButtonInk(if (pressed) bgSunken else Color.Transparent, fgDefault, null)
+        HeyButtonVariant.Ghost -> ButtonInk(if (pressed) bgSunken else Color.Transparent, fgDefault, borderDefault)
     }
 }
 

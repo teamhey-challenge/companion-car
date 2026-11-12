@@ -15,7 +15,6 @@
     <string name="hey_request_spoken">읽어 드렸어요</string>
     <string name="hey_request_answered">답했어요</string>
     <string name="hey_request_replay">다시 듣기</string>
-    <string name="hey_join_title">연결 요청</string>
     <string name="hey_join_check_title">확인 번호</string>
     <string name="hey_join_check_hint">승객이 보여 주는 번호와 같을 때만 승인해 주세요</string>
     <string name="hey_join_party">%1$d명</string>
