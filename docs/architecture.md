@@ -1,182 +1,38 @@
-# HEY 개발 계약 (2026-11-12 초판)
+# hey-car 개발 계약 (2026-11-12 초판)
 
-이 문서는 저장소 `hey-car`(차량 앱)의 모든 작업자가 따르는 계약이다. 원래 모노레포 `hey-taxi`의 문서를 분리하면서 옮겼고, 규칙(2~4절)은 그대로다. 바뀐 것은 저장소 구조·명령·경로뿐이다: 공유 패키지는 `hey-shared`(서브모듈 `shared/`), 중계 서버는 `hey-relay`, 승객 웹은 `hey-passenger-web`이다. 아래에 `apps/`·`packages/` 경로가 나오면 그 저장소의 같은 경로를 뜻한다. 제품 설명은 기획 저장소 `darren-pleos-challenge/pleos-challenge`의 `proposal/hey/`(서비스 기획서·정책서·화면별 정의서)에 있다. 여기에는 코드가 지켜야 할 구조, 이름, 경계만 적는다. 바꿀 때는 이 문서를 먼저 고치고 코드를 맞춘다.
+이 문서는 **hey-car가 소유하는 것**만 적는다: 차량 디자인 시스템 규칙(4절), 이 저장소의 구조(5절), 차량 앱 구조(6절), 실행과 검증(7절). 제품·프로토콜·서버 계약(범위, 기획자 답변 기본값, 상태 흐름, REST·WebSocket, ID 목록, 정책값, 서버 상태 표)은 사본을 두지 않고 `hey-relay/docs/architecture.md`가 정본이다. 웹 디자인 시스템 규칙과 웹 부품 목록은 `hey-passenger-web`, 부품 목록(차량)은 이 저장소의 `docs/components.md`다. 절 번호는 분리 전 `hey-taxi` 문서와 같게 유지했고 코드 주석이 그 번호를 쓴다. 제품 설명은 기획 저장소 `darren-pleos-challenge/pleos-challenge`의 `proposal/hey/`에 있다. 바꿀 때는 이 문서를 먼저 고치고 코드를 맞춘다.
 
-## 0. 한 문장과 범위
+## 0~3. 제품·프로토콜 계약 (이 저장소 밖)
 
-길에서 잡은 택시에서도 외국인 승객과 기사님이 목적지와 내릴 곳을 서로 다른 언어로 같은 뜻으로 맞추게 해 주는 서비스다. 구성은 셋이다.
-
-| 구성 | 위치 | 기술 |
+| 절 | 내용 | 정본 |
 |---|---|---|
-| 승객 웹 (휴대폰 브라우저, 설치 없음) | `hey-passenger-web` 저장소 | Vite + React 19 + TypeScript, `@hey/ui-web`만으로 화면 조립 |
-| 기사 차량 앱 (Pleos Connect, AAOS 가로) | 이 저장소(`hey-car`) 루트 | Kotlin + Jetpack Compose, `:core:designsystem`만으로 화면 조립 |
-| 중계 서버 | `hey-relay` 저장소 | Bun + TypeScript (`Bun.serve` REST + WebSocket), 메모리 저장 |
+| 0 | 범위와 구성 | `hey-relay/docs/architecture.md` §0 |
+| 1 | 기획자 답변 기본값 (Q1~Q30) | 같은 문서 §1 |
+| 2 | 상태와 흐름 (차량·QR, 운행 상태, 하차 제안, 요청과 답장·음성 우선순위) | 같은 문서 §2 |
+| 3 | REST·WebSocket(재연결 1·2·4·8·15초, ack 포함)·ID 목록·정책값 | 같은 문서 §3, 타입·ID·정책값은 `hey-shared`의 `packages/protocol/src` |
+| 8 | 상태별 받는 메시지·보낼 수 있는 쪽 | 같은 문서 §8, 표는 relay의 `docs/transitions.json` |
 
-공유 패키지: `hey-shared` 저장소의 `packages/tokens`(디자인 토큰 정본), `packages/protocol`(메시지·상태 타입과 ID 목록), `packages/copy`(승객 언어 문구 카탈로그), 그리고 `hey-passenger-web`의 `packages/ui-web`(웹 디자인 시스템). 이 저장소에서는 `shared/`(git 서브모듈, 태그 고정)로 본다.
+이 저장소가 서버 계약을 쓰는 방식:
 
-## 1. 기획자 답변 전 기본값
+- 차량 쪽 정책값은 `core/model/HeyConfig.kt`(`hey-shared`의 `packages/protocol/src/config.ts`를 옮긴 것)에만 둔다. 프로토콜 Kotlin 타입은 `:core:model`이 손으로 옮기고, `shared/packages/protocol/fixtures/*.json`을 시험이 읽어 같은 모양인지 확인한다.
+- 승객 요청 음성은 relay의 `say`로 온다. 큐·간격·중복 제거(`speech.*`)는 `:core:vehicle`의 `SpeechQueue`가 정책값대로 지킨다.
+- 차량은 하차 지점을 기사 제안으로만 보낸다(`dropoff.propose`). 승객 핀은 없다.
+- 모든 답장(버튼·음성)은 정차 중에만 보낸다. `answer` 묶음은 열린 질문이 있을 때만 켜고 `requestId`가 없으면 relay가 가장 오래된 열린 질문에 붙인다(차량 UI도 같은 규칙).
+- 도착(`trip.arrive`)은 내비 `onDestinationArrived`를 받을 때, 또는 이 이벤트가 없을 때를 대비해 기사님이 차량 화면의 "도착" 버튼(정차 중)을 누를 때 보낸다. 정확한 조건은 relay §2.4.
+- 단계별 `enabled` 명령이 relay 표의 부분집합인지 `CarPhaseTransitionsTest`가 확인한다(6절).
 
-기획자 질문 Q1~Q30(`pleos-challenge` 브랜치 `heyyy`의 `HANDOFF-planner.md`)의 추천안을 기본값으로 구현해 왔고, 기획자 답변(2026-11-12, `HANDOFF-planner-answers.md`)이 도착해 아래 값이 바뀌었다. 값은 코드 한 곳(`packages/protocol/src/config.ts`, 차량 앱 `core/model/HeyConfig.kt`)에만 둔다.
+## 4. 디자인 시스템 규칙 (예외 없음) — 차량
 
-| Q | 값 (planner answers 2026-11-12, 프로토콜 3.0.0) | 코드에 닿는 곳 |
-|---|---|---|
-| Q2 | 앱 이름 HEY, 탑승 인원 1~4명에 따라 HEY·HEYY·HEYYY·HEYYYY | `Wordmark`(웹), `HeyWordmark`(차량) |
-| Q3 | 대표 장면: 기사 하차 제안 → 승객이 자기 언어로 확인 → 승객 요청(입구·온도·조용히)이 기사에게 도달, 한 흐름 | 화면 우선순위 |
-| Q4 | 1차 상황은 공항→호텔 | 시연 데이터 |
-| Q10 | 승객 언어 en, ja, zh-Hans, zh-Hant, vi, th (+ 검수용 ko). zh-Hant·vi·th는 `REVIEW_PENDING`(화면에 표시하지 않음). D1 안내는 6개 언어 | `packages/copy`, `LanguageGreetingStrip` |
-| Q11 | 탑승 카드 조건: 만나기로 한 입구, 실내 온도, 조용히, 음악(끄기·작게). 짐·덜 걷기는 없다 | `ConditionId` |
-| Q12 | 빠른 답장 두 묶음: 답장(네·어려워요·잠시만요, 열린 질문이 있을 때만), 기사님이 먼저(여기서 세울게요·5분 걸려요·카드 돼요, 정차 중 언제든) | `QuickReplyId.set`, `QuickReplyGroup` |
-| Q13 | 요금은 경로 통행료가 있을 때만 승객 언어로 안내, 미터 요금은 표시하지 않음 | `TollNotice` |
-| Q14 | 승객 화면에 지도 없음. 하차 지점은 글(이름+이유+목적지에서 거리) | 차량 영향 없음 |
-| Q15 | 기사 음성 답장 있음: 정차 중 한국어 음성(Pleos STT ON_DEVICE `Locale.KOREA`) → 확인 → `reply.send kind voice` → 릴레이가 승객 언어로 번역(실패하면 한국어 원문, `ReplyItem.translated=false`). 버튼도 유지. 모든 답장은 정차 중에만, 주행 중에는 음성 출력만 | `VoiceInput`, `PleosVoiceInput`, `VoiceConfirmDialog` |
-| Q16 | 하차 위치는 기사만 제안한다. 승객 핀·핀 결정 없음, `elsewhere`는 다른 곳 제안 요청 | `DropoffProposal` |
-| Q18 | Y 늘리기는 승객 웹 상단과 차량 화면 모두 | 두 Wordmark |
-| Q19 | 슬로건 "내 취향대로, 내릴 곳까지." | `copy` |
-| Q21 | 저장소 4개로 분리(`hey-shared`·`hey-relay`·`hey-passenger-web`·`hey-car`) + `hey-e2e` | — |
-| Q6·Q7 | 기사 무료, 승객 화면 여행 광고(차량에는 광고 없음; `AdItem`에 장소 이름 없음, 광고주는 샘플 표시) | 승객 웹만 |
+근거: 스킬 `product-foundations` 2절, darren-secretary D123·D124·D128, 사용자 지시 "디자인 시스템을 구축하고 그 컴포넌트만 사용해서 개발, 예외 없음"(2026-11-12). 웹 쪽 규칙(CSS 변수 이름, `className` 금지, CSS 리터럴, Storybook 이야기, 시트 등)은 `hey-passenger-web/docs/architecture.md` §4가 소유한다. 번호는 분리 전과 같게 두었고, 이 저장소에 해당이 없는 번호는 비워 뒀다.
 
-## 2. 상태와 흐름
-
-### 2.1 차량과 QR
-
-차량마다 고정 QR 하나가 조수석 뒷면에 붙는다. QR 내용은 `https://<웹 주소>/c/<carCode>`이다. `carCode`는 차량 앱이 처음 실행될 때 서버에 등록하고(`POST /v1/cars`) 받는 8자리 영숫자(혼동 문자 0 O 1 I L 제외)이며 바뀌지 않는다. 차량 앱은 `driverToken`(128비트)을 기기에만 저장한다.
-
-QR은 연결 요청만 만든다. 기사님이 정차 중 한 번 승인해야 운행(trip)이 열리고, 운행이 끝나면 그 운행의 모든 기기 토큰이 폐기된다. 지난 승객이 같은 QR로 다시 들어오면 새 연결 요청이 될 뿐 끝난 운행을 볼 수 없다. 운행 중이거나 다른 연결 요청이 대기 중일 때 QR을 찍으면 `CAR_BUSY`로 "이미 운행 중이에요. 일행이면 대표 승객에게 초대 링크를 받으세요"가 뜬다. 일행은 대표 승객 화면의 초대 링크(`/t/<inviteCode>`)로 들어오며 기사 승인이 필요 없다. 한 운행의 기기는 4대까지다.
-
-연결 요청 5분(`join.requestTtlSec`)은 주행 중인 시간도 센다. 요청이 오면 차량은 음성으로 한 번 알리고, 승인·거절 버튼은 정차 중에만 눌린다.
-
-차량 등록(`carId`, `carCode`, `driverTokenHash`, `plateSuffix`)은 서버 재시작 뒤에도 남아야 고정 QR이 유지되므로 서버 로컬 파일(`HEY_DATA_DIR/cars.json`, 기본 `./data`)에 저장한다. 운행·기기·대화는 메모리에만 두고 재시작하면 사라진다(승객 화면은 `TRIP_ENDED`).
-
-권한: 대표 승객(`role: "lead"`)만 탑승 카드 보내기·고치기, 하차 제안 응답, 초대 링크 보기, 운행 나가기(=운행 종료)를 한다. 일행(`role: "guest"`)은 카드·하차 상태를 보고 요청(프리셋·직접 입력)을 보낼 수 있다. 일행의 `trip.leave`는 그 기기만 빠진다. 대표가 아닌 기기의 대표 전용 메시지는 `NOT_LEAD`.
-
-### 2.2 운행 상태
-
-```
-REQUESTED --기사 승인--> CONNECTED --카드 보냄--> CARD_SENT --경로 시작--> IN_TRIP --도착--> ARRIVED --기사 종료--> ENDED
-REQUESTED --거절·5분 경과--> (요청 폐기, 승객에게 DECLINED/EXPIRED)
-CARD_SENT --기사 재확인 요청--> CONNECTED
-IN_TRIP --승객 목적지 변경--> CARD_SENT
-모든 상태 --기사 종료·대표 승객 나가기·4시간--> ENDED
-```
-
-`TripState = "REQUESTED" | "CONNECTED" | "CARD_SENT" | "IN_TRIP" | "ARRIVED" | "ENDED"`. 차량 쪽 주행 여부는 `DrivingState = "PARKED" | "DRIVING"`이며 차량 앱이 서버에 알린다(`driving.state`).
-
-도착은 종료 후보일 뿐이다. 최종 종료는 기사님의 "운행 끝내기"이며, 문 열림이나 목적지 근처 정차만으로 끝내지 않는다.
-
-### 2.3 하차 위치 제안 (대표 장면)
-
-제안은 버전을 가진다. `DropoffProposal = { version, point: { lat, lng }, label, reasonId?, status }`(기사 제안 하나뿐). `status`는 `pending | ok | elsewhere | unsure | superseded`다. 합의된 하차 위치(`agreedDropoff`)는 승객이 `ok`로 답한 가장 최근 버전이다.
-
-- 기사 제안의 승객 응답은 `ok`(여기 좋아요) / `elsewhere`(다른 곳을 원해요) / `unsure`(위치를 모르겠어요) 셋이다. 응답 없음은 `pending`으로 남고 동의로 바꾸지 않는다.
-- 새 제안이 오면 이전의 **대기 중** 제안은 `superseded`가 되고, 이전 응답을 새 버전에 재사용하지 않는다. 이미 응답이 끝난 제안은 그 응답(`ok`·`elsewhere`·`unsure`)을 남긴다. 대기 중인 제안은 언제나 하나뿐이다.
-- 하차 지점은 기사님만 제안한다(3.0.0, Q16). 승객은 지도에서 핀을 찍을 수 없고(승객 화면에 지도가 없다), 응답만 한다. 주행 중에는 제안을 보낼 수 없다.
-- 합의된 하차 위치가 내비 목적지와 다르면 기사님이 다시 경로 시작을 눌러야 내비가 바뀐다. 승인 없이 경로를 바꾸지 않는다.
-
-하차 후보 목록은 서버가 OSM Overpass로 목적지 반경 150m 안의 출입구(`entrance=*`) 노드를 찾아 만든다(`GET /v1/places/{placeId}/entrances`). 없으면 "목적지 기본 위치"만 준다.
-
-### 2.4 요청과 답장
-
-승객 요청은 프리셋 또는 직접 입력이다. 프리셋 한국어 음성 문장은 검수된 고정 문장(`packages/copy/ko.ts`의 `speech.*`)을 쓰고, 직접 입력은 서버가 번역해 한국어 문장으로 만든다. 요청 상태는 셋을 구분해 보여 준다: `received`(차량 수신) → `spoken`(음성 전달) → `answered`(기사 응답). 알림형 프리셋은 `spoken`에서 끝나고, 질문형과 직접 입력은 `answered`까지 간다. 음성 완료를 기사 수락으로 표시하지 않는다. 차량이 오프라인이라 전달하지 못한 요청은 `failed`이며 승객 화면에 다시 보내기가 붙는다. 번역에 실패한 직접 입력은 요청으로 저장하지 않는다: 서버는 그 요청의 `clientRef`를 실은 `error(TRANSLATE_FAILED)`만 돌려주고 분당 한도(3회)를 쓰지 않는다. 클라이언트는 입력창에 쓴 글을 되살리고 오류를 보여 준다(`RATE_LIMITED`·`TOO_LONG`과 같은 경로). 직접 입력 분당 3회 제한은 기기별이다.
-
-기사님 답장(`reply.send`)은 정차 중에만 받는다(서버도 확인, 주행 중이면 `BAD_REQUEST`). `answer` 묶음 버튼은 열린 질문이 있을 때만이고 `requestId`가 없으면 열린 질문 중 가장 오래된 것에 붙는다(차량도 같은 규칙). 음성 답장은 서버가 승객 기기 언어마다 번역해 저장하며, 번역 실패는 발신 봉투의 `ref`를 실은 `TRANSLATE_FAILED`로 차량에 돌려준다(D6 확인 창에 표시). 나중에 언어를 바꾼 기기에는 줄을 막지 않고 따라잡기 번역을 하고, 실패하면 한국어 원문과 `ReplyItem.translated: false`를 준다.
-
-음성 우선순위 `high`는 탑승 카드 도착·변경, 하차 제안 응답, `stopHere` 프리셋이다. 나머지는 `normal`이며 도착 순서대로 `speech.gapSec` 간격을 둔다.
-
-도착(`trip.arrive`)은 차량 앱이 내비 `onDestinationArrived`를 받거나, 이 이벤트가 오지 않는 경우를 대비해 기사님이 D5·D6의 "도착" 버튼을 누를 때 보낸다. 기사님이 끌 수 없는 프리셋은 `stopHere`와 `card`다.
-
-## 3. 프로토콜
-
-모든 타입의 정본은 `packages/protocol/src/*.ts`다. 차량 앱 `:core:model`은 그것을 손으로 옮긴 Kotlin 타입이며, `packages/protocol/fixtures/*.json`의 예시를 양쪽 시험이 읽어 같은 모양인지 확인한다.
-
-### 3.1 REST
-
-| 메서드 | 경로 | 호출자 | 요청 | 응답 |
-|---|---|---|---|---|
-| POST | `/v1/cars` | 차량(최초 1회) | `{ plateSuffix }` | `{ carId, carCode, driverToken, qrUrl }` |
-| GET | `/v1/c/{carCode}` | 승객 | — | `{ plateSuffix, online, busy }` |
-| POST | `/v1/c/{carCode}/join` | 승객 | `{ lang, partySize }` | `{ joinRequestId, deviceToken }` |
-| POST | `/v1/t/{inviteCode}/join` | 일행 | `{ lang }` | `{ tripId, deviceToken }` |
-| GET | `/v1/places?q=&lang=` | 승객 | `Authorization: Device <token>` | `Place[]` 최대 8개 (Nominatim) |
-| GET | `/v1/places/{placeId}/entrances` | 승객·차량 | 토큰 | `DropoffCandidate[]` (Overpass) |
-| GET | `/v1/ads?placeId=&lang=` | 승객 웹(P4·P6) | 인증 없음 | `AdItem[]` = `{ id, kind, title, subtitle, distanceM?, sponsor }` (`placeName` 없음; 차량은 부르지 않는다) |
-| GET | `/healthz` | — | — | `{ ok: true }` |
-
-### 3.2 WebSocket
-
-연결: `wss://<서버>/v1/ws` — 토큰과 버전을 URL에 싣지 않는다(액세스 로그). 업그레이드 직후 첫 프레임은 `{ type: "auth", token, protocol }`(`AuthMessage`)이고, 서버는 이 프레임을 받기 전까지 아무것도 보내지 않으며 그 전에 온 봉투는 버린다. 서버의 첫 메시지가 인증 수락의 증거다. 봉투는 `{ type, id, ts, data }`이고 받는 쪽은 `{ type: "ack", id }`를 돌려준다. 같은 `id`는 한 번만 처리한다.
-
-프로토콜 버전 핸드셰이크: 모든 클라이언트는 자기 `PROTOCOL_VERSION`(정본 `packages/protocol/src/version.ts`)을 REST에는 `X-Hey-Protocol` 헤더로, WebSocket에는 첫 `auth` 프레임의 `protocol`로 싣는다. 서버는 major가 다르거나 형식이 틀리면 연결·요청을 받지 않고 HTTP 426 `{ error: { code: "PROTOCOL_MISMATCH", server, client } }`로 답한다(`/healthz` 제외). minor·patch 차이는 받아 준다. 버전을 싣지 않은 요청은 통과한다. 클라이언트는 426을 받으면 재시도하지 않고 전용 상태를 보인다(웹 P7 `protocolMismatch`, 차량 D1 배너).
-
-읽기 모델은 하나다. 서버는 변경이 있을 때마다 역할별 `trip.snapshot`을 보낸다. 승객용은 그 기기 언어로, 차량용은 한국어로 채워져 있다. 화면은 스냅숏만 그린다. 별도 이벤트는 음성(`say`)과 일회성 알림(`notice`)뿐이다.
-
-| type | 방향 | data |
-|---|---|---|
-| `trip.snapshot` | 서버→각 기기 | 승객: `PassengerTripView`, 차량: `CarView` |
-| `say` | 서버→차량 | `{ speechId, textKo, priority: "high" \| "normal" }` |
-| `notice` | 서버→기기 | `{ noticeId, kind }` |
-| `join.approve` / `join.decline` | 차량→서버 | `{ joinRequestId }` |
-| `card.submit` | 대표 승객→서버 | `{ destinationPlaceId, conditions: ConditionId[], entranceNote?, temperature?: "cooler" \| "warmer", quiet?: boolean, music?: "off" \| "low" }` — 목적지는 장소 전체가 아니라 `GET /v1/places`가 돌려준 `placeId` |
-| `card.update` | 승객→서버 | `card.submit`의 일부 필드. `entranceNote`·`temperature`·`music`은 null로, `quiet`는 false로 지운다. 바뀐 부분만 기사에게 음성 |
-| `invite.rotate` | 대표 승객→서버 | `{}` — 초대 링크(`inviteCode`)를 새로 발급한다 |
-| `card.recheck` | 차량→서버 | `{}` |
-| `route.started` | 차량→서버 | `{ durationSec, distanceM, tollFare }` |
-| `route.failed` | 차량→서버 | `{ code }` |
-| `trip.progress` | 차량→서버 | `{ etaSec, distanceM, stale }` (60초 간격) |
-| `dropoff.propose` | 차량→서버 | `{ point, label, kind?, entranceType?, ref?, street?, reasonId? }` — 하차 지점은 기사님만 제안한다(3.0.0) |
-| `dropoff.respond` | 승객→서버 | `{ version, response: "ok" \| "elsewhere" \| "unsure" }` — `elsewhere`는 기사님께 다른 곳을 제안해 달라는 요청 |
-| `request.send` | 승객→서버 | `{ kind: "preset" \| "free", presetId?, text?, clientRef }` — `clientRef`(1~80자)는 보낸 기기의 `RequestItem.clientRef`와 오류의 `clientRef`로 돌아온다 |
-| `request.spoken` | 차량→서버 | `{ requestId }` |
-| `reply.send` | 차량→서버 | `{ kind: "button", replyId, requestId? }` 또는 `{ kind: "voice", textKo(1~100자), requestId? }` — 정차 중에만(주행 중 `BAD_REQUEST`). `answer` 묶음 버튼은 열린 질문이 있어야 하고 `requestId`가 없으면 가장 오래된 열린 질문에 붙는다, `driverFirst` 묶음과 음성은 질문 없이도 보낸다. 음성은 정차 중 인식 문장을 기사님이 확인한 뒤에만 |
-| `driving.state` | 차량→서버 | `{ driving: boolean }` |
-| `trip.arrive` / `trip.end` | 차량→서버 | `{}` |
-| `trip.leave` | 승객→서버 | `{}` |
-| `device.lang` | 승객→서버 | `{ lang }` — 이후 스냅숏 문구가 새 언어로 온다 |
-| `error` | 서버→발신자 | `{ code: ErrorCode, ref?, clientRef? }` |
-
-### 3.3 ID 목록 (정본: `packages/protocol/src/catalog.ts`)
-
-- `ConditionId`: `meetEntrance`, `temperature`, `quiet`, `music` (`CardInput.quiet?: boolean`, `music?: "off" | "low"`; 목록에 있는 조건은 값 필드와 맞아야 한다)
-- `PresetId`(승객→기사): `slower`, `cooler`, `warmer`, `window`(질문), `card`(질문), `howLong`(질문), `stopHere`, `trunk`
-- `QuickReplyId`(기사→승객): `yes`, `cannot`, `moment`(묶음 `answer`, 열린 질문이 있을 때만), `stopHere`, `fiveMin`, `cardOk`(묶음 `driverFirst`, 기사님이 먼저). 정본 `QUICK_REPLY_META[id].set`, 차량은 `QuickReplyId.set`
-- `ReplyKind`: `button`(`replyId`), `voice`(`textKo`, 릴레이가 승객 언어로 번역). 승객 뷰의 `ReplyItem`은 `translated: boolean`을 더 가진다(차량 뷰는 항상 `true`)
-- `DropoffReasonId`: `frontNoStop`, `sideCloser`, `luggageEasier`, `parkingEntrance`, `acrossSafer`, `construction`
-- `ErrorCode`: `CAR_NOT_FOUND`, `CAR_BUSY`, `CAR_OFFLINE`, `JOIN_DECLINED`, `JOIN_EXPIRED`, `TRIP_FULL`, `TRIP_ENDED`, `NOT_LEAD`, `RATE_LIMITED`, `TOO_LONG`, `TRANSLATE_FAILED`, `PLACE_NOT_FOUND`, `ROUTE_FAILED`, `STALE_VERSION`, `PROTOCOL_MISMATCH`, `BAD_REQUEST`
-
-### 3.4 정책값 (정본: `packages/protocol/src/config.ts`)
-
-| 키 | 값 |
-|---|---|
-| `join.requestTtlSec` | 300 |
-| `trip.maxSec` | 14400 |
-| `trip.maxDevices` | 4 |
-| `free.maxChars` | 100 |
-| `free.perMinute` | 3 |
-| `speech.gapSec` | 8 (기본, 설정 4~30) |
-| `speech.dedupWindowSec` | 60 |
-| `speech.queueMax` | 5 |
-| `trip.progressPollSec` | 60 |
-| `ws.ackTimeoutMs` | 5000 |
-| `arrivalCard.keepHours` | 24 (승객 기기 `localStorage`만) |
-
-## 4. 디자인 시스템 규칙 (예외 없음)
-
-근거: 스킬 `product-foundations` 2절, darren-secretary D123·D124·D128, 사용자 지시 "디자인 시스템을 구축하고 그 컴포넌트만 사용해서 개발, 예외 없음"(2026-11-12).
-
-1. 토큰 정본은 `shared/packages/tokens/hey.tokens.json`(hey-shared) 하나다. hey-shared에서 `bun run tokens`가 `packages/tokens/dist/tokens.css`(CSS 변수), `packages/tokens/dist/tokens.ts`, `android/src/main/kotlin/ai/hey/designsystem/token/HeyTokens.kt`를 생성한다. 차량 앱은 `HeyTokens.kt`를 복사하지 않고 `includeBuild("shared/android")`로 `ai.hey:tokens-compose`에 의존한다. 생성 파일은 손으로 고치지 않는다.
-2. CSS 변수 이름: `--hey-color-<name>`(테마별 값은 `[data-theme="light"|"dark"]`), `--hey-space-<4|8|16|24|32>`, `--hey-radius-<sm|md|lg|xl|full>`, `--hey-border-<hairline|strong|focus>`, `--hey-type-<variant>-<size|line|weight|tracking>`, `--hey-size-<name>`, `--hey-sheet-<name>`, `--hey-motion-<name>`, `--hey-elevation-<name>`, `--hey-font-family`.
-3. 간격은 4·8·16·24·32만 쓴다. 부품은 바깥 여백·폭·위치를 갖지 않는다. 간격은 부모 컨테이너(`Stack`/`Inline`, Compose `VStack`/`HStack`)가 `gap`으로 정한다.
-4. 웹 부품은 `className`·`style`을 받지 않는다. 변형이 필요하면 이름 있는 prop(`variant`, `tone`, `size`)을 부품에 추가한다.
-5. 부품 CSS에는 색·길이 리터럴이 없다. `var(--hey-*)`만 쓴다(`0`, `100%`, `auto`, `1fr`, `currentColor`는 허용). `bun run check:css`가 위반을 0개 기준으로 막는다.
-6. `apps/passenger-web/src` 안에서는 HTML 태그 JSX(`<div>`, `<button>` 등 소문자 태그)와 `.css` 가져오기, `style=` 속성이 금지다. ESLint `no-restricted-syntax`가 오류로 막는다. 화면 폴더에는 CSS 파일이 없다.
+1. 토큰 정본은 `shared/packages/tokens/hey.tokens.json`(hey-shared) 하나다. 차량 앱은 `HeyTokens.kt`를 복사하지 않고 `includeBuild("shared/android")`로 `ai.hey:tokens-compose`에 의존한다. 생성(`bun run tokens`)은 `hey-shared` README가 소유한다. 생성 파일은 손으로 고치지 않는다.
+3. 간격은 4·8·16·24·32만 쓴다(`HeyGap.G4…G32`). 부품은 바깥 여백·폭·위치를 갖지 않는다. 간격은 부모 컨테이너 `VStack`/`HStack`이 `gap`으로 정한다.
 7. 차량 앱 `:feature:*` 모듈은 `androidx.compose.material3`·`androidx.compose.foundation`에 의존하지 않는다(Gradle 의존성에 없음). 그래서 `Text`·`Button`·`Column`을 직접 쓸 수 없고 `:core:designsystem`의 `HeyText`·`HeyButton`·`VStack`만 쓸 수 있다. `Color(0x…)`, `.dp` 리터럴은 `:core:designsystem` 밖에서 쓰지 않는다(`./gradlew checkDesignSystemUsage`가 막는다).
-8. 화면 문구는 카탈로그에서만 온다. 승객 웹은 `packages/copy`의 `t(key)`, 차량 앱은 `strings.xml`(`stringResource`)과 서버가 준 한국어 문장. JSX 안 문자열 리터럴은 ESLint `react/jsx-no-literals`로 막는다. 정책 설명이나 개발 메모를 화면 문구에 넣지 않는다.
-9. 모든 부품은 Storybook(웹) 또는 Paparazzi 스냅숏(차량)에 상황별 이야기가 있어야 화면에서 쓸 수 있다. 상황: 기본, 긴 글(띄어쓰기 없는 일본어·중국어 포함, 120자 이상), 빈 값, 항목 0·1·많음, 비활성, 오류, 로딩, 라이트·다크. 예시 데이터는 실제 모양의 긴 값이다.
-10. 누를 수 있는 요소는 겹치지 않는다. 링크처럼 이동하는 단추는 부품의 링크 모드로 그린다. 누름 면은 웹 44px 이상, 차량 76dp 이상(주 동작 96dp).
-11. 휴대폰 하단 시트는 `BottomSheet` 하나가 모두 가진다: 아래 화면 검정 32% 막, 위 모서리 반경 24, 손잡이 32×4, 위쪽 64 띄움, 초점 가둠, Esc·뒤로 가기 한 겹씩, 닫으면 연 요소로 초점 복귀, 움직임 줄이기에서 0초.
-12. 데이터는 하나의 도구로 읽는다. 승객 웹은 `useTrip()` 저장소 하나가 소켓·재연결·스냅숏을 소유하고, 내용이 같은 스냅숏은 이전 객체를 그대로 돌려준다. 차량 앱은 `TripRepository`의 `StateFlow<CarUiState>` 하나다. 재조회·재연결이 화면 위치·입력 중인 값을 바꾸지 않는다.
-13. 앱 쪽 코드는 부품 내부를 고르지 못한다. 부품 CSS는 CSS Modules라 클래스 이름이 해시되고, `apps/**`에는 CSS 파일 자체가 없다(전역 CSS는 `packages/tokens/dist/tokens.css` 하나). `check:css`는 `packages/ui-web` 밖의 `.css`·`.module.css` 파일이 하나라도 있으면 실패한다. 허용 목록은 두지 않는다(darren-secretary에서 앱 전역 CSS가 부품 내부 클래스를 41곳 덮어써 부품 변경이 화면을 몰래 깨뜨렸다, 2026-11-12 협의).
-14. 이야기는 "있다"가 아니라 "그 부품을 그렸다"로 센다. `bun run check:stories`는 Storybook 빌드의 `index.json`에서 부품마다 이야기가 있는지, 각 이야기 파일의 `component`가 그 부품인지, 2절 상황 이름(`Default`, `LongText`, `Empty`, `Many`, `Disabled`, `Error`, `Loading` 중 해당하는 것)이 빠졌는지 확인한다. 조립된 승객 화면 이야기는 390·360 폭에서 가로 넘침과 누름 면 겹침을 재는 별도 레이아웃 검사를 둔다.
-15. 시각 기준 이미지는 CI 한 곳에서만 만든다. 로컬 `--update-snapshots`로 웹 기준 이미지를 커밋하지 않는다. 기준 이미지를 바꾸는 커밋에는 `docs/diffs.md`에 바뀐 이유를 한 줄씩 적는다. 차량 Paparazzi 스냅숏(JVM 렌더)은 로컬 기록을 허용하되 같은 규칙으로 이유를 적는다.
+8. 화면 문구는 카탈로그에서만 온다: 차량 앱은 `strings.xml`(`stringResource`)과 서버가 준 한국어 문장, D1 QR 안내의 6개 언어 문장은 `hey-shared`의 `car.scanQr`에서 빌드 때 생성한다. 정책 설명이나 개발 메모를 화면 문구에 넣지 않는다.
+9. 모든 차량 부품은 Paparazzi 스냅숏에 상황별 이야기가 있어야 화면에서 쓸 수 있다. 상황: 기본, 긴 글(띄어쓰기 없는 한국어 120자 이상), 빈 값, 항목 0·1·많음, 비활성, 오류, 로딩, 라이트·다크. 예시 데이터는 실제 모양의 긴 값이다.
+10. 누를 수 있는 요소는 겹치지 않는다. 누름 면은 차량 76dp 이상(주 동작 96dp).
+12. 차량 앱의 데이터는 `TripRepository`의 `StateFlow<CarUiState>` 하나다. 재조회·재연결이 화면 위치·입력 중인 값을 바꾸지 않는다.
+15. 차량 Paparazzi 스냅숏(JVM 렌더)은 로컬 기록을 허용한다. 기준 이미지를 바꾸는 커밋에는 `docs/diffs.md`에 바뀐 이유를 한 줄씩 적는다.
 
 ## 5. 저장소 구조
 
@@ -185,23 +41,11 @@ hey-car/
   settings.gradle.kts          includeBuild("shared/android"), 모듈 목록
   app/, core/{designsystem,model,session,vehicle}/, feature/{trip,settings}/
   shared/                      hey-shared 서브모듈 (태그 고정): packages/{tokens,protocol,copy}, android/ (ai.hey:tokens-compose)
-  docs/                        architecture.md(이 문서), components.md(부품 목록)
-  check.sh                     로컬 점검 한 번에 (아래 7절)
-
-분리 전 모노레포 구조(참고):
-hey-taxi/
-  package.json                 bun workspaces
-  .storybook/                  루트 Storybook (웹 부품 + 승객 화면 + 차량 갤러리)
-  storybook/                   소개·규칙·검수판 MDX, car/ (Paparazzi 스냅숏 이야기, 생성)
-  packages/tokens/             hey.tokens.json, build.mjs, dist/
-  packages/protocol/           src/{types,catalog,config,index}.ts, fixtures/*.json
-  packages/copy/               src/{en,ja,zh-Hans,ko}.ts, src/index.ts (t, Lang)
-  packages/ui-web/             src/components/<Name>/{<Name>.tsx,<Name>.module.css,<Name>.stories.tsx}, src/index.ts
-  apps/relay-server/           src/, test/
-  apps/passenger-web/          src/{main.tsx,App.tsx,routes.tsx,store/,transport/,screens/<Screen>/<Screen>.tsx,<Screen>.stories.tsx}
-  apps/car-android/            settings.gradle.kts, app/, core/{designsystem,model,session,vehicle}/, feature/{trip,settings}/
-  docs/                        architecture.md(이 문서), components.md(부품 목록)
+  docs/                        architecture.md(이 문서), components.md(D 화면·차량 부품), diffs.md(스냅숏 변경 이유)
+  check.sh                     로컬 점검 한 번에 (7절)
 ```
+
+다른 저장소의 구조 지도는 `hey-relay/docs/architecture.md` §5가 정본이다.
 
 ## 6. 차량 앱 구조
 
@@ -233,41 +77,6 @@ hey-taxi/
 
 ## 7. 실행과 검증
 
-- 서버: `bun run --cwd apps/relay-server dev` (포트 8787), 시험 `bun test`.
-- 승객 웹: `bun run --cwd apps/passenger-web dev` (포트 5187), 서버 주소는 `VITE_RELAY_URL`.
-- Storybook: 루트 `bun run sb`(6106), 정적 빌드 `bun run sb:build`.
 - 차량 앱: 이 저장소 루트에서 `./check.sh`(= `nice -n 19 ./gradlew --max-workers=4 :app:assembleDebug check :feature:trip:verifyPaparazziDebug :feature:settings:verifyPaparazziDebug :core:designsystem:verifyPaparazziDebug`). 스냅숏 기록은 `./gradlew recordPaparazziDebug`. 클론은 `git clone --recurse-submodules`(또는 `git submodule update --init`). 중계 서버 통합 시험은 환경 변수 `HEY_RELAY_DIR`(기본 `../hey-relay`)의 relay를 `bun`으로 띄우며, 없으면 건너뛰고 이유를 출력한다. darren-vm 부하를 줄이기 위해 `org.gradle.workers.max=4`.
-- 에뮬레이터는 맥북 `darren-mbp-14`에서만 띄운다(`~/pleos/emu-start.sh`, adb `emulator-5600`).
-- 비밀값(번역 API 키 등)은 저장소에 넣지 않는다. 서버는 600 권한 파일 경로를 환경 변수 `HEY_SECRETS_FILE`로 받는다.
-
-## 8. 메시지와 상태 (서버 정본)
-
-2.2의 상태 흐름을 메시지 단위로 옮긴 표다. `src/state.ts`의 `TRANSITIONS`가 이 표를 그대로 옮긴 것이고, `test/state-machine.test.ts`가 두 표가 같은지 확인한다. 표에 없는 (상태, 메시지) 조합은 서버가 거부한다: 종료된 운행은 `TRIP_ENDED`, 그 밖은 `BAD_REQUEST`. 표에 없는 메시지 타입은 봉투 검사에서 `BAD_REQUEST`다.
-
-### 8.1 상태별로 받는 메시지
-
-| 상태 | 받는 메시지 |
-|---|---|
-| `REQUESTED` | `join.approve`, `join.decline`, `driving.state`, `trip.end`, `trip.leave`, `device.lang` |
-| `CONNECTED` | `card.submit`, `card.update`, `driving.state`, `request.send`, `request.spoken`, `reply.send`, `trip.end`, `trip.leave`, `device.lang` |
-| `CARD_SENT` | `card.submit`, `card.update`, `card.recheck`, `route.started`, `route.failed`, `dropoff.propose`, `dropoff.respond`, `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.arrive`, `trip.end`, `trip.leave`, `device.lang` |
-| `IN_TRIP` | `card.submit`, `card.update`, `route.started`, `route.failed`, `trip.progress`, `dropoff.propose`, `dropoff.respond`, `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.arrive`, `trip.end`, `trip.leave`, `device.lang` |
-| `ARRIVED` | `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.end`, `trip.leave`, `device.lang` |
-| `ENDED` | `driving.state` |
-| `DECLINED` | `driving.state` |
-| `EXPIRED` | `driving.state` |
-
-`driving.state`는 운행 상태를 바꾸지 않는 차량 신호라 모든 상태에서 받는다. `join.approve`는 `REQUESTED`에서만, `card.recheck`는 `CARD_SENT`에서만 받는다(2.2의 화살표와 같다). 기사님은 종료되지 않은 모든 상태(`REQUESTED`~`ARRIVED`)에서 `trip.end`를 보낼 수 있다.
-
-이 표는 `docs/transitions.json`(상태 → `{ type, role }[]`, `role`은 8.2의 값)으로도 내보낸다. `bun run export:transitions`가 `TRANSITIONS`에서 만들고, 시험이 커밋된 파일과 내보내기가 같은지 확인한다. 차량 앱과 승객 웹은 이 파일을 복사해, 화면이 켜 두는 명령이 표의 부분집합인지 자기 시험에서 확인한다. 승객 언어의 하차 지점 이름은 서버가 만든 `labelLocal` 하나뿐이고 클라이언트는 이름을 다시 만들지 않는다.
-
-### 8.2 보낼 수 있는 쪽
-
-`CLIENT_MESSAGE_ROLES`(hey-protocol)가 정본이고 서버는 이 표 하나로 역할을 본다. 대표가 아닌 기기의 대표 전용 메시지는 `NOT_LEAD`, 그 밖의 역할 위반은 `BAD_REQUEST`다. 일행은 `passenger` 값인 메시지(`request.send`, `trip.leave`, `device.lang`)만 보낼 수 있다. 현재 값은 넷이다.
-
-| 값 | 보낼 수 있는 쪽 |
-|---|---|
-| `car` | 차량(`driverToken`)만 |
-| `lead` | 대표 승객만 |
-| `passenger` | 대표·일행 모두 |
-| `car-or-lead` | 차량 또는 대표 승객 |
+- 에뮬레이터는 맥북 `darren-mbp-14`에서만 띄운다(`~/pleos/emu-start.sh`, adb `emulator-5600`). 종단 시험은 `hey-e2e`.
+- 서버·승객 웹 실행과 비밀값 규칙은 각각 `hey-relay`, `hey-passenger-web`의 문서를 따른다(비밀값은 저장소에 넣지 않는다).

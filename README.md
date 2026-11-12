@@ -1,6 +1,6 @@
 # hey-car
 
-HEY 차량 앱(Pleos Connect, AAOS 가로, Kotlin + Jetpack Compose). 모노레포 `hey-taxi`의 `apps/car-android`를 기록째 떼어 냈다. 계약은 `docs/architecture.md`, 부품 목록은 `docs/components.md`.
+HEY 차량 앱(Pleos Connect, AAOS 가로, Kotlin + Jetpack Compose). 모노레포 `hey-taxi`의 `apps/car-android`를 기록째 떼어 냈다. 제품·프로토콜 계약은 `hey-relay/docs/architecture.md`, 차량 규칙과 구조는 `docs/architecture.md`, 차량 부품·화면 목록은 `docs/components.md`.
 
 ## 클론과 공유 코드
 

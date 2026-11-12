@@ -1,6 +1,6 @@
 package ai.hey.model
 
-/** Policy values. Source of truth: packages/protocol/src/config.ts (docs/architecture.md §3.4). */
+/** Policy values. Source of truth: hey-shared packages/protocol/src/config.ts (hey-relay/docs/architecture.md §3.4). */
 object HeyConfig {
     const val JOIN_REQUEST_TTL_SEC = 300
     const val TRIP_MAX_SEC = 14_400

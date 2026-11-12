@@ -12,7 +12,7 @@ interface SpeechEngine {
 }
 
 /**
- * Speech policy (docs/architecture.md 2.4, policy speech.*):
+ * Speech policy (hey-relay/docs/architecture.md 2.4, policy speech.*):
  * - high priority first, then normal in arrival order; high skips the gap, normal waits [SpeechSettings.gapSec]
  *   after the previous utterance finished;
  * - only normal-priority *request* speech (it has an id) is de-duplicated: the same text inside [dedupWindowMs] of a

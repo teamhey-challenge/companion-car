@@ -98,7 +98,7 @@ interface RelayTransport {
 }
 
 /**
- * One WebSocket to the relay with the delivery rules of docs/architecture.md 3.2:
+ * One WebSocket to the relay with the delivery rules of hey-relay/docs/architecture.md 3.2:
  * every received envelope is acked and processed once (dedupe by id); every sent envelope is kept until acked and
  * sent again every [ackTimeoutMs] (and after a reconnect); a lost socket is reopened after 1/2/4/8/15 s.
  * The token is passed to the socket URL only; it is never logged.
