@@ -17,6 +17,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -120,14 +123,27 @@ fun KoreanSummary(
 ) {
     VStack(gap = HeyGap.G24, modifier = modifier) {
         VStack(gap = HeyGap.G8) {
-            HeyText(destinationKo, variant = HeyTextVariant.Hero, maxLines = 2)
+            // A long destination drops to Title so a name that needs two lines still leaves room for the conditions.
+            HeyText(destinationKo, variant = if (destinationKo.length > 14) HeyTextVariant.Title else HeyTextVariant.Hero, maxLines = 2)
             HeyText(addressKo, variant = HeyTextVariant.Heading, tone = HeyTone.Muted, maxLines = 2)
             if (nameLocal.isNotBlank() && nameLocal != destinationKo) {
                 HeyText(nameLocal, variant = HeyTextVariant.Caption, tone = HeyTone.Subtle, maxLines = 1)
             }
         }
         if (conditions.isNotEmpty()) {
-            VStack(gap = HeyGap.G8) { conditions.forEach { ConditionLineRow(it, Modifier.fillMaxWidth()) } }
+            if (conditions.size <= 2) {
+                VStack(gap = HeyGap.G8) { conditions.forEach { ConditionLineRow(it, Modifier.fillMaxWidth()) } }
+            } else {
+                // Three or four conditions go two to a row so the whole card stays on one screen (D3 at 1280x720).
+                VStack(gap = HeyGap.G8) {
+                    conditions.chunked(2).forEach { pair ->
+                        HStack(gap = HeyGap.G8, align = HeyAlign.Start, modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                            pair.forEach { ConditionLineRow(it, Modifier.grow().fillMaxHeight()) }
+                            if (pair.size == 1) Box(Modifier.grow())
+                        }
+                    }
+                }
+            }
         }
     }
 }

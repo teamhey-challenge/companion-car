@@ -1,9 +1,10 @@
 package ai.hey.feature.settings
 
 import ai.hey.designsystem.component.CarFrame
-import ai.hey.designsystem.component.HeyBanner
 import ai.hey.designsystem.component.HeyButton
+import ai.hey.designsystem.component.HeyStatusPill
 import ai.hey.designsystem.component.HeyStatusTone
+import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.component.HeyButtonSize
 import ai.hey.designsystem.component.HeyButtonVariant
 import ai.hey.designsystem.component.HeyConnection
@@ -17,6 +18,7 @@ import ai.hey.designsystem.component.HeyText
 import ai.hey.designsystem.component.HeyTextField
 import ai.hey.designsystem.component.StatusStrip
 import ai.hey.designsystem.layout.HStack
+import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.layout.fillSize
@@ -72,46 +74,50 @@ fun SettingsScreen(
             }
         },
     ) {
+        // One page at 1280x720: title row, then two columns (what the driver hears and sees | the vehicle).
+        // A failed save shows in the title row (pill + one short line) so it never pushes the page into a scroll.
         HeyScrollColumn(HeyGap.G24, modifier = Modifier.fillSize()) {
-            VStack(HeyGap.G8) {
+            HStack(HeyGap.G16, modifier = Modifier.fillWidth()) {
                 HeyText(stringResource(R.string.settings_title), variant = HeyTextVariant.Title, maxLines = 1)
-                HeyText(stringResource(R.string.settings_subtitle), tone = HeyTone.Muted, maxLines = 1)
+                if (saveFailed) {
+                    HeyStatusPill(stringResource(R.string.settings_save_failed), HeyStatusTone.Danger, icon = HeyIcons.Error)
+                    HeyText(stringResource(R.string.settings_save_failed_message), Modifier.grow(), variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 2)
+                } else {
+                    HeyText(stringResource(R.string.settings_subtitle), tone = HeyTone.Muted, maxLines = 1)
+                }
             }
-            if (saveFailed) {
-                HeyBanner(
-                    HeyStatusTone.Danger,
-                    stringResource(R.string.settings_save_failed),
-                    Modifier.fillWidth(),
-                    message = stringResource(R.string.settings_save_failed_message),
-                )
-            }
-            HeySection(stringResource(R.string.settings_speech)) {
-                HeyStepperRow(
-                    label = stringResource(R.string.settings_gap),
-                    value = settings.speechGapSec,
-                    range = HeyConfig.SPEECH_GAP_MIN_SEC..HeyConfig.SPEECH_GAP_MAX_SEC,
-                    onChange = { value ->
-                        onChange { it.copy(speechGapSec = value.coerceIn(HeyConfig.SPEECH_GAP_MIN_SEC, HeyConfig.SPEECH_GAP_MAX_SEC)) }
-                    },
-                    modifier = Modifier.fillWidth(),
-                    format = { gapText(context, it) },
-                )
-            }
-            HeySection(stringResource(R.string.settings_theme)) {
-                HeySegmented(
-                    options = listOf(
-                        HeySegmentOption(true, stringResource(R.string.settings_theme_dark)),
-                        HeySegmentOption(false, stringResource(R.string.settings_theme_light)),
-                    ),
-                    selected = settings.dark,
-                    onSelect = { dark -> onChange { it.copy(dark = dark) } },
-                    modifier = Modifier.fillWidth(),
-                )
-            }
-            HeySection(stringResource(R.string.settings_vehicle)) {
-                PlateSetting(settings.plateSuffix) { value -> onChange { it.copy(plateSuffix = value) } }
-                RelaySetting(settings.relayUrl) { value -> onChange { it.copy(relayUrl = value) } }
-                HeyText(stringResource(R.string.settings_device_note), variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 2)
+            HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillWidth()) {
+                VStack(HeyGap.G24, modifier = Modifier.grow()) {
+                    HeySection(stringResource(R.string.settings_speech)) {
+                        HeyStepperRow(
+                            label = stringResource(R.string.settings_gap),
+                            value = settings.speechGapSec,
+                            range = HeyConfig.SPEECH_GAP_MIN_SEC..HeyConfig.SPEECH_GAP_MAX_SEC,
+                            onChange = { value ->
+                                onChange { it.copy(speechGapSec = value.coerceIn(HeyConfig.SPEECH_GAP_MIN_SEC, HeyConfig.SPEECH_GAP_MAX_SEC)) }
+                            },
+                            modifier = Modifier.fillWidth(),
+                            format = { gapText(context, it) },
+                        )
+                    }
+                    HeySection(stringResource(R.string.settings_theme)) {
+                        HeySegmented(
+                            options = listOf(
+                                HeySegmentOption(true, stringResource(R.string.settings_theme_dark)),
+                                HeySegmentOption(false, stringResource(R.string.settings_theme_light)),
+                            ),
+                            selected = settings.dark,
+                            onSelect = { dark -> onChange { it.copy(dark = dark) } },
+                            modifier = Modifier.fillWidth(),
+                        )
+                    }
+                }
+                VStack(HeyGap.G24, modifier = Modifier.grow()) {
+                    HeySection(stringResource(R.string.settings_vehicle)) {
+                        PlateSetting(settings.plateSuffix) { value -> onChange { it.copy(plateSuffix = value) } }
+                        RelaySetting(settings.relayUrl) { value -> onChange { it.copy(relayUrl = value) } }
+                    }
+                }
             }
         }
     }
@@ -152,12 +158,13 @@ private fun PlateSetting(saved: String, onValid: (String) -> Unit) {
 private fun RelaySetting(saved: String, onApply: (String) -> Unit) {
     var draft by remember(saved) { mutableStateOf(saved) }
     val value = draft.trim().trimEnd('/')
-    VStack(HeyGap.G8) {
+    // The apply button sits beside the field so the vehicle column stays two rows tall.
+    HStack(HeyGap.G16, align = HeyAlign.End, modifier = Modifier.fillWidth()) {
         HeyTextField(
             label = stringResource(R.string.settings_relay),
             value = draft,
             onValueChange = { draft = it },
-            modifier = Modifier.fillWidth(),
+            modifier = Modifier.grow(),
             keyboard = HeyKeyboard.Uri,
             placeholder = stringResource(R.string.settings_relay_hint),
             error = if (validRelay(value)) null else stringResource(R.string.settings_relay_error),
