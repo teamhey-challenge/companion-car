@@ -19,6 +19,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "hey-car"
 
+// ai.hey:tokens-compose (HeyTokens.kt, generated in hey-shared) is substituted by this included build.
+includeBuild("shared/android")
+
 include(
     ":app",
     ":core:designsystem",

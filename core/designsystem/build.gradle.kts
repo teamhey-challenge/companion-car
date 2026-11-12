@@ -29,6 +29,8 @@ dependencies {
     // Only the design system's own composables and the Compose types in their signatures are api.
     api(libs.compose.runtime)
     api(libs.compose.ui)
+    // Generated design tokens (hey-shared, git submodule `shared/`); substituted by includeBuild in settings.gradle.kts.
+    api("ai.hey:tokens-compose")
     api(libs.compose.ui.graphics)
     // foundation is an implementation detail; features never see it.
     implementation(libs.compose.foundation)

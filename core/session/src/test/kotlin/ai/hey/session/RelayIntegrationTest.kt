@@ -38,7 +38,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Real relay (bun, fake providers, temp data dir, random port) + the real TripRepository + a simulated passenger.
- * Skipped when `bun` is not on PATH.
+ * Skipped when `bun` is not on PATH or the relay checkout (HEY_RELAY_DIR, default ../hey-relay) is absent.
  */
 class RelayIntegrationTest {
     private var process: Process? = null
@@ -51,19 +51,27 @@ class RelayIntegrationTest {
         System.getenv("PATH").orEmpty().split(File.pathSeparator).map { File(it, "bun") }.firstOrNull { it.canExecute() }?.path
             ?: File(System.getProperty("user.home"), ".bun/bin/bun").takeIf { it.canExecute() }?.path
 
-    private fun repoRoot(): File {
-        var dir: File? = File("").absoluteFile
-        while (dir != null && !File(dir, "apps/relay-server/src/index.ts").exists()) dir = dir.parentFile
-        return dir ?: error("repo root with apps/relay-server not found")
+    /**
+     * The hey-relay checkout: env HEY_RELAY_DIR, default `../hey-relay` next to this repo (relative values are
+     * resolved against the repo root, the directory with settings.gradle.kts). Null when absent.
+     */
+    private fun relayDir(): File? {
+        var root: File? = File("").absoluteFile
+        while (root != null && !File(root, "settings.gradle.kts").exists()) root = root.parentFile
+        val base = root ?: return null
+        val dir = File(System.getenv("HEY_RELAY_DIR")?.takeIf { it.isNotBlank() } ?: "../hey-relay")
+        val resolved = (if (dir.isAbsolute) dir else File(base, dir.path)).normalize()
+        return resolved.takeIf { File(it, "src/index.ts").exists() }
     }
 
     @Before fun startRelay() {
         val bun = bunPath()
         assumeTrue("bun not on PATH: relay integration test skipped", bun != null)
+        val root = relayDir()
+        assumeTrue("hey-relay not found (set HEY_RELAY_DIR or clone it to ../hey-relay): relay integration test skipped", root != null)
         val port = ServerSocket(0).use { it.localPort }
         dataDir = Files.createTempDirectory("heydata").toFile()
-        val root = repoRoot()
-        val builder = ProcessBuilder(bun!!, "run", "apps/relay-server/src/index.ts")
+        val builder = ProcessBuilder(bun!!, "run", "src/index.ts")
             .directory(root)
             .redirectErrorStream(true)
         builder.environment().apply {

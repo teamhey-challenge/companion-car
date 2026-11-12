@@ -17,10 +17,10 @@ android {
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 
-// The fixtures are owned by packages/protocol; they are copied, never duplicated by hand, so a change
-// there is parsed by this module's test on the next run.
+// The fixtures are owned by hey-shared (submodule `shared/`, packages/protocol/fixtures); they are copied, never
+// duplicated by hand, so a change there is parsed by this module's test on the next run.
 val copyProtocolFixtures = tasks.register<Copy>("copyProtocolFixtures") {
-    from(rootDir.resolve("../../packages/protocol/fixtures"))
+    from(rootDir.resolve("shared/packages/protocol/fixtures"))
     into(layout.buildDirectory.dir("protocol-fixtures/protocol-fixtures"))
 }
 tasks.matching { it.name.endsWith("UnitTestJavaRes") }.configureEach { dependsOn(copyProtocolFixtures) }
