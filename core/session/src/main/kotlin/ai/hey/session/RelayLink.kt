@@ -175,24 +175,29 @@ class RelayLink(
         var failures = 0
         while (scope.isActive) {
             val closed = CompletableDeferred<Unit>()
-            val opened = java.util.concurrent.atomic.AtomicBoolean(false)
+            val authed = java.util.concurrent.atomic.AtomicBoolean(false)
             tokenRejected = false
             protocolMismatch = false
             val ws = http.newWebSocket(
                 Request.Builder().url(url).header(ProtocolVersion.HEADER, protocolVersion).build(),
                 object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
-                        opened.set(true)
+                        // The relay sends nothing until the auth frame is accepted, and drops anything sent before it.
                         webSocket.send(authFrame)
-                        synchronized(lock) {
-                            socket = webSocket
-                            // Everything unacked goes out again on a fresh socket.
-                            outbox.values.forEach { it.sentAt = clock(); webSocket.send(it.json) }
-                        }
-                        listener.onConnection(true)
                     }
 
-                    override fun onMessage(webSocket: WebSocket, text: String) = receive(webSocket, text)
+                    override fun onMessage(webSocket: WebSocket, text: String) {
+                        // The first message from the relay is the proof that auth was accepted: only now the link is up.
+                        if (authed.compareAndSet(false, true)) {
+                            synchronized(lock) {
+                                socket = webSocket
+                                // Everything unacked goes out again on a fresh socket.
+                                outbox.values.forEach { it.sentAt = clock(); webSocket.send(it.json) }
+                            }
+                            listener.onConnection(true)
+                        }
+                        receive(webSocket, text)
+                    }
 
                     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                         noteClose(code)
@@ -233,7 +238,7 @@ class RelayLink(
                 listener.onTokenRejected()
                 return
             }
-            if (opened.get()) {
+            if (authed.get()) {
                 failures = 0
                 listener.onConnection(false)
             }

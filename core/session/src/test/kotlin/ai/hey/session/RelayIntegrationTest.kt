@@ -78,9 +78,10 @@ class RelayIntegrationTest {
         dataDir = Files.createTempDirectory("heydata").toFile()
         val builder = ProcessBuilder(bun!!, "run", "src/index.ts")
             .directory(root)
-            .redirectErrorStream(true)
+            .redirectErrorStream(true).redirectOutput(File("/tmp/relay-it.log"))
         builder.environment().apply {
             put("HEY_FAKE_PROVIDERS", "1")
+            put("HEY_ENV", "dev") // the relay refuses to start without a provisioning secret unless it runs as dev
             put("HEY_DATA_DIR", dataDir.path)
             put("PORT", port.toString())
         }
@@ -94,7 +95,8 @@ class RelayIntegrationTest {
                 Thread.sleep(150)
             }
         }
-        error("relay did not start")
+        val output = if (process!!.isAlive) "(still running)" else process!!.inputStream.bufferedReader().readText().take(800)
+        error("relay did not start: $output")
     }
 
     @After fun stop() {
@@ -194,8 +196,8 @@ class RelayIntegrationTest {
         // lead passenger sends the card
         val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=ja").header("Authorization", "Device $deviceToken").build())
             .execute().use { it.body!!.string() }
-        val place = Json.parseToJsonElement(found).jsonArray.first().toString()
-        passenger.send("card.submit", """{"destination":$place,"conditions":["luggage"]}""")
+        val placeId = Json.parseToJsonElement(found).jsonArray.first().jsonObject.getValue("placeId").jsonPrimitive.content
+        passenger.send("card.submit", """{"destinationPlaceId":"$placeId","conditions":["luggage"]}""")
         val cardSent = eventually("CARD_SENT") { repo.state.value.takeIf { it.view?.state == TripState.CARD_SENT } }
         assertEquals("롯데호텔 서울", cardSent.view?.card?.destination?.nameKo)
         // the card text is spoken: "카드가 왔어요 + 목적지" reaches the vehicle
@@ -345,8 +347,8 @@ class RelayIntegrationTest {
         eventually("CONNECTED") { repo.state.value.takeIf { it.view?.state == TripState.CONNECTED } }
         val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=en").header("Authorization", "Device $deviceToken").build())
             .execute().use { it.body!!.string() }
-        val place = Json.parseToJsonElement(found).jsonArray.first().toString()
-        passenger.send("card.submit", """{"destination":$place,"conditions":["luggage"]}""")
+        val placeId = Json.parseToJsonElement(found).jsonArray.first().jsonObject.getValue("placeId").jsonPrimitive.content
+        passenger.send("card.submit", """{"destinationPlaceId":"$placeId","conditions":["luggage"]}""")
         eventually("CARD_SENT") { repo.state.value.takeIf { it.view?.state == TripState.CARD_SENT } }
         passenger.send("request.send", """{"kind":"preset","presetId":"window","clientRef":"race-1"}""")
         val open = eventually("open question") { repo.state.value.view?.requests?.firstOrNull { it.replyExpected } }
@@ -404,8 +406,12 @@ class RelayIntegrationTest {
         val joinId = join.getValue("joinRequestId").jsonPrimitive.content
         val passenger = Passenger(http, base.replace("http", "ws") + "/v1/ws", deviceToken)
         passenger.open()
-        heard("join request", sentence("speech.joinRequest"))
-        eventually("REQUESTED") { repo.state.value.takeIf { it.view?.pendingJoin != null } }
+        // The sentence carries the check code digit by digit ("삼, 칠"), the same 2 digits the card and the passenger show.
+        val spokenJoin = heard("join request", sentence("speech.joinRequest", "code" to "").substringBefore("확인 번호"))
+        val pending = eventually("REQUESTED") { repo.state.value.view?.pendingJoin }
+        assertTrue("check code is 2 digits", Regex("\\d{2}").matches(pending.checkCode))
+        val digitWords = listOf("영", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구")
+        assertTrue("spoken: $spokenJoin", pending.checkCode.map { digitWords[it - '0'] }.joinToString(", ") in spokenJoin)
         repo.state.value.parked!!.approveJoin(joinId)
         eventually("CONNECTED") { repo.state.value.takeIf { it.view?.state == TripState.CONNECTED } }
 
@@ -417,8 +423,8 @@ class RelayIntegrationTest {
         // card arrival, then a change of the conditions and of the temperature
         val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=ja").header("Authorization", "Device $deviceToken").build())
             .execute().use { it.body!!.string() }
-        val place = Json.parseToJsonElement(found).jsonArray.first().toString()
-        passenger.send("card.submit", """{"destination":$place,"conditions":["luggage"]}""")
+        val placeId = Json.parseToJsonElement(found).jsonArray.first().jsonObject.getValue("placeId").jsonPrimitive.content
+        passenger.send("card.submit", """{"destinationPlaceId":"$placeId","conditions":["luggage"]}""")
         heard("card arrival", sentence("speech.cardSent", "destination" to "롯데호텔 서울"))
         eventually("CARD_SENT") { repo.state.value.takeIf { it.view?.state == TripState.CARD_SENT } }
         passenger.send("card.update", """{"conditions":["luggage","lessWalking"]}""")
