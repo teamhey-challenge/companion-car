@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -11,11 +13,38 @@ android {
         applicationId = "ai.hey.car"
         minSdk = 28
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
-        // Non-secret default relay; the emulator reaches the host at 10.0.2.2. Override: -PrelayUrl=https://...
-        val relay = providers.gradleProperty("relayUrl").getOrElse("http://10.0.2.2:8787")
-        buildConfigField("String", "RELAY_URL", "\"$relay\"")
+        // The one place for the version: hey.versionCode / hey.versionName in gradle.properties.
+        versionCode = providers.gradleProperty("hey.versionCode").get().toInt()
+        versionName = providers.gradleProperty("hey.versionName").get()
+    }
+    // Local signing only: key material stays in a 600 properties file outside the repo (no CI, nothing committed).
+    val signingFile = File(System.getProperty("user.home"), ".config/hey/signing.properties")
+    val releaseSigning = if (signingFile.isFile) {
+        val p = Properties().apply { signingFile.inputStream().use { load(it) } }
+        signingConfigs.create("release") {
+            storeFile = file(p.getProperty("storeFile"))
+            storePassword = p.getProperty("storePassword")
+            keyAlias = p.getProperty("keyAlias")
+            keyPassword = p.getProperty("keyPassword")
+        }
+    } else null
+    buildTypes {
+        debug {
+            // Non-secret default relay; the emulator reaches the host at 10.0.2.2. Override: -PrelayUrl=...
+            val relay = providers.gradleProperty("relayUrl").getOrElse("http://10.0.2.2:8787")
+            buildConfigField("String", "RELAY_URL", "\"$relay\"")
+        }
+        release {
+            // Cleartext is off in release (main network_security.xml), so the relay must be https. Pass the real
+            // address with -PrelayUrl=https://...; the placeholder never resolves, and D8 can still change it.
+            val relay = providers.gradleProperty("relayUrl").getOrElse("https://relay.hey.invalid")
+            require(relay.startsWith("https://")) { "release relayUrl must be https" }
+            buildConfigField("String", "RELAY_URL", "\"$relay\"")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = releaseSigning
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -41,3 +70,14 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.activity.compose)
 }
+
+// `:app:assembleRelease` also copies the signed APK to dist/apk/<teamName>_HEY_release.apk (git-ignored).
+// The team name is not known yet: -PteamName=... replaces the TEAM placeholder.
+val teamName = providers.gradleProperty("teamName").getOrElse("TEAM")
+val copyReleaseApk = tasks.register<Copy>("copyReleaseApk") {
+    from(layout.buildDirectory.dir("outputs/apk/release")) { include("*.apk") }
+    into(rootProject.layout.projectDirectory.dir("dist/apk"))
+    rename { "${teamName}_HEY_release.apk" }
+    doFirst { check(File(System.getProperty("user.home"), ".config/hey/signing.properties").isFile) { "no ~/.config/hey/signing.properties: the release APK is unsigned" } }
+}
+tasks.matching { it.name == "assembleRelease" }.configureEach { finalizedBy(copyReleaseApk) }

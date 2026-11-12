@@ -17,3 +17,5 @@ git clone --recurse-submodules git@github.com:darren-pleos-challenge/hey-car.git
 ```
 
 relay 통합 시험은 `HEY_RELAY_DIR`(기본 `../hey-relay`)의 `hey-relay`를 `bun`으로 띄운다. 그 폴더에서 `bun install`(서브모듈 초기화 포함)이 끝나 있어야 하며, 폴더가 없거나 `bun`이 없으면 이유를 출력하고 건너뛴다. JDK 17, Android SDK 필요. 스냅숏 기록: `./gradlew recordPaparazziDebug`.
+
+릴리스(로컬 전용, CI 없음): `./gradlew :app:assembleRelease -PrelayUrl=https://…` → `dist/apk/TEAM_HEY_release.apk`(팀 이름이 정해지면 `-PteamName=…`). R8 축소·리소스 축소, https만 허용. 서명 키는 저장소 밖 `~/.config/hey/signing.properties`(권한 600)에서 읽고, 없으면 복사 단계가 실패한다. 버전은 `gradle.properties`의 `hey.versionCode`/`hey.versionName` 한 곳.

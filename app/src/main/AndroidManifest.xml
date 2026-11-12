@@ -23,6 +23,7 @@
     <application
         android:name=".HeyApp"
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:networkSecurityConfig="@xml/network_security"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
