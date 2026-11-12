@@ -1,7 +1,9 @@
 package ai.hey.feature.settings
 
 import ai.hey.designsystem.component.CarFrame
+import ai.hey.designsystem.component.HeyBanner
 import ai.hey.designsystem.component.HeyButton
+import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyButtonSize
 import ai.hey.designsystem.component.HeyButtonVariant
 import ai.hey.designsystem.component.HeyConnection
@@ -49,6 +51,8 @@ fun SettingsScreen(
     wordmarkParty: Int,
     clock: String,
     modifier: Modifier = Modifier,
+    /** The device could not keep the last change: D8 says so and keeps the value on screen. */
+    saveFailed: Boolean = false,
 ) {
     val context = LocalContext.current
     CarFrame(
@@ -72,6 +76,14 @@ fun SettingsScreen(
             VStack(HeyGap.G8) {
                 HeyText(stringResource(R.string.settings_title), variant = HeyTextVariant.Title, maxLines = 1)
                 HeyText(stringResource(R.string.settings_subtitle), tone = HeyTone.Muted, maxLines = 1)
+            }
+            if (saveFailed) {
+                HeyBanner(
+                    HeyStatusTone.Danger,
+                    stringResource(R.string.settings_save_failed),
+                    Modifier.fillWidth(),
+                    message = stringResource(R.string.settings_save_failed_message),
+                )
             }
             HeySection(stringResource(R.string.settings_speech)) {
                 HeyStepperRow(

@@ -20,24 +20,28 @@ private fun device(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
     orientation = ScreenOrientation.LANDSCAPE,
 )
 
-private val shots: List<Pair<String, CarSettings>> = listOf(
-    "d8-settings" to CarSettings(plateSuffix = "1234"),
-    "d8-settings-changed" to CarSettings(speechGapSec = 30, plateSuffix = "1234", relayUrl = "https://hey-relay.example.com", dark = false),
-    "d8-settings-min-gap" to CarSettings(speechGapSec = 4, plateSuffix = "서울12가3456"),
+private class Shot(val settings: CarSettings, val saveFailed: Boolean = false)
+
+private val shots: List<Pair<String, Shot>> = listOf(
+    "d8-settings" to Shot(CarSettings(plateSuffix = "1234")),
+    "d8-settings-changed" to Shot(CarSettings(speechGapSec = 30, plateSuffix = "1234", relayUrl = "https://hey-relay.example.com", dark = false)),
+    "d8-settings-min-gap" to Shot(CarSettings(speechGapSec = 4, plateSuffix = "서울12가3456")),
+    "d8-settings-save-failed" to Shot(CarSettings(speechGapSec = 12, plateSuffix = "1234"), saveFailed = true),
 )
 
 private fun Paparazzi.recordAll() {
-    shots.forEach { (name, settings) ->
+    shots.forEach { (name, shot) ->
         listOf(true, false).forEach { dark ->
             snapshot("$name-${if (dark) "dark" else "light"}") {
                 HeyTheme(dark) {
                     SettingsScreen(
-                        settings = settings,
+                        settings = shot.settings,
                         onChange = {},
                         onClose = {},
                         connection = HeyConnection.Online,
                         wordmarkParty = 1,
                         clock = "오후 11:42",
+                        saveFailed = shot.saveFailed,
                     )
                 }
             }

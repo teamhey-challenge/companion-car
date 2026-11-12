@@ -436,4 +436,87 @@ class TripRepositoryTest {
         assertEquals(1, vehicle.routes.size)
         assertTrue(ClientType.ROUTE_STARTED in rig.transport.types())
     }
+
+    /** D8: a storage that cannot keep the value is reported (the value stays in use), and a later good write clears it. */
+    @Test fun aFailingSettingsWriteIsReportedAndClearedByTheNextGoodOne() = runTest {
+        class FlakyStorage(val inner: InMemoryCarStorage = InMemoryCarStorage(CarSettings(relayUrl = "http://127.0.0.1:1"))) : CarStorage by inner {
+            var failing = true
+            override suspend fun updateSettings(transform: (CarSettings) -> CarSettings): SaveResult {
+                inner.updateSettings(transform)
+                return if (failing) SaveResult.Failed(SaveFailure.WriteRejected) else SaveResult.Saved
+            }
+        }
+        val storage = FlakyStorage()
+        val repo = TripRepository(
+            backgroundScope, FakeVehicleGateway(backgroundScope), storage,
+            http = OkHttpClient.Builder().connectTimeout(50, TimeUnit.MILLISECONDS).build(),
+            progressPollMs = 3_600_000, transport = { RecordingTransport(it) },
+        )
+        repo.start()
+        advanceTimeBy(10)
+
+        repo.updateSettings { it.copy(speechGapSec = 12) }
+        advanceTimeBy(10)
+        assertEquals(SaveResult.Failed(SaveFailure.WriteRejected), repo.state.value.settingsSave)
+        assertEquals("the value stays in use", 12, repo.state.value.settings.speechGapSec)
+
+        storage.failing = false
+        repo.updateSettings { it.copy(speechGapSec = 14) }
+        advanceTimeBy(10)
+        assertEquals(SaveResult.Saved, repo.state.value.settingsSave)
+
+        storage.failing = true
+        repo.updateSettings { it.copy(dark = false) }
+        advanceTimeBy(10)
+        repo.closeSettings()
+        assertEquals("a new visit to D8 starts clean", SaveResult.Saved, repo.state.value.settingsSave)
+    }
+
+    /** D6: a reply belongs to an open question; a stale or invented request id sends nothing. */
+    @Test fun aReplyForNoOpenQuestionIsNotSent() = runTest {
+        val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, requests = listOf(question.copy(state = RequestState.Answered))))
+        rig.repo.state.value.parked!!.sendReply("req_1", QuickReplyId.Yes)
+        rig.repo.state.value.parked!!.sendReply("req_gone", QuickReplyId.Yes)
+        assertFalse(ClientType.REPLY_SEND in rig.transport.types())
+    }
+
+    // ---------------------------------------------------------------- speech while driving
+
+    private val allStates = TripState.entries
+
+    /** What the relay says for a snapshot change is its own `say`; the car adds a sentence only where the relay has none. */
+    @Test fun everyTripStateTransitionSpeaksLocallyExactlyWhenTheRelayHasNoSentenceForIt() = runTest {
+        for (from in allStates) for (to in allStates) {
+            val vehicle = FakeVehicleGateway(backgroundScope)
+            val rig = rig(backgroundScope, vehicle)
+            snapshot(rig, view(state = from, card = card))
+            snapshot(rig, view(state = to, card = card))
+            advanceTimeBy(10)
+            val expected = if (to == TripState.ARRIVED && from != TripState.ARRIVED) listOf(ai.hey.model.LocalSpeech.ARRIVED) else emptyList()
+            assertEquals("$from -> $to", expected, vehicle.spoken)
+        }
+    }
+
+    /** The relay's `say` for every driver event is read aloud, whatever the car is doing (priority only orders it). */
+    @Test fun everyRelaySayIsSpoken() = runTest {
+        val events = listOf(
+            "join request" to ("sp_1" to ai.hey.model.SpeechPriority.Normal),
+            "card arrival or change" to ("sp_2" to ai.hey.model.SpeechPriority.High),
+            "passenger pin" to ("sp_3" to ai.hey.model.SpeechPriority.High),
+            "dropoff response" to ("sp_4" to ai.hey.model.SpeechPriority.High),
+            "question request" to ("req_5" to ai.hey.model.SpeechPriority.Normal),
+            "stop here" to ("req_6" to ai.hey.model.SpeechPriority.High),
+        )
+        for (driving in listOf(DrivingStatus.Parked, DrivingStatus.Driving, DrivingStatus.Unknown)) {
+            val vehicle = FakeVehicleGateway(backgroundScope, initialDriving = driving, now = { testScheduler.currentTime })
+            val rig = rig(backgroundScope, vehicle)
+            rig.repo.start()
+            events.forEachIndexed { i, (what, spec) ->
+                rig.transport.deliver(ServerMessage.Say("s$i", ai.hey.model.SayData(spec.first, "$what $driving", spec.second)))
+                advanceTimeBy(20_000) // one at a time: the queue holds five, and this is about each event, not about overflow
+            }
+            assertEquals("every say is heard while $driving", events.map { "${it.first} $driving" }.toSet(), vehicle.spoken.toSet())
+        }
+    }
 }

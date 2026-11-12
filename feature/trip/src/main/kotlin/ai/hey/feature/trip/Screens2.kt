@@ -340,6 +340,7 @@ internal fun DropoffScreen(
                             onAccept = { state.parked?.decidePin(pin.version, true) },
                             onDecline = { state.parked?.decidePin(pin.version, false) },
                             modifier = Modifier.fillWidth(),
+                            enabled = state.online && !state.pinInFlight && CarCommand.DecidePin in phase.enabled,
                         )
                     }
                     ErrorBanner(state, Modifier.fillWidth())

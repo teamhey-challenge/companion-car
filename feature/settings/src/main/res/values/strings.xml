@@ -16,4 +16,6 @@
     <string name="settings_relay_apply">이 주소로 연결</string>
     <string name="settings_device_note">모든 값은 이 차량에만 저장돼요</string>
     <string name="settings_close">닫기</string>
+    <string name="settings_save_failed">설정을 저장하지 못했어요</string>
+    <string name="settings_save_failed_message">지금 바꾼 값은 이번에만 쓰이고, 앱을 다시 열면 이전 값으로 돌아가요.</string>
 </resources>

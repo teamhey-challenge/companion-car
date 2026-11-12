@@ -38,7 +38,6 @@ data class Candidates(
     val forPlaceId: String? = null,
     val items: List<DropoffCandidate> = emptyList(),
     val loading: Boolean = false,
-    val failed: Boolean = false,
 )
 
 /** One command a button can start. Typed, so a typo cannot create a key that never clears. */
@@ -48,7 +47,7 @@ sealed interface CommandKey {
     data class Propose(val previousVersion: Int) : CommandKey
     data class Pin(val version: Int) : CommandKey
     /** [newestReplyBefore]: the newest reply when the tap happened; a different newest reply is the effect (the relay caps the list, so a count would stall). */
-    data class Reply(val requestId: String?, val replyId: QuickReplyId, val newestReplyBefore: ai.hey.model.ReplyItem?) : CommandKey
+    data class Reply(val requestId: String, val replyId: QuickReplyId, val newestReplyBefore: ai.hey.model.ReplyItem?) : CommandKey
     data object End : CommandKey
     data object Arrive : CommandKey
 }
@@ -83,6 +82,8 @@ data class CarUiState(
     /** URL printed in the QR (from registration). */
     val qrUrl: String? = null,
     val settings: CarSettings = CarSettings(),
+    /** Outcome of the last settings write; [SaveResult.Failed] makes D8 say so (the value stays on screen). */
+    val settingsSave: SaveResult = SaveResult.Saved,
 
     // ---- UI-only flags
     val panel: Panel = Panel.None,

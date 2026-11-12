@@ -313,4 +313,101 @@ class RelayIntegrationTest {
         assertTrue("the reply must land", (repo.state.value.view?.replies?.size ?: 0) > beforeReplies)
         repo.stop()
     }
+
+    /** The reviewed driver sentences, read from the shared copy package so the test and the relay use one source. */
+    private fun speechTemplates(): Map<String, String> {
+        var root: File? = File("").absoluteFile
+        while (root != null && !File(root, "settings.gradle.kts").exists()) root = root.parentFile
+        val file = File(root, "shared/packages/copy/src/speech-ko.ts")
+        assumeTrue("shared/packages/copy/src/speech-ko.ts not found", file.exists())
+        return Regex("""'(speech\.[A-Za-z.]+)':\s*'([^']*)'""").findAll(file.readText()).associate { it.groupValues[1] to it.groupValues[2] }
+    }
+
+    /**
+     * The driver cannot read the screen while driving, so every event he must know is a sentence. This plays one trip
+     * against the real relay and checks that each event is heard: relay events arrive as `say`, arrival is spoken by the
+     * car itself. A relay that stops saying one of these fails here.
+     */
+    @Test fun everyEventTheDriverMustKnowIsHeard() = runBlocking {
+        val say = speechTemplates()
+        fun sentence(key: String, vararg vars: Pair<String, String>) =
+            vars.fold(say.getValue(key)) { text, (name, value) -> text.replace("{$name}", value) }
+
+        val vehicle = FakeVehicleGateway(scope)
+        val storage = InMemoryCarStorage(ai.hey.model.CarSettings(speechGapSec = 1, plateSuffix = "2468", relayUrl = base))
+        val repo = TripRepository(scope, vehicle, storage, http = http, progressPollMs = 3_600_000)
+        repo.start()
+        eventually("online idle") { repo.state.value.takeIf { it.online && it.view?.state == TripState.IDLE } }
+        val registration = storage.loadRegistration(base)!!
+
+        suspend fun heard(what: String, text: String) = eventually("heard: $what") { vehicle.spoken.firstOrNull { text in it } }
+
+        // join request
+        val join = post("/v1/c/${registration.carCode}/join", """{"lang":"ja","partySize":2}""")
+        val deviceToken = join.getValue("deviceToken").jsonPrimitive.content
+        val joinId = join.getValue("joinRequestId").jsonPrimitive.content
+        val passenger = Passenger(http, base.replace("http", "ws") + "/v1/ws?token=$deviceToken")
+        passenger.open()
+        heard("join request", sentence("speech.joinRequest"))
+        eventually("REQUESTED") { repo.state.value.takeIf { it.view?.pendingJoin != null } }
+        repo.state.value.parked!!.approveJoin(joinId)
+        eventually("CONNECTED") { repo.state.value.takeIf { it.view?.state == TripState.CONNECTED } }
+
+        // a second passenger joins by invite
+        val invite = eventually("invite code") { passenger.lastSnapshot()?.get("inviteCode")?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.jsonPrimitive?.content }
+        post("/v1/t/$invite/join", """{"lang":"en"}""")
+        heard("guest joined", sentence("speech.joined"))
+
+        // card arrival, then a change of the conditions and of the temperature
+        val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=ja").header("Authorization", "Device $deviceToken").build())
+            .execute().use { it.body!!.string() }
+        val place = Json.parseToJsonElement(found).jsonArray.first().toString()
+        passenger.send("card.submit", """{"destination":$place,"conditions":["luggage"]}""")
+        heard("card arrival", sentence("speech.cardSent", "destination" to "롯데호텔 서울"))
+        eventually("CARD_SENT") { repo.state.value.takeIf { it.view?.state == TripState.CARD_SENT } }
+        passenger.send("card.update", """{"conditions":["luggage","lessWalking"]}""")
+        heard("card conditions changed", sentence("speech.cardUpdate.conditions", "conditions" to "").trim())
+        passenger.send("card.update", """{"temperature":"cooler"}""")
+        heard("card temperature changed", sentence("speech.cardUpdate.temperature", "temperature" to "").trim())
+
+        // requests: a notice preset, a question preset, the one the driver cannot disable, and free text
+        fun ask(body: String) = passenger.send("request.send", body)
+        ask("""{"kind":"preset","presetId":"slower","clientRef":"c-1"}""")
+        heard("notice request", sentence("speech.preset.slower"))
+        ask("""{"kind":"preset","presetId":"window","clientRef":"c-2"}""")
+        heard("question request", sentence("speech.preset.window"))
+        ask("""{"kind":"preset","presetId":"stopHere","clientRef":"c-3"}""")
+        heard("stop here", sentence("speech.preset.stopHere"))
+        ask("""{"kind":"free","text":"Please wait at the east gate","clientRef":"c-4"}""")
+        heard("free text request (as translated)", "Please wait at the east gate")
+
+        // the driver proposes; each of the three passenger answers is spoken
+        repo.dismissRequests() // open questions put the car on D6, where the route cannot be started
+        repo.state.value.parked!!.startRoute()
+        eventually("IN_TRIP") { repo.state.value.takeIf { it.view?.state == TripState.IN_TRIP } }
+        repo.state.value.parked!!.openDropoff()
+        val candidates = eventually("candidates") { repo.state.value.candidates.items.takeIf { it.size > 1 } }
+        for (answer in listOf("elsewhere", "unsure", "ok")) {
+            val before = repo.state.value.view?.dropoff?.version ?: 0
+            eventually("car can propose") { repo.state.value.parked?.takeIf { !repo.state.value.proposeInFlight } }.proposeDropoff(candidates[1], null)
+            val proposed = eventually("proposal v>$before") { repo.state.value.view?.dropoff?.takeIf { it.version > before } }
+            passenger.send("dropoff.respond", """{"version":${proposed.version},"response":"$answer"}""")
+            heard("dropoff answer $answer", sentence("speech.dropoff.$answer"))
+        }
+
+        // the passenger puts a pin
+        passenger.send("dropoff.propose", """{"point":{"lat":37.5651,"lng":126.9807},"label":"pin"}""")
+        heard("passenger pin", sentence("speech.passengerPin"))
+
+        // arrival: the relay says nothing for it, the car speaks it itself
+        repo.closeDropoff() // D4 offers no arrive button
+        repo.state.value.parked!!.arrive()
+        eventually("ARRIVED") { repo.state.value.takeIf { it.view?.state == TripState.ARRIVED } }
+        heard("arrival", ai.hey.model.LocalSpeech.ARRIVED)
+
+        // the lead passenger leaves
+        passenger.send("trip.leave", "{}")
+        heard("lead left", sentence("speech.leave"))
+        repo.stop()
+    }
 }

@@ -8,6 +8,7 @@ import ai.hey.feature.trip.rememberNowMillis
 import ai.hey.feature.trip.toStrip
 import ai.hey.model.TripState
 import ai.hey.session.Panel
+import ai.hey.session.SaveResult
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
                         connection = state.connection.toStrip(),
                         wordmarkParty = state.view?.partySize ?: 1,
                         clock = clockLabel(now),
+                        saveFailed = state.settingsSave is SaveResult.Failed,
                     )
                 } else {
                     TripScreen(state, repository, now)

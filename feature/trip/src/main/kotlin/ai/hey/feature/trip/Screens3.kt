@@ -133,9 +133,10 @@ internal fun RequestsScreen(
                     VStack(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
                         QuickReplyGrid(
                             replies = replies,
-                            onReply = { reply -> state.parked?.sendReply(target?.requestId, QuickReplyId.valueOf(reply.id)) },
+                            onReply = { reply -> if (target != null) state.parked?.sendReply(target.requestId, QuickReplyId.valueOf(reply.id)) },
                             modifier = Modifier.fillWidth(),
-                            enabled = state.online && CarCommand.Reply in phase.enabled,
+                            // No open question (only a pin waits): a reply would belong to nothing, so the grid is off.
+                            enabled = state.online && target != null && CarCommand.Reply in phase.enabled,
                             loadingId = busyReply,
                         )
                         if (pin != null) {
@@ -146,6 +147,7 @@ internal fun RequestsScreen(
                                 onAccept = { state.parked?.decidePin(pin.version, true) },
                                 onDecline = { state.parked?.decidePin(pin.version, false) },
                                 modifier = Modifier.fillWidth(),
+                                enabled = state.online && !state.pinInFlight && CarCommand.DecidePin in phase.enabled,
                             )
                         }
                         ErrorBanner(state, Modifier.fillWidth())

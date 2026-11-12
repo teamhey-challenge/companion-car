@@ -284,6 +284,8 @@ fun PassengerPinCard(
     onAccept: () -> Unit,
     onDecline: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Off while offline, while an answer is on its way, or when the phase does not allow it. */
+    enabled: Boolean = true,
 ) {
     HeyCard(modifier = modifier, tone = HeyCardTone.Accent) {
         HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
@@ -295,8 +297,8 @@ fun PassengerPinCard(
             HeyText(distanceText, variant = HeyTextVariant.Label, tone = HeyTone.Muted, maxLines = 1)
         }
         HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
-            HeyButton(stringResource(R.string.hey_pin_decline), onDecline, Modifier.grow(), variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large)
-            HeyButton(stringResource(R.string.hey_pin_accept), onAccept, Modifier.grow(), variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large)
+            HeyButton(stringResource(R.string.hey_pin_decline), onDecline, Modifier.grow(), variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, enabled = enabled)
+            HeyButton(stringResource(R.string.hey_pin_accept), onAccept, Modifier.grow(), variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large, enabled = enabled)
         }
     }
 }

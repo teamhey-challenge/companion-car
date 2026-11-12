@@ -20,9 +20,29 @@ data class Registration(
     override fun toString(): String = "Registration(carCode=$carCode, relayUrl=$relayUrl, plateSuffix=$plateSuffix)"
 }
 
+/** Why the device refused to keep a value. */
+enum class SaveFailure {
+    /** The platform reported that the write did not happen (disk full, storage unavailable). */
+    WriteRejected,
+
+    /** The write threw. */
+    WriteError,
+}
+
+/** The outcome of writing settings: a type, not a boolean, so a caller cannot forget the failure branch. */
+sealed interface SaveResult {
+    data object Saved : SaveResult
+    data class Failed(val reason: SaveFailure) : SaveResult
+}
+
 interface CarStorage {
     val settings: StateFlow<CarSettings>
-    suspend fun updateSettings(transform: (CarSettings) -> CarSettings)
+
+    /**
+     * Applies [transform] to the current settings. [settings] always shows the new value (this session uses it), the
+     * result says whether the device also kept it for the next start.
+     */
+    suspend fun updateSettings(transform: (CarSettings) -> CarSettings): SaveResult
 
     /** The registration for exactly this relay address; one per relay, never overwritten by another relay's. */
     suspend fun loadRegistration(relayUrl: String): Registration?
@@ -34,7 +54,10 @@ class InMemoryCarStorage(initial: CarSettings = CarSettings()) : CarStorage {
     private val _settings = MutableStateFlow(initial)
     private val registrations = HashMap<String, Registration>()
     override val settings: StateFlow<CarSettings> = _settings.asStateFlow()
-    override suspend fun updateSettings(transform: (CarSettings) -> CarSettings) = _settings.update(transform)
+    override suspend fun updateSettings(transform: (CarSettings) -> CarSettings): SaveResult {
+        _settings.update(transform)
+        return SaveResult.Saved
+    }
     override suspend fun loadRegistration(relayUrl: String): Registration? = synchronized(registrations) { registrations[relayUrl.trimEnd('/')] }
     override suspend fun saveRegistration(registration: Registration) {
         synchronized(registrations) { registrations[registration.relayUrl.trimEnd('/')] = registration }

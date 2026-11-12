@@ -17,9 +17,13 @@ import ai.hey.model.HeyConfig
 import ai.hey.model.HeyIds
 import ai.hey.model.HeyJson
 import ai.hey.model.HeyLog
+import ai.hey.model.LocalSpeech
+import ai.hey.model.SpeechPriority
+
 import ai.hey.model.JoinDecision
 import ai.hey.model.ProgressInfo
 import ai.hey.model.QuickReplyId
+import ai.hey.model.isOpenQuestion
 import ai.hey.model.ReplySendData
 import ai.hey.model.RequestSpokenData
 import ai.hey.model.RequestState
@@ -251,6 +255,11 @@ class TripRepository(
             // The attempt of the last trip must not leak into the next: drop it (a late answer is then ignored).
             vehicle.cancelRoute()
         }
+        // Arrival is the one thing the relay does not say: speak it here, once, when this trip's state first becomes ARRIVED.
+        val prior = _state.value.view
+        if (!tripChanged && prior != null && prior.state != TripState.ARRIVED && view.state == TripState.ARRIVED) {
+            vehicle.speak(LocalSpeech.ARRIVED, SpeechPriority.High, null)
+        }
         _state.update { old ->
             val previous = old.view
             val changed = if (!tripChanged) changedConditions(previous?.card, view.card, old.changedConditions) else emptySet()
@@ -362,7 +371,7 @@ class TripRepository(
         override fun openNavi() = this@TripRepository.openNavi()
         override fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?) = this@TripRepository.propose(candidate, reasonId)
         override fun decidePin(version: Int, accept: Boolean) = this@TripRepository.decide(version, accept)
-        override fun sendReply(requestId: String?, replyId: QuickReplyId) = this@TripRepository.reply(requestId, replyId)
+        override fun sendReply(requestId: String, replyId: QuickReplyId) = this@TripRepository.reply(requestId, replyId)
         override fun arrive() = this@TripRepository.arriveByButton()
         override fun endTrip() = this@TripRepository.end()
         override fun openDropoff() = this@TripRepository.showDropoff()
@@ -459,10 +468,12 @@ class TripRepository(
         link.send(ClientType.REQUEST_SPOKEN, HeyJson.encodeToJsonElement(RequestSpokenData.serializer(), RequestSpokenData(requestId)))
     }
 
-    private fun reply(requestId: String?, replyId: QuickReplyId) {
+    private fun reply(requestId: String, replyId: QuickReplyId) {
         if (!allowed(CarCommand.Reply)) return
         val s = _state.value
         if (s.replyInFlight != null) return
+        // Only an open question can be answered: a stale tap for a request that is answered or gone is not sent.
+        if (s.view?.requests?.firstOrNull { it.requestId == requestId }?.isOpenQuestion != true) return
         sendCommand(
             ClientType.REPLY_SEND,
             HeyJson.encodeToJsonElement(ReplySendData.serializer(), ReplySendData(requestId, replyId)),
@@ -541,7 +552,7 @@ class TripRepository(
         _state.update { it.copy(panel = Panel.Settings) }
     }
 
-    override fun closeSettings() = _state.update { it.copy(panel = Panel.None) }
+    override fun closeSettings() = _state.update { it.copy(panel = Panel.None, settingsSave = SaveResult.Saved) }
 
     private fun showEndDialog() {
         if (!allowed(CarCommand.End)) return
@@ -551,7 +562,10 @@ class TripRepository(
     override fun closeEndDialog() = _state.update { it.copy(endDialogOpen = false) }
 
     override fun updateSettings(transform: (CarSettings) -> CarSettings) {
-        scope.launch { storage.updateSettings(transform) }
+        scope.launch {
+            val result = storage.updateSettings(transform)
+            _state.update { it.copy(settingsSave = result) }
+        }
     }
 
     // ---------------------------------------------------------------- entrances
@@ -571,7 +585,7 @@ class TripRepository(
             }
             _state.update {
                 if (it.candidates.forPlaceId != place.placeId) it
-                else it.copy(candidates = Candidates(place.placeId, result.orEmpty(), loading = false, failed = result == null))
+                else it.copy(candidates = Candidates(place.placeId, result.orEmpty(), loading = false))
             }
         }
     }

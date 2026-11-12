@@ -29,16 +29,20 @@ class PrefsCarStorage(context: Context, private val defaultRelayUrl: String = Ca
         )
     }
 
-    override suspend fun updateSettings(transform: (CarSettings) -> CarSettings) {
-        withContext(Dispatchers.IO) {
-            val next = transform(_settings.value)
-            prefs.edit()
+    override suspend fun updateSettings(transform: (CarSettings) -> CarSettings): SaveResult = withContext(Dispatchers.IO) {
+        val next = transform(_settings.value)
+        // The session uses the new value either way; the result tells whether it also survives a restart.
+        _settings.value = next
+        try {
+            val kept = prefs.edit()
                 .putInt(KEY_GAP, next.speechGapSec)
                 .putBoolean(KEY_DARK, next.dark)
                 .putString(KEY_PLATE, next.plateSuffix)
                 .putString(KEY_RELAY, next.relayUrl)
-                .apply()
-            _settings.value = next
+                .commit()
+            if (kept) SaveResult.Saved else SaveResult.Failed(SaveFailure.WriteRejected)
+        } catch (e: Exception) {
+            SaveResult.Failed(SaveFailure.WriteError)
         }
     }
 

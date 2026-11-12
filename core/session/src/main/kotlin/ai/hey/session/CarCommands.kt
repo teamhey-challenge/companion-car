@@ -69,7 +69,8 @@ abstract class ParkedCommands internal constructor() {
     /** Sends the chosen candidate with its structured fields (kind, entranceType, ref, street) so passengers get localized labels. */
     abstract fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?)
     abstract fun decidePin(version: Int, accept: Boolean)
-    abstract fun sendReply(requestId: String?, replyId: QuickReplyId)
+    /** Answers one open question; a reply that belongs to no request is not something the driver can send (화면-정의서 D6). */
+    abstract fun sendReply(requestId: String, replyId: QuickReplyId)
     abstract fun arrive()
     abstract fun endTrip()
     abstract fun openDropoff()
