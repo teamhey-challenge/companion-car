@@ -284,24 +284,24 @@ fun HeyQrCode(content: String, size: Dp, modifier: Modifier = Modifier) {
     }
 }
 
-/** The same greeting in each passenger language; one line per language. */
+/** The same greeting in each passenger language; one compact line per language (must fit three lines beside the plate card at 1280x720). */
 @Composable
 fun LanguageGreetingStrip(lines: List<String>, modifier: Modifier = Modifier) {
     val colors = HeyTheme.colors
     val shape = RoundedCornerShape(HeyTokens.Radius.lg)
     VStack(
-        gap = HeyGap.G16,
+        gap = HeyGap.G8,
         modifier = modifier
             .clip(shape)
             .background(colors.bgSurface, shape)
             .border(HeyTokens.Border.hairline, colors.borderDefault, shape)
-            .padding(HeyTokens.Space.s24),
+            .padding(HeyTokens.Space.s16),
     ) {
         lines.forEachIndexed { index, line ->
             if (index > 0) HeyDivider()
             HStack(gap = HeyGap.G16) {
                 Box(Modifier.size(HeyTokens.Space.s16).clip(CircleShape).background(colors.accent))
-                HeyText(line, Modifier.grow(), variant = HeyTextVariant.Heading, maxLines = 2)
+                HeyText(line, Modifier.grow(), variant = HeyTextVariant.Body, maxLines = 1)
             }
         }
     }

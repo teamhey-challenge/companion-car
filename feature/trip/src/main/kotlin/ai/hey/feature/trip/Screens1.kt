@@ -104,17 +104,16 @@ private fun VehicleIssueBanners(state: CarUiState, commands: CarCommands) {
 
 @Composable
 private fun WaitingContent(state: CarUiState, qrUrl: String, commands: CarCommands) {
+    // The Korean line repeats the screen's own "QR을 찍어 주세요" heading, so only the passenger languages are listed.
     val greetings = listOf(
         stringResource(R.string.trip_greeting_en),
         stringResource(R.string.trip_greeting_ja),
         stringResource(R.string.trip_greeting_zh),
-        stringResource(R.string.trip_greeting_ko),
     )
     HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillSize()) {
         VStack(HeyGap.G16, modifier = Modifier.grow()) {
             HeyText(stringResource(R.string.trip_waiting_title), variant = HeyTextVariant.Title, maxLines = 1)
             QrBlock(qrUrl)
-            HeyText(stringResource(R.string.trip_waiting_hint), variant = HeyTextVariant.Label, tone = HeyTone.Muted, maxLines = 2)
         }
         VStack(HeyGap.G16, modifier = Modifier.grow()) {
             val online = state.online
@@ -156,7 +155,6 @@ internal fun JoinScreen(
         VStack(HeyGap.G24, arrange = HeyArrange.Center, modifier = Modifier.fillSize()) {
             VStack(HeyGap.G8) {
                 HeyText(stringResource(R.string.trip_join_title), variant = HeyTextVariant.Hero, maxLines = 2)
-                HeyText(stringResource(R.string.trip_join_hint), tone = HeyTone.Muted, maxLines = 1)
             }
             val left = ((join.expiresAt - serverNow(nowMillis, state.clockOffsetMs)) / 1000).toInt().coerceAtLeast(0)
             val locked = state.joinInFlight

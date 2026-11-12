@@ -82,8 +82,6 @@ fun SettingsScreen(
                 if (saveFailed) {
                     HeyStatusPill(stringResource(R.string.settings_save_failed), HeyStatusTone.Danger, icon = HeyIcons.Error)
                     HeyText(stringResource(R.string.settings_save_failed_message), Modifier.grow(), variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 2)
-                } else {
-                    HeyText(stringResource(R.string.settings_subtitle), tone = HeyTone.Muted, maxLines = 1)
                 }
             }
             HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillWidth()) {

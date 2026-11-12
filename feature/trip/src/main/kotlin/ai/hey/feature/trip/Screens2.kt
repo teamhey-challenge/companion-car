@@ -9,7 +9,7 @@ import ai.hey.designsystem.component.HeyBannerAction
 import ai.hey.designsystem.component.HeyButton
 import ai.hey.designsystem.component.HeyButtonSize
 import ai.hey.designsystem.component.HeyButtonVariant
-import ai.hey.designsystem.component.HeyDivider
+import ai.hey.designsystem.layout.fillHeight
 import ai.hey.designsystem.component.HeyScrollColumn
 import ai.hey.designsystem.component.HeyStatusPill
 import ai.hey.designsystem.component.HeyStatusTone
@@ -151,7 +151,6 @@ internal fun CardScreen(
                     EmptyPanel(
                         icon = HeyIcons.Clock,
                         title = stringResource(R.string.trip_card_waiting_title),
-                        message = stringResource(R.string.trip_card_waiting_message),
                     )
                     EndTripButton(state, phase.enabled)
                 }
@@ -161,7 +160,8 @@ internal fun CardScreen(
                     HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(3f)) {
                         KoreanSummary(card.destination.nameKo, card.destination.addressKo, card.destination.nameLocal, lines)
                     }
-                    HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(2f)) {
+                    VStack(HeyGap.G16, modifier = Modifier.grow(2f).fillHeight()) {
+                    HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow()) {
                         val routeState = phase.route
                         val pill = when (routeState) {
                             RouteStartState.Requested -> R.string.trip_card_pill_requested to HeyStatusTone.Info
@@ -177,7 +177,6 @@ internal fun CardScreen(
                                 HeyStatusTone.Info,
                                 stringResource(R.string.trip_card_route_confirm),
                                 Modifier.fillWidth(),
-                                message = stringResource(R.string.trip_card_route_confirm_message),
                                 actions = listOf(HeyBannerAction(stringResource(R.string.trip_card_route_cancel), { state.parked?.cancelRoute() }, enabled = canRoute)),
                             )
                         }
@@ -193,7 +192,6 @@ internal fun CardScreen(
                                 HeyStatusTone.Danger,
                                 stringResource(title),
                                 Modifier.fillWidth(),
-                                message = if (code == RouteFailure.NAVI_NOT_READY) stringResource(R.string.trip_card_route_not_ready_message) else null,
                                 actions = if (code == RouteFailure.NAVI_NOT_READY) {
                                     listOf(HeyBannerAction(stringResource(R.string.trip_card_open_navi), { state.parked?.openNavi() }, primary = true, enabled = canRoute), retry)
                                 } else {
@@ -206,7 +204,6 @@ internal fun CardScreen(
                                 HeyStatusTone.Warning,
                                 stringResource(R.string.trip_card_route_stale),
                                 Modifier.fillWidth(),
-                                message = stringResource(R.string.trip_card_route_stale_message),
                             )
                         }
                         val route = view.route
@@ -216,10 +213,10 @@ internal fun CardScreen(
                         } else if (route != null && route.durationSec > 0) {
                             EtaBlock(durationText(route.durationSec), distanceText(route.distanceM), stale = false)
                         }
-                        HeyDivider()
-                        HeyText(stringResource(R.string.trip_card_replay_hint), variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 2)
-                        EndTripButton(state, phase.enabled)
                         ErrorBanner(state, Modifier.fillWidth())
+                    }
+                    // Rare and destructive: a quiet 76dp ghost action at the foot of the column, not part of the main flow.
+                    EndTripButton(state, phase.enabled, quiet = true)
                     }
                 }
             }
@@ -300,7 +297,6 @@ internal fun DropoffScreen(
         VStack(HeyGap.G16, modifier = Modifier.fillSize()) {
             VStack(HeyGap.G8) {
                 HeyText(stringResource(R.string.trip_dropoff_title), variant = HeyTextVariant.Title, maxLines = 1)
-                HeyText(stringResource(R.string.trip_dropoff_subtitle), tone = HeyTone.Muted, maxLines = 1)
             }
             if (!state.online) {
                 HeyBanner(HeyStatusTone.Warning, stringResource(R.string.trip_dropoff_offline), Modifier.fillWidth())
@@ -314,7 +310,6 @@ internal fun DropoffScreen(
                         EmptyPanel(
                             icon = HeyIcons.Pin,
                             title = stringResource(R.string.trip_dropoff_none_title),
-                            message = stringResource(R.string.trip_dropoff_none_message),
                             modifier = Modifier.fillWidth(),
                         )
                     }

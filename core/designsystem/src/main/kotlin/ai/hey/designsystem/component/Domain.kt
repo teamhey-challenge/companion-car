@@ -66,7 +66,6 @@ fun JoinRequestCard(
         VStack(gap = HeyGap.G8, align = HeyAlign.Center, modifier = Modifier.fillMaxWidth()) {
             HeyText(stringResource(R.string.hey_join_check_title), variant = HeyTextVariant.Label, tone = HeyTone.Muted, maxLines = 1)
             HeyText(checkCode, variant = HeyTextVariant.Hero, tone = HeyTone.Accent, maxLines = 1)
-            HeyText(stringResource(R.string.hey_join_check_hint), variant = HeyTextVariant.Caption, tone = HeyTone.Subtle, maxLines = 2)
         }
         if (!enabled) HeyBanner(HeyStatusTone.Info, stringResource(R.string.hey_join_parked_only))
         HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {

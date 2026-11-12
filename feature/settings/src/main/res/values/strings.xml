@@ -1,6 +1,5 @@
 <resources>
     <string name="settings_title">설정</string>
-    <string name="settings_subtitle">바뀐 값은 바로 저장돼요</string>
     <string name="settings_speech">음성</string>
     <string name="settings_gap">음성 간격</string>
     <string name="settings_gap_value">%1$d초</string>

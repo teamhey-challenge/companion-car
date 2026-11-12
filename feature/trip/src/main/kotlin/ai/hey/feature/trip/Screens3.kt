@@ -114,7 +114,6 @@ internal fun RequestsScreen(
             VStack(HeyGap.G16, modifier = Modifier.fillSize()) {
                 VStack(HeyGap.G8) {
                     HeyText(stringResource(R.string.trip_requests_title), variant = HeyTextVariant.Title, maxLines = 1)
-                    HeyText(stringResource(R.string.trip_requests_subtitle), tone = HeyTone.Muted, maxLines = 1)
                 }
                 if (!state.online) HeyBanner(HeyStatusTone.Warning, stringResource(R.string.trip_requests_offline), Modifier.fillWidth())
                 HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillWidth().grow()) {

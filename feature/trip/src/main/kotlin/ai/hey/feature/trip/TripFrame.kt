@@ -72,13 +72,15 @@ internal fun EndTripButton(
     enabled: Set<CarCommand>,
     label: Int = R.string.trip_end_button,
     primary: Boolean = false,
+    /** Quiet: a regular-size (76dp) ghost button for a column, instead of the large rail button. */
+    quiet: Boolean = false,
 ) {
     if (CarCommand.End !in enabled) return
     HeyButton(
         stringResource(label),
         { state.parked?.openEndDialog() },
         variant = if (primary) HeyButtonVariant.Primary else HeyButtonVariant.Ghost,
-        size = HeyButtonSize.Large,
+        size = if (quiet) HeyButtonSize.Regular else HeyButtonSize.Large,
         icon = if (primary) HeyIcons.Check else HeyIcons.Close,
         enabled = state.online,
         loading = state.isLoading(CommandKey.End),
