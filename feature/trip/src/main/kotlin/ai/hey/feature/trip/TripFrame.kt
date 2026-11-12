@@ -74,11 +74,13 @@ internal fun EndTripButton(
     primary: Boolean = false,
     /** Quiet: a regular-size (76dp) ghost button for a column, instead of the large rail button. */
     quiet: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     if (CarCommand.End !in enabled) return
     HeyButton(
         stringResource(label),
         { state.parked?.openEndDialog() },
+        modifier,
         variant = if (primary) HeyButtonVariant.Primary else HeyButtonVariant.Ghost,
         size = if (quiet) HeyButtonSize.Regular else HeyButtonSize.Large,
         icon = if (primary) HeyIcons.Check else HeyIcons.Close,

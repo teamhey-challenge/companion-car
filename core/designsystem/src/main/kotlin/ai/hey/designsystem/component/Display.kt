@@ -303,8 +303,9 @@ fun LanguageGreetingStrip(lines: List<String>, modifier: Modifier = Modifier, co
         lines.chunked(columns).forEach { row ->
             HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
                 row.forEach { line ->
-                    HStack(gap = HeyGap.G8, modifier = Modifier.grow()) {
-                        Box(Modifier.size(HeyTokens.Space.s8).clip(CircleShape).background(colors.accent))
+                    HStack(gap = HeyGap.G8, align = HeyAlign.Start, modifier = Modifier.grow()) {
+                        // The dot sits on the first line (a caption line is 24dp high; the 8dp dot is centred on it), not on the cell's middle.
+                        Box(Modifier.padding(top = HeyTokens.Space.s8).size(HeyTokens.Space.s8).clip(CircleShape).background(colors.accent))
                         HeyText(line, Modifier.grow(), variant = HeyTextVariant.Caption, maxLines = 2)
                     }
                 }

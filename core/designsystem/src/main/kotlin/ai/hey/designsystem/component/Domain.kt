@@ -228,6 +228,7 @@ fun ProposalStatus(state: ProposalState, modifier: Modifier = Modifier) {
 enum class RequestKind { Notice, Question, Free }
 enum class RequestState { Received, Spoken, Answered }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RequestRow(
     textKo: String,
@@ -258,7 +259,7 @@ fun RequestRow(
             .padding(start = HeyTokens.Space.s24, top = HeyTokens.Space.s8, bottom = HeyTokens.Space.s8, end = HeyTokens.Space.s8),
     ) {
         VStack(gap = HeyGap.G8, modifier = Modifier.grow().padding(vertical = HeyTokens.Space.s8)) {
-            HStack(gap = HeyGap.G8) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(HeyGap.G8.value), verticalArrangement = Arrangement.spacedBy(HeyGap.G8.value)) {
                 HeyStatusPill(kindLabel, if (kind == RequestKind.Question) HeyStatusTone.Accent else HeyStatusTone.Neutral)
                 HeyStatusPill(stateLabel, stateTone)
                 HeyText(time, variant = HeyTextVariant.Caption, tone = HeyTone.Subtle, maxLines = 1)
@@ -279,9 +280,11 @@ fun QuickReplyGrid(
     enabled: Boolean = true,
     /** The reply that was just sent shows its spinner; every other button is disabled until the answer arrives. */
     loadingId: String? = null,
+    /** 3 for short answers; 1 for the longer driver-first sentences, which would otherwise wrap to three lines. */
+    columns: Int = 3,
 ) {
     VStack(gap = HeyGap.G16, modifier = modifier) {
-        replies.chunked(3).forEach { row ->
+        replies.chunked(columns).forEach { row ->
             HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
                 row.forEach { reply ->
                     HeyButton(
@@ -294,7 +297,7 @@ fun QuickReplyGrid(
                         loading = loadingId == reply.id,
                     )
                 }
-                repeat(3 - row.size) { Box(Modifier.grow()) }
+                repeat(columns - row.size) { Box(Modifier.grow()) }
             }
         }
     }
@@ -355,9 +358,9 @@ fun VoiceConfirmDialog(
             }
             HeyText(textKo, variant = HeyTextVariant.Heading, maxLines = 4)
             HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
-                HeyButton(cancel.text, cancel.onClick, Modifier.grow(), variant = HeyButtonVariant.Ghost, size = HeyButtonSize.Large, enabled = enabled && !sending)
-                HeyButton(retry.text, retry.onClick, Modifier.grow(), variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, icon = HeyIcons.Mic, enabled = enabled && !sending)
-                HeyButton(send.text, send.onClick, Modifier.grow(), variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large, icon = HeyIcons.Send, enabled = enabled, loading = sending)
+                HeyButton(cancel.text, cancel.onClick, Modifier.grow(0.8f), variant = HeyButtonVariant.Ghost, size = HeyButtonSize.Large, enabled = enabled && !sending)
+                HeyButton(retry.text, retry.onClick, Modifier.grow(1.3f), variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, icon = HeyIcons.Mic, enabled = enabled && !sending)
+                HeyButton(send.text, send.onClick, Modifier.grow(1f), variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large, icon = HeyIcons.Send, enabled = enabled, loading = sending)
             }
         }
     }

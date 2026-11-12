@@ -227,7 +227,7 @@ internal fun CardScreen(
                         enabled = CarCommand.Reply in phase.enabled,
                     )
                     // Rare and destructive: a quiet 76dp ghost action at the foot of the column, not part of the main flow.
-                    EndTripButton(state, phase.enabled, quiet = true)
+                    EndTripButton(state, phase.enabled, quiet = true, modifier = Modifier.fillWidth())
                     }
                 }
             }

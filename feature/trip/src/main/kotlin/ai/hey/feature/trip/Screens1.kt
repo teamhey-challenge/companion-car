@@ -119,7 +119,7 @@ private fun WaitingContent(state: CarUiState, qrUrl: String, commands: CarComman
             HeyText(stringResource(R.string.trip_waiting_title), variant = HeyTextVariant.Title, maxLines = 1)
             QrBlock(qrUrl)
         }
-        VStack(HeyGap.G16, modifier = Modifier.grow()) {
+        VStack(HeyGap.G16, modifier = Modifier.grow(1.5f)) {
             val online = state.online
             HeyCard(Modifier.fillWidth()) {
                 // One compact row (label + plate left, status right) so the six-language grid below fits at 1280x720.

@@ -12,7 +12,7 @@ import ai.hey.designsystem.component.HeyScrollColumn
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyText
 import ai.hey.designsystem.component.HeyBannerAction
-import ai.hey.designsystem.component.QuickReplyGroup
+import ai.hey.designsystem.component.QuickReplyGrid
 import ai.hey.designsystem.component.VoiceConfirmDialog
 import ai.hey.designsystem.component.RequestRow
 import ai.hey.designsystem.component.TripSummaryCard
@@ -130,16 +130,14 @@ internal fun RequestsScreen(
                 },
             ) {
                 VStack(HeyGap.G16, modifier = Modifier.fillSize()) {
-                    VStack(HeyGap.G8) {
-                        HeyText(
-                            stringResource(if (target != null) R.string.trip_requests_title else R.string.trip_requests_title_free),
-                            variant = HeyTextVariant.Title,
-                            maxLines = 1,
-                        )
-                    }
+                    HeyText(
+                        stringResource(if (target != null) R.string.trip_requests_title else R.string.trip_requests_title_free),
+                        variant = HeyTextVariant.Title,
+                        maxLines = 1,
+                    )
                     if (!state.online) HeyBanner(HeyStatusTone.Warning, stringResource(R.string.trip_requests_offline), Modifier.fillWidth())
                     HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillWidth().grow()) {
-                        HeyScrollColumn(HeyGap.G8, modifier = Modifier.grow(1f)) {
+                        HeyScrollColumn(HeyGap.G8, modifier = Modifier.grow()) {
                             requests.forEach { request ->
                                 RequestRow(
                                     textKo = request.text,
@@ -151,11 +149,10 @@ internal fun RequestsScreen(
                                 )
                             }
                         }
-                        HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
+                        HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow()) {
                             // Group A: only while a passenger question is open.
                             if (target != null) {
-                                QuickReplyGroup(
-                                    title = stringResource(R.string.trip_reply_set_answer),
+                                QuickReplyGrid(
                                     replies = quickReplies(QuickReplySet.Answer),
                                     onReply = { reply -> state.parked?.sendReply(target.requestId, QuickReplyId.valueOf(reply.id)) },
                                     modifier = Modifier.fillWidth(),
@@ -164,34 +161,38 @@ internal fun RequestsScreen(
                                 )
                             }
                             // Voice reply first (the primary way to speak): push-to-talk, parked only (this screen exists only while parked).
-                            HeyButton(
-                                stringResource(R.string.trip_voice_start),
-                                { state.parked?.startVoiceReply() },
-                                Modifier.fillWidth(),
-                                size = HeyButtonSize.Large,
-                                icon = HeyIcons.Mic,
-                                enabled = canReply && voice !is VoiceState.Listening && !state.voiceInFlight,
-                                loading = voice is VoiceState.Listening,
-                            )
-                            VoiceStatus(voice, commands)
+                            // While listening the banner IS the state (with its cancel), so the start button is not drawn next to it.
+                            if (voice is VoiceState.Listening) {
+                                VoiceStatus(voice, commands)
+                            } else {
+                                HeyButton(
+                                    stringResource(R.string.trip_voice_start),
+                                    { state.parked?.startVoiceReply() },
+                                    Modifier.fillWidth(),
+                                    size = HeyButtonSize.Large,
+                                    icon = HeyIcons.Mic,
+                                    enabled = canReply && !state.voiceInFlight,
+                                )
+                                VoiceStatus(voice, commands)
+                            }
                             ErrorBanner(state, Modifier.fillWidth())
-                            // Group B: the driver speaks first, any time while parked, behind a toggle.
+                            // Group B: the driver speaks first, any time while parked, behind a toggle (the toggle names the group).
                             HeyButton(
-                                stringResource(if (state.driverFirstOpen) R.string.trip_reply_driver_first_close else R.string.trip_reply_driver_first_open),
+                                stringResource(R.string.trip_reply_driver_first_open),
                                 commands::toggleDriverFirst,
                                 Modifier.fillWidth(),
                                 variant = HeyButtonVariant.Secondary,
-                                size = HeyButtonSize.Large,
+                                size = HeyButtonSize.Regular,
                                 icon = if (state.driverFirstOpen) HeyIcons.ChevronDown else HeyIcons.ChevronRight,
                             )
                             if (state.driverFirstOpen) {
-                                QuickReplyGroup(
-                                    title = stringResource(R.string.trip_reply_set_driver_first),
+                                QuickReplyGrid(
                                     replies = quickReplies(QuickReplySet.DriverFirst),
                                     onReply = { reply -> state.parked?.sendReply(null, QuickReplyId.valueOf(reply.id)) },
                                     modifier = Modifier.fillWidth(),
                                     enabled = canReply && !state.voiceInFlight,
                                     loadingId = busyReply,
+                                    columns = 1,
                                 )
                             }
                         }
