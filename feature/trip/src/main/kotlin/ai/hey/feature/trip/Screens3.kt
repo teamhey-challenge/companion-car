@@ -177,7 +177,8 @@ internal fun RequestsScreen(
                                 )
                                 VoiceStatus(voice, commands)
                             }
-                            ErrorBanner(state, Modifier.fillWidth())
+                            // The dialog tells a refused voice send itself; the same sentence behind the scrim is noise.
+                            if ((voice as? VoiceState.Confirm)?.failure == null) ErrorBanner(state, Modifier.fillWidth())
                             // Group B: the driver speaks first, any time while parked, behind a toggle (the toggle names the group).
                             HeyButton(
                                 stringResource(R.string.trip_reply_driver_first_open),
