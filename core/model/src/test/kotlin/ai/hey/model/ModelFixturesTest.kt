@@ -37,9 +37,28 @@ class ModelFixturesTest {
         val view = HeyJson.decodeFromJsonElement(serializer<CarView>(), element)
         assertEquals(TripState.CARD_SENT, view.state)
         assertEquals(Lang.Ja, view.passengerLang)
-        assertEquals(1, view.pendingPins.size)
-        assertEquals(PinProposalStatus.Pending, (view.dropoff as PassengerPin).status)
-        assertEquals(PinProposalStatus.Pending, view.pendingPins.single().status)
+        assertEquals(listOf(ConditionId.MeetEntrance, ConditionId.Temperature, ConditionId.Quiet, ConditionId.Music), view.card?.conditions)
+        assertEquals(true, view.card?.quiet)
+        assertEquals(MusicPref.Low, view.card?.music)
+        assertEquals(DriverProposalStatus.Elsewhere, view.dropoff?.status)
+        assertEquals(ReplyKind.Voice, view.replies.single().kind)
+        assertEquals(null, view.replies.single().replyId)
+    }
+
+    @Test fun quickReplySetsFollowTheCatalog() {
+        assertEquals(listOf(QuickReplyId.Yes, QuickReplyId.Cannot, QuickReplyId.Moment), quickRepliesOf(QuickReplySet.Answer))
+        assertEquals(listOf(QuickReplyId.StopHere, QuickReplyId.FiveMin, QuickReplyId.CardOk), quickRepliesOf(QuickReplySet.DriverFirst))
+    }
+
+    @Test fun replySendEncodesButtonAndVoiceFlat() {
+        assertEquals(
+            HeyJson.parseToJsonElement("""{"kind":"voice","requestId":"req_1","textKo":"네, 입구 앞에서 기다릴게요."}"""),
+            HeyJson.encodeToJsonElement(ReplySendData.serializer(), ReplySendData.voice("req_1", "네, 입구 앞에서 기다릴게요.")),
+        )
+        assertEquals(
+            HeyJson.parseToJsonElement("""{"kind":"button","replyId":"stopHere"}"""),
+            HeyJson.encodeToJsonElement(ReplySendData.serializer(), ReplySendData.button(null, QuickReplyId.StopHere)),
+        )
     }
 
     @Test fun passengerViewRoundTrips() {
@@ -72,7 +91,7 @@ class ModelFixturesTest {
         )
         val sent = HeyJson.encodeToJsonElement(DropoffProposeData.serializer(), DropoffProposeData.of(candidate, DropoffReasonId.SideCloser))
         val expected = HeyJson.parseToJsonElement(
-            """{"point":{"lat":37.5649,"lng":126.9803},"label":"을지로 쪽 옆 출입구","kind":"entrance","entranceType":"side","ref":"3","street":{"ko":"을지로","latin":"Eulji-ro"},"reasonId":"sideCloser","candidateId":"c1"}""",
+            """{"point":{"lat":37.5649,"lng":126.9803},"label":"을지로 쪽 옆 출입구","kind":"entrance","entranceType":"side","ref":"3","street":{"ko":"을지로","latin":"Eulji-ro"},"reasonId":"sideCloser"}""",
         )
         assertEquals(expected, sent)
     }
@@ -93,9 +112,15 @@ class ModelFixturesTest {
                 "route.failed" -> roundTrip<RouteFailedData>(data)
                 "trip.progress" -> roundTrip<ProgressInfo>(data)
                 "dropoff.propose" -> roundTrip<DropoffProposeData>(data)
-                "dropoff.decide" -> roundTrip<DropoffDecideData>(data)
                 "request.spoken" -> roundTrip<RequestSpokenData>(data)
-                "reply.send" -> roundTrip<ReplySendData>(data)
+                "reply.send" -> {
+                    roundTrip<ReplySendData>(data)
+                    val parsed = HeyJson.decodeFromJsonElement(serializer<ReplySendData>(), data)
+                    when (parsed.kind) {
+                        ReplyKind.Button -> assertNotNull(parsed.replyId)
+                        ReplyKind.Voice -> assertNotNull(parsed.textKo)
+                    }
+                }
                 "driving.state" -> roundTrip<DrivingStateData>(data)
                 "card.recheck", "trip.arrive", "trip.end", "trip.leave" -> roundTrip<EmptyData>(data)
                 "invite.rotate" -> roundTrip<InviteRotate>(data)
@@ -117,8 +142,8 @@ class ModelFixturesTest {
         assertEquals(AuthMessage.TYPE, auth.getValue("type").jsonPrimitive.content)
         roundTrip<AuthMessage>(auth)
         assertEquals(
-            AuthMessage(token = "tok_example", protocol = "2.0.0"),
-            HeyJson.decodeFromString(AuthMessage.serializer(), """{"type":"auth","token":"tok_example","protocol":"2.0.0"}"""),
+            AuthMessage(token = "tok_example", protocol = "3.0.0"),
+            HeyJson.decodeFromString(AuthMessage.serializer(), """{"type":"auth","token":"tok_example","protocol":"3.0.0"}"""),
         )
     }
 

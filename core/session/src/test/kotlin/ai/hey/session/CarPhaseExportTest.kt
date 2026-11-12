@@ -6,9 +6,7 @@ import ai.hey.model.DrivingState
 import ai.hey.model.DropoffKind
 import ai.hey.model.LatLng
 import ai.hey.model.Lang
-import ai.hey.model.PassengerPin
 import ai.hey.model.PendingJoin
-import ai.hey.model.PinProposalStatus
 import ai.hey.model.Place
 import ai.hey.model.RequestItem
 import ai.hey.model.RequestKind
@@ -40,7 +38,6 @@ import org.junit.Test
 class CarPhaseExportTest {
     private val place = Place("p1", "Hotel", "호텔", "서울 중구", "서울", 37.5, 127.0)
     private val question = RequestItem("req_1", RequestKind.Preset, null, "창문을 열어도 될까요?", true, RequestState.Received, ts = 0)
-    private val pin = PassengerPin(2, LatLng(37.5, 127.0), DropoffKind.Pin, null, null, null, "핀", "pin", status = PinProposalStatus.Pending)
 
     private fun drivingName(d: DrivingStatus) = when (d) {
         DrivingStatus.Parked -> "PARKED"
@@ -78,7 +75,6 @@ class CarPhaseExportTest {
                         pendingJoin = if (join) PendingJoin("jr", Lang.En, 1, 0, "47") else null,
                         card = if (card) CarCardView(place, emptyList(), emptyList()) else null,
                         requests = if (waits) listOf(question) else emptyList(),
-                        pendingPins = if (waits) listOf(pin) else emptyList(),
                     )
                     val local = LocalUi(panel = if (dropoff) Panel.Dropoff else Panel.None, requestsDismissedAt = 0)
                     val phase = phaseOf(view, driving, local)

@@ -10,6 +10,8 @@ import ai.hey.model.ErrorData
 import ai.hey.model.Place
 import ai.hey.model.QuickReplyId
 import ai.hey.model.ReplyItem
+import ai.hey.model.ReplyKind
+import ai.hey.vehicle.ScriptedVoiceInput
 import ai.hey.model.RequestItem
 import ai.hey.model.RequestKind
 import ai.hey.model.RequestState
@@ -346,13 +348,13 @@ class TripRepositoryTest {
     /** m4: the relay keeps only the newest replies, so after the cap the count stalls; the newest reply changing still releases the button. */
     @Test fun aReplyIsSettledEvenWhenTheRelayListIsAtItsCap() = runTest {
         val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
-        val full = (1..100).map { ReplyItem(QuickReplyId.Yes, null, "네", ts = it.toLong()) }
+        val full = (1..100).map { ReplyItem(ReplyKind.Button, QuickReplyId.Yes, null, "네", ts = it.toLong()) }
         snapshot(rig, cardView.copy(state = TripState.CARD_SENT, requests = listOf(question), replies = full))
         rig.repo.state.value.parked!!.sendReply("req_1", QuickReplyId.Moment)
         assertNotNull(rig.repo.state.value.replyInFlight)
 
         // 100 replies in, 100 replies out: the oldest dropped, the new one last.
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, requests = listOf(question), replies = full.drop(1) + ReplyItem(QuickReplyId.Moment, null, "잠시만요", ts = 101)))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, requests = listOf(question), replies = full.drop(1) + ReplyItem(ReplyKind.Button, QuickReplyId.Moment, null, "잠시만요", ts = 101)))
 
         assertNull(rig.repo.state.value.replyInFlight)
     }
@@ -494,6 +496,121 @@ class TripRepositoryTest {
         assertFalse(ClientType.REPLY_SEND in rig.transport.types())
     }
 
+    /** Group B: the driver speaks first; it needs no passenger question and carries no request id. */
+    @Test fun aDriverFirstReplyNeedsNoQuestionAndCarriesNoRequest() = runTest {
+        val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.sendReply(null, QuickReplyId.StopHere)
+        assertTrue(ClientType.REPLY_SEND in rig.transport.types())
+        assertNotNull(rig.repo.state.value.replyInFlight)
+    }
+
+    /** Group A without a question is not sendable (and a group-B reply does not become one by naming a request). */
+    @Test fun anAnswerReplyWithoutAnOpenQuestionIsNotSent() = runTest {
+        val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.sendReply(null, QuickReplyId.Yes)
+        assertFalse(ClientType.REPLY_SEND in rig.transport.types())
+    }
+
+    // ---------------------------------------------------------------- voice reply
+
+    private fun voiceRig(scope: kotlinx.coroutines.CoroutineScope, vehicle: FakeVehicleGateway, voice: ScriptedVoiceInput): Rig {
+        lateinit var transport: RecordingTransport
+        val repo = TripRepository(
+            scope,
+            vehicle,
+            InMemoryCarStorage(CarSettings(relayUrl = "http://127.0.0.1:1")),
+            http = OkHttpClient.Builder().connectTimeout(50, TimeUnit.MILLISECONDS).build(),
+            progressPollMs = 3_600_000,
+            voiceInput = voice,
+            transport = { RecordingTransport(it).also { t -> transport = t } },
+        )
+        return Rig(repo, transport)
+    }
+
+    @Test fun aVoiceReplyIsHeardConfirmedAndOnlyThenSent() = runTest {
+        val voice = ScriptedVoiceInput(text = "네, 입구 앞에서 기다릴게요.")
+        val rig = voiceRig(backgroundScope, FakeVehicleGateway(backgroundScope), voice)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.openReply()
+        rig.repo.state.value.parked!!.startVoiceReply()
+        advanceTimeBy(50)
+        assertEquals(VoiceState.Confirm("네, 입구 앞에서 기다릴게요."), rig.repo.state.value.voice)
+        assertFalse("nothing is sent before the driver confirms", ClientType.REPLY_SEND in rig.transport.types())
+        rig.repo.state.value.parked!!.sendVoiceReply()
+        assertTrue(ClientType.REPLY_SEND in rig.transport.types())
+        assertTrue(rig.repo.state.value.voiceInFlight)
+        // the snapshot shows the new reply: the button releases and the screen says it was delivered
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, replies = listOf(ReplyItem(ReplyKind.Voice, null, null, "네, 입구 앞에서 기다릴게요.", 1))))
+        assertFalse(rig.repo.state.value.voiceInFlight)
+        assertEquals(VoiceState.Sent, rig.repo.state.value.voice)
+    }
+
+    @Test fun silenceIsReportedAndSendsNothing() = runTest {
+        val rig = voiceRig(backgroundScope, FakeVehicleGateway(backgroundScope), ScriptedVoiceInput(text = null))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startVoiceReply()
+        advanceTimeBy(50)
+        assertEquals(VoiceState.Failed(VoiceState.Reason.NoSpeech), rig.repo.state.value.voice)
+        rig.repo.state.value.parked!!.sendVoiceReply()
+        assertFalse(ClientType.REPLY_SEND in rig.transport.types())
+    }
+
+    @Test fun withoutTheMicrophonePermissionTheSessionAsksAndResumes() = runTest {
+        val voice = ScriptedVoiceInput(permission = false, text = "잠시만요")
+        val rig = voiceRig(backgroundScope, FakeVehicleGateway(backgroundScope), voice)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startVoiceReply()
+        assertEquals(VoiceState.NeedsPermission, rig.repo.state.value.voice)
+        voice.permission = true
+        rig.repo.voicePermissionResult(true)
+        advanceTimeBy(50)
+        assertEquals(VoiceState.Confirm("잠시만요"), rig.repo.state.value.voice)
+        rig.repo.cancelVoice()
+        voice.permission = false
+        rig.repo.state.value.parked!!.startVoiceReply()
+        rig.repo.voicePermissionResult(false)
+        assertEquals(VoiceState.Failed(VoiceState.Reason.PermissionDenied), rig.repo.state.value.voice)
+    }
+
+    @Test fun theMicrophoneIsNeverOpenedWhileDrivingAndClosesWhenTheCarMoves() = runTest {
+        val vehicle = FakeVehicleGateway(backgroundScope)
+        val voice = ScriptedVoiceInput(listenMillis = 10_000, text = "네")
+        val rig = voiceRig(backgroundScope, vehicle, voice)
+        rig.repo.start()
+        advanceTimeBy(10)
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startVoiceReply()
+        advanceTimeBy(100)
+        assertEquals(VoiceState.Listening, rig.repo.state.value.voice)
+        vehicle.setDriving(true)
+        advanceTimeBy(10)
+        assertEquals("the sentence is thrown away once the car moves", VoiceState.Idle, rig.repo.state.value.voice)
+        assertNull("no hands-on commands, so no push-to-talk, while driving", rig.repo.state.value.parked)
+        advanceTimeBy(20_000)
+        assertEquals(VoiceState.Idle, rig.repo.state.value.voice)
+        assertEquals(1, voice.listens)
+    }
+
+    @Test fun aVoiceTextIsCutToTheRelayLimit() = runTest {
+        val rig = voiceRig(backgroundScope, FakeVehicleGateway(backgroundScope), ScriptedVoiceInput(text = "가".repeat(150)))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.startVoiceReply()
+        advanceTimeBy(50)
+        assertEquals(100, (rig.repo.state.value.voice as VoiceState.Confirm).textKo.length)
+    }
+
+    /** The driver opens the reply screen without any question: D6 shows and closes by itself. */
+    @Test fun theDriverCanOpenTheReplyScreenWithoutAQuestion() = runTest {
+        val rig = rig(backgroundScope, FakeVehicleGateway(backgroundScope))
+        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
+        rig.repo.state.value.parked!!.openReply()
+        assertTrue(rig.repo.state.value.phase is CarPhase.Requests)
+        rig.repo.dismissRequests()
+        assertTrue(rig.repo.state.value.phase is CarPhase.CardSent)
+    }
+
     // ---------------------------------------------------------------- speech the relay does not voice
 
     @Test fun aTripThatEndsForAnyReasonSpeaksTheEndOnce() = runTest {
@@ -540,7 +657,7 @@ class TripRepositoryTest {
     }
 
     private fun agreed(lat: Double) = ai.hey.model.AgreedDropoff(
-        1, ai.hey.model.DropoffBy.Driver, ai.hey.model.LatLng(lat, 127.0), ai.hey.model.DropoffKind.Default,
+        1, ai.hey.model.LatLng(lat, 127.0), ai.hey.model.DropoffKind.Default,
         null, null, null, "정문", "정문",
     )
 

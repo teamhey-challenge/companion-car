@@ -4,16 +4,12 @@ import ai.hey.model.CarCardView
 import ai.hey.model.CarView
 import ai.hey.model.DrivingState
 import ai.hey.model.Lang
-import ai.hey.model.PassengerPin
 import ai.hey.model.PendingJoin
-import ai.hey.model.PinProposalStatus
 import ai.hey.model.Place
 import ai.hey.model.RequestItem
 import ai.hey.model.RequestKind
 import ai.hey.model.RequestState
 import ai.hey.model.TripState
-import ai.hey.model.DropoffKind
-import ai.hey.model.LatLng
 import ai.hey.vehicle.DrivingStatus
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -39,19 +35,17 @@ class CarPhaseTransitionsTest {
 
     private val place = Place("p1", "Hotel", "호텔", "서울 중구", "서울", 37.5, 127.0)
     private val question = RequestItem("req_1", RequestKind.Preset, null, "창문을 열어도 될까요?", true, RequestState.Received, ts = 0)
-    private val pin = PassengerPin(2, LatLng(37.5, 127.0), DropoffKind.Pin, null, null, null, "핀", "pin", status = PinProposalStatus.Pending)
 
     /** Every combination of snapshot content and local UI flags the car can be in while parked. */
     private fun phasesIn(state: TripState): List<CarPhase.Parked> {
         val out = ArrayList<CarPhase.Parked>()
-        for (card in listOf(false, true)) for (join in listOf(false, true)) for (asks in listOf(false, true)) for (pinned in listOf(false, true)) {
+        for (card in listOf(false, true)) for (join in listOf(false, true)) for (asks in listOf(false, true)) {
             for (panel in Panel.entries) for (dismissed in listOf(0, 1)) {
                 val view = CarView(
                     state = state, carCode = "C", plateSuffix = "1", driving = DrivingState.PARKED,
                     pendingJoin = if (join) PendingJoin("jr", Lang.En, 1, 0, "47") else null,
                     card = if (card) CarCardView(place, emptyList(), emptyList()) else null,
                     requests = if (asks) listOf(question) else emptyList(),
-                    pendingPins = if (pinned) listOf(pin) else emptyList(),
                 )
                 out += phaseOf(view, DrivingStatus.Parked, LocalUi(panel, dismissed)) as CarPhase.Parked
             }

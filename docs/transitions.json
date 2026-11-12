@@ -90,15 +90,11 @@
     },
     {
       "type": "dropoff.propose",
-      "role": "car-or-lead"
+      "role": "car"
     },
     {
       "type": "dropoff.respond",
       "role": "lead"
-    },
-    {
-      "type": "dropoff.decide",
-      "role": "car"
     },
     {
       "type": "request.send",
@@ -160,15 +156,11 @@
     },
     {
       "type": "dropoff.propose",
-      "role": "car-or-lead"
+      "role": "car"
     },
     {
       "type": "dropoff.respond",
       "role": "lead"
-    },
-    {
-      "type": "dropoff.decide",
-      "role": "car"
     },
     {
       "type": "request.send",

@@ -26,8 +26,25 @@ enum class ConnectionStatus {
     ProtocolMismatch,
 }
 
-/** Which panel the driver opened on top of the trip screen. */
-enum class Panel { None, Dropoff, Settings }
+/** Which panel the driver opened on top of the trip screen. [Reply] is D6 opened by the driver to speak first (no open question needed). */
+enum class Panel { None, Dropoff, Settings, Reply }
+
+/**
+ * The driver's voice reply (D6), parked only. Listening -> Confirm(text) -> sent; nothing is sent before the driver
+ * confirms the recognized sentence. [Idle] is also what a moving car gets: the microphone closes.
+ */
+sealed interface VoiceState {
+    data object Idle : VoiceState
+    /** RECORD_AUDIO is not granted: the activity asks for it, the answer arrives through voicePermissionResult. */
+    data object NeedsPermission : VoiceState
+    data object Listening : VoiceState
+    /** The confirmed sentence reached the relay (the snapshot shows the new reply). */
+    data object Sent : VoiceState
+    data class Confirm(val textKo: String) : VoiceState
+    /** Nothing recognized (or the permission was refused / the recognizer failed); the driver can try again. */
+    data class Failed(val reason: Reason) : VoiceState
+    enum class Reason { NoSpeech, PermissionDenied, Unavailable }
+}
 
 /** What the driver picked on D4. Valid only for the proposal version it was made against. */
 data class DropoffDraft(
@@ -48,9 +65,10 @@ sealed interface CommandKey {
     data class Join(val joinRequestId: String) : CommandKey
     data object Recheck : CommandKey
     data class Propose(val previousVersion: Int) : CommandKey
-    data class Pin(val version: Int) : CommandKey
-    /** [newestReplyBefore]: the newest reply when the tap happened; a different newest reply is the effect (the relay caps the list, so a count would stall). */
-    data class Reply(val requestId: String, val replyId: QuickReplyId, val newestReplyBefore: ai.hey.model.ReplyItem?) : CommandKey
+    /** [newestReplyBefore]: the newest reply when the tap happened; a different newest reply is the effect (the relay caps the list, so a count would stall). [requestId] is null for a driver-first reply. */
+    data class Reply(val requestId: String?, val replyId: QuickReplyId, val newestReplyBefore: ai.hey.model.ReplyItem?) : CommandKey
+    /** The confirmed voice sentence; settled like a reply (the newest reply changes). */
+    data class Voice(val newestReplyBefore: ai.hey.model.ReplyItem?) : CommandKey
     data object End : CommandKey
     data object Arrive : CommandKey
 }
@@ -92,6 +110,9 @@ data class CarUiState(
     val panel: Panel = Panel.None,
     /** D6 was closed by the driver while this many items were actionable; it reopens when more arrive. */
     val requestsDismissedAt: Int = 0,
+    /** D6: the driver-first quick replies ("기사님이 먼저") are unfolded. */
+    val driverFirstOpen: Boolean = false,
+    val voice: VoiceState = VoiceState.Idle,
     val endDialogOpen: Boolean = false,
     /** Every command that is in flight or recently failed, by typed key. */
     val commands: Map<CommandKey, CommandState> = emptyMap(),
@@ -134,7 +155,7 @@ data class CarUiState(
 
     val joinInFlight: Boolean get() = commands.any { (key, state) -> key is CommandKey.Join && state is CommandState.InFlight }
     val proposeInFlight: Boolean get() = commands.any { (key, state) -> key is CommandKey.Propose && state is CommandState.InFlight }
-    val pinInFlight: Boolean get() = commands.any { (key, state) -> key is CommandKey.Pin && state is CommandState.InFlight }
+    val voiceInFlight: Boolean get() = commands.any { (key, state) -> key is CommandKey.Voice && state is CommandState.InFlight }
 
     /** The reply that is being sent, for the quick-reply grid's loading state. */
     val replyInFlight: CommandKey.Reply?

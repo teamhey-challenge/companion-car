@@ -14,6 +14,9 @@
     <string name="trip_lang_en">English</string>
     <string name="trip_lang_ja">日本語</string>
     <string name="trip_lang_zh">简体中文</string>
+    <string name="trip_lang_zh_hant">繁體中文</string>
+    <string name="trip_lang_vi">Tiếng Việt</string>
+    <string name="trip_lang_th">ไทย</string>
     <string name="trip_lang_ko">한국어</string>
     <string name="trip_waiting_plate_label">차량 번호</string>
     <string name="trip_waiting_connected">연결됨</string>
@@ -24,9 +27,6 @@
     <string name="trip_waiting_register_failed_message">인터넷을 확인한 뒤 앱을 다시 열어 주세요</string>
     <string name="trip_waiting_speech_unavailable">음성 안내를 사용할 수 없어요. 다시 시도해 주세요</string>
     <string name="trip_waiting_navi_unavailable">내비게이션을 사용할 수 없어요. 다시 시도해 주세요</string>
-    <string name="trip_greeting_en">Scan the QR code to ride with HEY</string>
-    <string name="trip_greeting_ja">QRコードを読み取ってください</string>
-    <string name="trip_greeting_zh">请扫描二维码</string>
     <string name="trip_settings">설정</string>
 
     <!-- D2 join -->
@@ -56,10 +56,12 @@
     <string name="trip_card_route_stale">내비 목적지와 합의한 내릴 곳이 달라요</string>
     <string name="trip_card_arrived">도착했어요</string>
     <string name="trip_condition_detail">%1$s: %2$s</string>
-    <string name="trip_condition_label_luggage">짐 있음</string>
-    <string name="trip_condition_label_less_walking">덜 걷기</string>
     <string name="trip_condition_label_meet_entrance">만나기로 한 입구</string>
+    <string name="trip_condition_label_quiet">조용히 가고 싶어요</string>
     <string name="trip_condition_label_temperature">실내 온도</string>
+    <string name="trip_condition_label_music">음악</string>
+    <string name="trip_music_off">음악 꺼 주세요</string>
+    <string name="trip_music_low">작게 틀어 주세요</string>
     <string name="trip_temperature_cooler">시원하게</string>
     <string name="trip_temperature_warmer">따뜻하게</string>
 
@@ -90,11 +92,28 @@
     <string name="trip_requests_arrive">도착했어요</string>
     <string name="trip_requests_offline">연결되면 답장을 보낼 수 있어요</string>
     <string name="trip_reply_yes">네</string>
-    <string name="trip_reply_moment">잠시만요</string>
-    <string name="trip_reply_five_min">5분 걸려요</string>
-    <string name="trip_reply_stop_here">여기서 세울게요</string>
-    <string name="trip_reply_card_ok">카드 돼요</string>
     <string name="trip_reply_cannot">어려워요</string>
+    <string name="trip_reply_moment">잠시만요</string>
+    <string name="trip_reply_stop_here">여기서 세울게요</string>
+    <string name="trip_reply_five_min">5분 걸려요</string>
+    <string name="trip_reply_card_ok">카드 돼요</string>
+    <string name="trip_reply_set_answer">답장</string>
+    <string name="trip_reply_set_driver_first">기사님이 먼저</string>
+    <string name="trip_reply_driver_first_open">먼저 말하기</string>
+    <string name="trip_reply_driver_first_close">먼저 말하기 접기</string>
+    <string name="trip_reply_open">답장하기</string>
+    <string name="trip_requests_title_free">승객에게 말해요</string>
+    <string name="trip_voice_start">음성으로 답하기</string>
+    <string name="trip_voice_listening">듣고 있어요. 말씀해 주세요.</string>
+    <string name="trip_voice_confirm">이 내용으로 보낼까요?</string>
+    <string name="trip_voice_send">보내기</string>
+    <string name="trip_voice_retry">다시 말하기</string>
+    <string name="trip_voice_cancel">취소</string>
+    <string name="trip_voice_no_speech">말씀을 알아듣지 못했어요</string>
+    <string name="trip_voice_permission">마이크 권한이 필요해요</string>
+    <string name="trip_voice_unavailable">음성 인식을 쓸 수 없어요</string>
+    <string name="trip_voice_sent">승객에게 전달했어요</string>
+    <string name="trip_voice_driving_locked">운전 중에는 음성 입력을 쓸 수 없어요</string>
 
     <!-- D7 arrived -->
     <string name="trip_arrived_title">도착했어요</string>

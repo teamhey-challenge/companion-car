@@ -10,6 +10,8 @@ import ai.hey.model.ErrorCode
 import ai.hey.model.Lang
 import ai.hey.model.DriverProposalStatus
 import ai.hey.model.QuickReplyId
+import ai.hey.model.QuickReplySet
+import ai.hey.model.quickRepliesOf
 import ai.hey.model.RequestItem
 import ai.hey.model.RequestKind
 import ai.hey.model.RequestState
@@ -30,14 +32,17 @@ fun Lang.labelRes(): Int = when (this) {
     Lang.En -> R.string.trip_lang_en
     Lang.Ja -> R.string.trip_lang_ja
     Lang.ZhHans -> R.string.trip_lang_zh
+    Lang.ZhHant -> R.string.trip_lang_zh_hant
+    Lang.Vi -> R.string.trip_lang_vi
+    Lang.Th -> R.string.trip_lang_th
     Lang.Ko -> R.string.trip_lang_ko
 }
 
 internal fun ConditionId.icon(): ImageVector = when (this) {
-    ConditionId.Luggage -> HeyIcons.Luggage
-    ConditionId.LessWalking -> HeyIcons.Walk
     ConditionId.MeetEntrance -> HeyIcons.Door
     ConditionId.Temperature -> HeyIcons.ThermometerCool
+    ConditionId.Quiet -> HeyIcons.VolumeOff
+    ConditionId.Music -> HeyIcons.Music
 }
 
 internal fun DriverProposalStatus.toUi(): ProposalState = when (this) {
@@ -75,17 +80,17 @@ internal fun reasonLabels(): List<String> = DropoffReasonId.entries.map {
 }
 
 @Composable
-internal fun quickReplies(): List<QuickReplyUi> = QuickReplyId.entries.map {
+internal fun quickReplies(set: QuickReplySet): List<QuickReplyUi> = quickRepliesOf(set).map {
     QuickReplyUi(
         it.name,
         stringResource(
             when (it) {
                 QuickReplyId.Yes -> R.string.trip_reply_yes
-                QuickReplyId.Moment -> R.string.trip_reply_moment
-                QuickReplyId.FiveMin -> R.string.trip_reply_five_min
-                QuickReplyId.StopHere -> R.string.trip_reply_stop_here
-                QuickReplyId.CardOk -> R.string.trip_reply_card_ok
                 QuickReplyId.Cannot -> R.string.trip_reply_cannot
+                QuickReplyId.Moment -> R.string.trip_reply_moment
+                QuickReplyId.StopHere -> R.string.trip_reply_stop_here
+                QuickReplyId.FiveMin -> R.string.trip_reply_five_min
+                QuickReplyId.CardOk -> R.string.trip_reply_card_ok
             },
         ),
     )

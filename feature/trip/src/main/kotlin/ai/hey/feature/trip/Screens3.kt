@@ -11,8 +11,9 @@ import ai.hey.designsystem.component.HeyLayered
 import ai.hey.designsystem.component.HeyScrollColumn
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyText
-import ai.hey.designsystem.component.PassengerPinCard
-import ai.hey.designsystem.component.QuickReplyGrid
+import ai.hey.designsystem.component.HeyBannerAction
+import ai.hey.designsystem.component.QuickReplyGroup
+import ai.hey.designsystem.component.VoiceConfirmDialog
 import ai.hey.designsystem.component.RequestRow
 import ai.hey.designsystem.component.TripSummaryCard
 import ai.hey.designsystem.icon.HeyIcons
@@ -25,16 +26,16 @@ import ai.hey.designsystem.layout.fillWidth
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTone
-import ai.hey.model.HeyConfig
-import ai.hey.model.LatLng
 import ai.hey.model.QuickReplyId
-import ai.hey.model.distanceTo
+import ai.hey.model.QuickReplySet
+import ai.hey.model.HeyConfig
 import ai.hey.model.pendingRequestCount
 import ai.hey.model.replyTarget
 import ai.hey.session.CarCommands
 import ai.hey.session.CarPhase
 import ai.hey.session.CarUiState
 import ai.hey.session.CommandKey
+import ai.hey.session.VoiceState
 import ai.hey.session.CarCommand
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -80,80 +81,150 @@ internal fun RequestsScreen(
     val view = phase.view
     val requests = view.requests.reversed()
     val target = view.replyTarget
-    val pin = view.pendingPins.firstOrNull()
-    val replies = quickReplies()
+    val canReply = state.online && CarCommand.Reply in phase.enabled
     val busyReply = state.replyInFlight?.replyId?.name
+    val voice = state.voice
     EndTripLayer(state, commands) {
-        TripFrame(
-            state = state,
-            nowMillis = nowMillis,
-            modifier = modifier,
-            rail = {
-                HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
-                    if (CarCommand.Arrive in phase.enabled) {
-                        HeyButton(
-                            stringResource(R.string.trip_requests_arrive),
-                            { state.parked?.arrive() },
-                            variant = HeyButtonVariant.Secondary,
-                            size = HeyButtonSize.Large,
-                            icon = HeyIcons.Flag,
-                            loading = state.isLoading(CommandKey.Arrive),
-                            enabled = state.online,
-                        )
-                    }
-                    EndTripButton(state, phase.enabled)
-                    HeyButton(
-                        stringResource(R.string.trip_requests_close),
-                        commands::dismissRequests,
-                        variant = HeyButtonVariant.Secondary,
-                        size = HeyButtonSize.Large,
+        HeyLayered(
+            modifier = Modifier.fillSize(),
+            overlay = (voice as? VoiceState.Confirm)?.let { confirm ->
+                {
+                    VoiceConfirmDialog(
+                        title = stringResource(R.string.trip_voice_confirm),
+                        textKo = confirm.textKo,
+                        send = HeyDialogAction(stringResource(R.string.trip_voice_send)) { state.parked?.sendVoiceReply() },
+                        retry = HeyDialogAction(stringResource(R.string.trip_voice_retry)) { state.parked?.startVoiceReply() },
+                        cancel = HeyDialogAction(stringResource(R.string.trip_voice_cancel), commands::cancelVoice),
+                        modifier = Modifier.fillSize(),
+                        sending = state.voiceInFlight,
+                        enabled = canReply,
                     )
                 }
             },
         ) {
-            VStack(HeyGap.G16, modifier = Modifier.fillSize()) {
-                VStack(HeyGap.G8) {
-                    HeyText(stringResource(R.string.trip_requests_title), variant = HeyTextVariant.Title, maxLines = 1)
-                }
-                if (!state.online) HeyBanner(HeyStatusTone.Warning, stringResource(R.string.trip_requests_offline), Modifier.fillWidth())
-                HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillWidth().grow()) {
-                    HeyScrollColumn(HeyGap.G8, modifier = Modifier.grow(1f)) {
-                        requests.forEach { request ->
-                            RequestRow(
-                                textKo = request.text,
-                                kind = request.uiKind(),
-                                state = request.uiState(),
-                                time = clockText(request.ts, clockZone()),
-                                onReplay = { commands.replayRequest(request.requestId) },
-                                modifier = Modifier.fillWidth(),
+            TripFrame(
+                state = state,
+                nowMillis = nowMillis,
+                modifier = modifier,
+                rail = {
+                    HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
+                        if (CarCommand.Arrive in phase.enabled) {
+                            HeyButton(
+                                stringResource(R.string.trip_requests_arrive),
+                                { state.parked?.arrive() },
+                                variant = HeyButtonVariant.Secondary,
+                                size = HeyButtonSize.Large,
+                                icon = HeyIcons.Flag,
+                                loading = state.isLoading(CommandKey.Arrive),
+                                enabled = state.online,
                             )
                         }
-                    }
-                    VStack(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
-                        QuickReplyGrid(
-                            replies = replies,
-                            onReply = { reply -> if (target != null) state.parked?.sendReply(target.requestId, QuickReplyId.valueOf(reply.id)) },
-                            modifier = Modifier.fillWidth(),
-                            // No open question (only a pin waits): a reply would belong to nothing, so the grid is off.
-                            enabled = state.online && target != null && CarCommand.Reply in phase.enabled,
-                            loadingId = busyReply,
+                        EndTripButton(state, phase.enabled)
+                        HeyButton(
+                            stringResource(R.string.trip_requests_close),
+                            commands::dismissRequests,
+                            variant = HeyButtonVariant.Secondary,
+                            size = HeyButtonSize.Large,
                         )
-                        if (pin != null) {
-                            val from = view.card?.destination?.let { LatLng(it.lat, it.lng) }
-                            PassengerPinCard(
-                                label = pin.label,
-                                distanceText = from?.let { distanceText(it.distanceTo(pin.point)) }.orEmpty(),
-                                onAccept = { state.parked?.decidePin(pin.version, true) },
-                                onDecline = { state.parked?.decidePin(pin.version, false) },
-                                modifier = Modifier.fillWidth(),
-                                enabled = state.online && !state.pinInFlight && CarCommand.DecidePin in phase.enabled,
-                            )
+                    }
+                },
+            ) {
+                VStack(HeyGap.G16, modifier = Modifier.fillSize()) {
+                    VStack(HeyGap.G8) {
+                        HeyText(
+                            stringResource(if (target != null) R.string.trip_requests_title else R.string.trip_requests_title_free),
+                            variant = HeyTextVariant.Title,
+                            maxLines = 1,
+                        )
+                    }
+                    if (!state.online) HeyBanner(HeyStatusTone.Warning, stringResource(R.string.trip_requests_offline), Modifier.fillWidth())
+                    HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillWidth().grow()) {
+                        HeyScrollColumn(HeyGap.G8, modifier = Modifier.grow(1f)) {
+                            requests.forEach { request ->
+                                RequestRow(
+                                    textKo = request.text,
+                                    kind = request.uiKind(),
+                                    state = request.uiState(),
+                                    time = clockText(request.ts, clockZone()),
+                                    onReplay = { commands.replayRequest(request.requestId) },
+                                    modifier = Modifier.fillWidth(),
+                                )
+                            }
                         }
-                        ErrorBanner(state, Modifier.fillWidth())
+                        HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
+                            // Group A: only while a passenger question is open.
+                            if (target != null) {
+                                QuickReplyGroup(
+                                    title = stringResource(R.string.trip_reply_set_answer),
+                                    replies = quickReplies(QuickReplySet.Answer),
+                                    onReply = { reply -> state.parked?.sendReply(target.requestId, QuickReplyId.valueOf(reply.id)) },
+                                    modifier = Modifier.fillWidth(),
+                                    enabled = canReply && !state.voiceInFlight,
+                                    loadingId = busyReply,
+                                )
+                            }
+                            // Voice reply first (the primary way to speak): push-to-talk, parked only (this screen exists only while parked).
+                            HeyButton(
+                                stringResource(R.string.trip_voice_start),
+                                { state.parked?.startVoiceReply() },
+                                Modifier.fillWidth(),
+                                size = HeyButtonSize.Large,
+                                icon = HeyIcons.Mic,
+                                enabled = canReply && voice !is VoiceState.Listening && !state.voiceInFlight,
+                                loading = voice is VoiceState.Listening,
+                            )
+                            VoiceStatus(voice, commands)
+                            ErrorBanner(state, Modifier.fillWidth())
+                            // Group B: the driver speaks first, any time while parked, behind a toggle.
+                            HeyButton(
+                                stringResource(if (state.driverFirstOpen) R.string.trip_reply_driver_first_close else R.string.trip_reply_driver_first_open),
+                                commands::toggleDriverFirst,
+                                Modifier.fillWidth(),
+                                variant = HeyButtonVariant.Secondary,
+                                size = HeyButtonSize.Large,
+                                icon = if (state.driverFirstOpen) HeyIcons.ChevronDown else HeyIcons.ChevronRight,
+                            )
+                            if (state.driverFirstOpen) {
+                                QuickReplyGroup(
+                                    title = stringResource(R.string.trip_reply_set_driver_first),
+                                    replies = quickReplies(QuickReplySet.DriverFirst),
+                                    onReply = { reply -> state.parked?.sendReply(null, QuickReplyId.valueOf(reply.id)) },
+                                    modifier = Modifier.fillWidth(),
+                                    enabled = canReply && !state.voiceInFlight,
+                                    loadingId = busyReply,
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun VoiceStatus(voice: VoiceState, commands: CarCommands) {
+    when (voice) {
+        VoiceState.Listening -> HeyBanner(
+            HeyStatusTone.Info,
+            stringResource(R.string.trip_voice_listening),
+            Modifier.fillWidth(),
+            actions = listOf(HeyBannerAction(stringResource(R.string.trip_voice_cancel), commands::cancelVoice)),
+        )
+        VoiceState.NeedsPermission -> HeyBanner(HeyStatusTone.Info, stringResource(R.string.trip_voice_permission), Modifier.fillWidth())
+        VoiceState.Sent -> HeyBanner(HeyStatusTone.Success, stringResource(R.string.trip_voice_sent), Modifier.fillWidth())
+        is VoiceState.Failed -> HeyBanner(
+            HeyStatusTone.Warning,
+            stringResource(
+                when (voice.reason) {
+                    VoiceState.Reason.NoSpeech -> R.string.trip_voice_no_speech
+                    VoiceState.Reason.PermissionDenied -> R.string.trip_voice_permission
+                    VoiceState.Reason.Unavailable -> R.string.trip_voice_unavailable
+                },
+            ),
+            Modifier.fillWidth(),
+        )
+        VoiceState.Idle, is VoiceState.Confirm -> Unit
     }
 }
 

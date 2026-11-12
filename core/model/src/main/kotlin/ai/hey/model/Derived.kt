@@ -14,9 +14,9 @@ val RequestItem.isOpenQuestion: Boolean
 val RequestItem.isPending: Boolean
     get() = state == RequestState.Received || isOpenQuestion
 
-/** Open questions plus passenger pins waiting for a decision: what D6 exists for. */
+/** Open questions waiting for an answer: what D6 opens for (passenger pins no longer exist). */
 val CarView.actionableCount: Int
-    get() = requests.count { it.isOpenQuestion } + pendingPins.size
+    get() = requests.count { it.isOpenQuestion }
 
 val CarView.pendingRequestCount: Int
     get() = requests.count { it.isPending }
@@ -41,6 +41,9 @@ fun nextClockOffset(current: Long, deviceNow: Long, serverTs: Long): Long =
 
 /** The relay's clock, as far as the device can tell. */
 fun serverNow(deviceNow: Long, clockOffsetMs: Long): Long = deviceNow - clockOffsetMs
+
+/** The quick replies of one group, in catalog order. */
+fun quickRepliesOf(set: QuickReplySet): List<QuickReplyId> = QuickReplyId.entries.filter { it.set == set }
 
 /** Great-circle distance in metres (haversine), rounded. */
 fun LatLng.distanceTo(other: LatLng): Int {

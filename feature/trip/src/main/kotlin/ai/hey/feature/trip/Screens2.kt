@@ -15,7 +15,6 @@ import ai.hey.designsystem.component.HeyStatusPill
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyText
 import ai.hey.designsystem.component.KoreanSummary
-import ai.hey.designsystem.component.PassengerPinCard
 import ai.hey.designsystem.component.ProposalStatus
 import ai.hey.designsystem.component.ReasonChips
 import ai.hey.designsystem.icon.HeyIcons
@@ -33,14 +32,13 @@ import ai.hey.model.ConditionId
 import ai.hey.model.DropoffCandidate
 import ai.hey.model.DropoffKind
 import ai.hey.model.DropoffReasonId
+import ai.hey.model.MusicPref
 import ai.hey.model.LatLng
 import ai.hey.model.Temperature
-import ai.hey.model.distanceTo
 import ai.hey.session.CarCommands
 import ai.hey.session.CarPhase
 import ai.hey.session.CarUiState
 import ai.hey.session.CommandKey
-import ai.hey.model.DriverProposal
 import ai.hey.session.CarCommand
 import ai.hey.vehicle.RouteFailure
 import ai.hey.vehicle.RouteStartState
@@ -54,10 +52,10 @@ import androidx.compose.ui.res.stringResource
 private fun conditionLines(card: CarCardView, changed: Set<ConditionId>): List<ConditionLine> = card.conditions.mapIndexed { index, id ->
     val base = card.conditionLabelsKo.getOrNull(index) ?: stringResource(
         when (id) {
-            ConditionId.Luggage -> R.string.trip_condition_label_luggage
-            ConditionId.LessWalking -> R.string.trip_condition_label_less_walking
             ConditionId.MeetEntrance -> R.string.trip_condition_label_meet_entrance
             ConditionId.Temperature -> R.string.trip_condition_label_temperature
+            ConditionId.Quiet -> R.string.trip_condition_label_quiet
+            ConditionId.Music -> R.string.trip_condition_label_music
         },
     )
     val text = when {
@@ -68,6 +66,10 @@ private fun conditionLines(card: CarCardView, changed: Set<ConditionId>): List<C
                 if (card.temperature == Temperature.Cooler) R.string.trip_temperature_cooler else R.string.trip_temperature_warmer,
             )
             stringResource(R.string.trip_condition_detail, base, temp)
+        }
+        id == ConditionId.Music && card.music != null -> {
+            val music = card.musicLabelKo ?: stringResource(if (card.music == MusicPref.Off) R.string.trip_music_off else R.string.trip_music_low)
+            stringResource(R.string.trip_condition_detail, base, music)
         }
         else -> base
     }
@@ -215,6 +217,15 @@ internal fun CardScreen(
                         }
                         ErrorBanner(state, Modifier.fillWidth())
                     }
+                    HeyButton(
+                        stringResource(R.string.trip_reply_open),
+                        { state.parked?.openReply() },
+                        Modifier.fillWidth(),
+                        variant = HeyButtonVariant.Secondary,
+                        size = HeyButtonSize.Regular,
+                        icon = HeyIcons.Message,
+                        enabled = CarCommand.Reply in phase.enabled,
+                    )
                     // Rare and destructive: a quiet 76dp ghost action at the foot of the column, not part of the main flow.
                     EndTripButton(state, phase.enabled, quiet = true)
                     }
@@ -264,7 +275,6 @@ internal fun DropoffScreen(
     }
     val selected = items.firstOrNull { it.candidateId == draft.candidateId }
     val proposal = view.dropoff
-    val pin = view.pendingPins.firstOrNull()
     TripFrame(
         state = state,
         nowMillis = nowMillis,
@@ -326,18 +336,7 @@ internal fun DropoffScreen(
                 HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow()) {
                     HeyText(stringResource(R.string.trip_dropoff_reasons_title), variant = HeyTextVariant.Heading, maxLines = 1)
                     ReasonChips(reasons, draft.reasonIndex, commands::selectReason, Modifier.fillWidth())
-                    (proposal as? DriverProposal)?.let { ProposalStatus(it.status.toUi()) }
-                    if (pin != null) {
-                        val from = card?.let { LatLng(it.destination.lat, it.destination.lng) }
-                        PassengerPinCard(
-                            label = pin.label,
-                            distanceText = from?.let { distanceText(it.distanceTo(pin.point)) }.orEmpty(),
-                            onAccept = { state.parked?.decidePin(pin.version, true) },
-                            onDecline = { state.parked?.decidePin(pin.version, false) },
-                            modifier = Modifier.fillWidth(),
-                            enabled = state.online && !state.pinInFlight && CarCommand.DecidePin in phase.enabled,
-                        )
-                    }
+                    proposal?.let { ProposalStatus(it.status.toUi()) }
                     ErrorBanner(state, Modifier.fillWidth())
                 }
             }

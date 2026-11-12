@@ -54,28 +54,27 @@ sealed interface CarPhase {
     /** CARD_SENT: the card is out; the route is not started yet. */
     data class CardSent(override val view: CarView, override val route: RouteStartState) : Card {
         override val enabled: Set<CarCommand> = setOf(
-            CarCommand.Recheck, CarCommand.StartRoute, CarCommand.Propose, CarCommand.DecidePin, CarCommand.Reply, CarCommand.End,
+            CarCommand.Recheck, CarCommand.StartRoute, CarCommand.Propose, CarCommand.Reply, CarCommand.End,
         )
     }
 
     /** IN_TRIP: the route runs. A re-check is not possible any more (the relay refuses `card.recheck`). */
     data class InTrip(override val view: CarView, override val route: RouteStartState) : Card {
         override val enabled: Set<CarCommand> = setOf(
-            CarCommand.StartRoute, CarCommand.Propose, CarCommand.DecidePin, CarCommand.Reply, CarCommand.Arrive, CarCommand.End,
+            CarCommand.StartRoute, CarCommand.Propose, CarCommand.Reply, CarCommand.Arrive, CarCommand.End,
         )
     }
 
-    /** D4. Only built in CARD_SENT and IN_TRIP, where `dropoff.propose` and `dropoff.decide` are legal. */
+    /** D4. Only built in CARD_SENT and IN_TRIP, where `dropoff.propose` is legal. */
     data class DropoffProposal(val view: CarView) : Parked {
-        override val enabled: Set<CarCommand> = setOf(CarCommand.Propose, CarCommand.DecidePin)
+        override val enabled: Set<CarCommand> = setOf(CarCommand.Propose)
     }
 
-    /** D6: open questions or pins wait. Built in every state in which the relay accepts `request.send`. */
+    /** D6: open questions wait, or the driver opened the reply screen ([Panel.Reply]) to speak first. Built in every state in which the relay accepts `reply.send`. */
     data class Requests(val view: CarView) : Parked {
         override val enabled: Set<CarCommand> = when (view.state) {
-            TripState.IN_TRIP -> setOf(CarCommand.Reply, CarCommand.DecidePin, CarCommand.Arrive, CarCommand.End)
-            TripState.CARD_SENT -> setOf(CarCommand.Reply, CarCommand.DecidePin, CarCommand.End)
-            TripState.CONNECTED, TripState.ARRIVED -> setOf(CarCommand.Reply, CarCommand.End)
+            TripState.IN_TRIP -> setOf(CarCommand.Reply, CarCommand.Arrive, CarCommand.End)
+            TripState.CARD_SENT, TripState.CONNECTED, TripState.ARRIVED -> setOf(CarCommand.Reply, CarCommand.End)
             // phaseOf never builds Requests here.
             TripState.IDLE, TripState.REQUESTED, TripState.ENDED -> emptySet()
         }
@@ -99,20 +98,21 @@ fun phaseOf(view: CarView?, driving: DrivingStatus, local: LocalUi): CarPhase {
     if (view == null) return CarPhase.Waiting
     val dropoffOpen = local.panel == Panel.Dropoff && view.card != null
     val questionsWait = view.actionableCount > local.requestsDismissedAt
+    val replyOpen = local.panel == Panel.Reply
     return when (view.state) {
         TripState.IDLE, TripState.ENDED -> CarPhase.Waiting
         TripState.REQUESTED -> view.pendingJoin?.let { CarPhase.JoinRequest(it) } ?: CarPhase.Waiting
-        TripState.CONNECTED -> if (questionsWait) CarPhase.Requests(view) else CarPhase.AwaitingCard(view)
+        TripState.CONNECTED -> if (questionsWait || replyOpen) CarPhase.Requests(view) else CarPhase.AwaitingCard(view)
         TripState.CARD_SENT -> when {
             dropoffOpen -> CarPhase.DropoffProposal(view)
-            questionsWait -> CarPhase.Requests(view)
+            questionsWait || replyOpen -> CarPhase.Requests(view)
             else -> CarPhase.CardSent(view, local.route)
         }
         TripState.IN_TRIP -> when {
             dropoffOpen -> CarPhase.DropoffProposal(view)
-            questionsWait -> CarPhase.Requests(view)
+            questionsWait || replyOpen -> CarPhase.Requests(view)
             else -> CarPhase.InTrip(view, local.route)
         }
-        TripState.ARRIVED -> if (questionsWait) CarPhase.Requests(view) else CarPhase.Arrived(view)
+        TripState.ARRIVED -> if (questionsWait || replyOpen) CarPhase.Requests(view) else CarPhase.Arrived(view)
     }
 }

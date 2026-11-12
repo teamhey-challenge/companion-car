@@ -20,6 +20,15 @@ interface CarCommands {
     fun selectCandidate(candidateId: String)
     fun selectReason(index: Int)
     fun dismissRequests()
+
+    /** Toggles the driver-first quick-reply group ("먼저 말하기") on the reply screen; local view state only. */
+    fun toggleDriverFirst()
+
+    /** Stops listening and drops a recognized sentence that was not sent. Safe in any phase (the car may start to move). */
+    fun cancelVoice()
+
+    /** The result of the runtime RECORD_AUDIO request the activity made when [VoiceState.NeedsPermission] showed. */
+    fun voicePermissionResult(granted: Boolean)
     fun closeSettings()
     fun closeEndDialog()
     fun updateSettings(transform: (CarSettings) -> CarSettings)
@@ -39,7 +48,6 @@ enum class CarCommand(vararg wireTypes: String) {
     Recheck(ClientType.CARD_RECHECK),
     StartRoute(ClientType.ROUTE_STARTED, ClientType.ROUTE_FAILED),
     Propose(ClientType.DROPOFF_PROPOSE),
-    DecidePin(ClientType.DROPOFF_DECIDE),
     Reply(ClientType.REPLY_SEND),
     Arrive(ClientType.TRIP_ARRIVE),
     End(ClientType.TRIP_END),
@@ -68,9 +76,21 @@ abstract class ParkedCommands internal constructor() {
 
     /** Sends the chosen candidate with its structured fields (kind, entranceType, ref, street) so passengers get localized labels. */
     abstract fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?)
-    abstract fun decidePin(version: Int, accept: Boolean)
-    /** Answers one open question; a reply that belongs to no request is not something the driver can send (화면-정의서 D6). */
-    abstract fun sendReply(requestId: String, replyId: QuickReplyId)
+
+    /**
+     * Sends one quick reply. A reply of the [QuickReplySet.Answer] group answers [requestId], which must be an open question;
+     * a [QuickReplySet.DriverFirst] reply is the driver speaking first and carries no request.
+     */
+    abstract fun sendReply(requestId: String?, replyId: QuickReplyId)
+
+    /** Opens the reply screen (D6) without a passenger question, for the driver-first group and the voice reply. */
+    abstract fun openReply()
+
+    /** Push-to-talk: listens once in Korean (parked only) and shows the recognized sentence for confirmation. */
+    abstract fun startVoiceReply()
+
+    /** Sends the confirmed sentence as `reply.send` kind voice; the relay translates it for each passenger. */
+    abstract fun sendVoiceReply()
     abstract fun arrive()
     abstract fun endTrip()
     abstract fun openDropoff()

@@ -33,13 +33,10 @@ data class DropoffProposeData(
     val ref: String? = null,
     val street: StreetName? = null,
     val reasonId: DropoffReasonId? = null,
-    /** Id of the chosen entry of the relay's candidate list, so the relay can use its own structure for the point. */
-    val candidateId: String? = null,
 ) {
     companion object {
         /** The structured fields of a candidate go back to the relay unchanged so passengers get localized labels. */
         fun of(candidate: DropoffCandidate, reasonId: DropoffReasonId?) = DropoffProposeData(
-            candidateId = candidate.candidateId,
             point = candidate.point,
             label = candidate.label,
             kind = candidate.kind,
@@ -50,10 +47,25 @@ data class DropoffProposeData(
         )
     }
 }
-@Serializable data class DropoffDecideData(val version: Int, val decision: DriverDecision)
 @Serializable data class RequestSpokenData(val requestId: String)
-@Serializable data class ReplySendData(val requestId: String? = null, val replyId: QuickReplyId)
 @Serializable data class DrivingStateData(val driving: Boolean)
+
+/**
+ * `reply.send`: a quick-reply button or the driver's confirmed Korean voice sentence. Encoded flat with a `kind` tag:
+ * `{kind:"button",replyId,requestId?}` / `{kind:"voice",textKo,requestId?}`.
+ */
+@Serializable
+data class ReplySendData(
+    val kind: ReplyKind,
+    val requestId: String? = null,
+    val replyId: QuickReplyId? = null,
+    val textKo: String? = null,
+) {
+    companion object {
+        fun button(requestId: String?, replyId: QuickReplyId) = ReplySendData(ReplyKind.Button, requestId, replyId = replyId)
+        fun voice(requestId: String?, textKo: String) = ReplySendData(ReplyKind.Voice, requestId, textKo = textKo)
+    }
+}
 
 /** `{}` payload (card.recheck, trip.arrive, trip.end, invite.rotate). */
 @Serializable class EmptyData
@@ -76,7 +88,6 @@ object ClientType {
     const val ROUTE_FAILED = "route.failed"
     const val TRIP_PROGRESS = "trip.progress"
     const val DROPOFF_PROPOSE = "dropoff.propose"
-    const val DROPOFF_DECIDE = "dropoff.decide"
     const val REQUEST_SPOKEN = "request.spoken"
     const val REPLY_SEND = "reply.send"
     const val DRIVING_STATE = "driving.state"

@@ -12,6 +12,9 @@ internal object NoTripCommands : CarCommands {
     override fun selectCandidate(candidateId: String) = Unit
     override fun selectReason(index: Int) = Unit
     override fun dismissRequests() = Unit
+    override fun toggleDriverFirst() = Unit
+    override fun cancelVoice() = Unit
+    override fun voicePermissionResult(granted: Boolean) = Unit
     override fun closeSettings() = Unit
     override fun closeEndDialog() = Unit
     override fun updateSettings(transform: (CarSettings) -> CarSettings) = Unit

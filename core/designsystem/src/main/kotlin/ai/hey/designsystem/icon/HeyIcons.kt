@@ -47,8 +47,9 @@ object HeyIcons {
     val Pin = icon("pin", "M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z", "M12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z")
     val Flag = icon("flag", "M5 21V4", "M5 4h12l-2 4 2 4H5")
     val Door = icon("door", "M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17", "M4 21h16", "M14 12h1")
-    val Luggage = icon("luggage", "M7 7h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z", "M9 7V4h6v3", "M9 11v5", "M15 11v5")
-    val Walk = icon("walk", "M13 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z", "M10 21l2-6-2-3 2-4", "M12 8l3 3h3", "M10 12l-3 2")
+    val Mic = icon("mic", "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z", "M6 11a6 6 0 0 0 12 0", "M12 17v4")
+    val VolumeOff = icon("volume-off", "M4 9v6h4l5 4V5L8 9H4z", "M17 9l4 6", "M21 9l-4 6")
+    val Music = icon("music", "M9 18V5l11-2v13", "M6 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6z", "M17 13a3 3 0 1 0 0 6 3 3 0 0 0 0-6z")
     val ThermometerCool = icon("thermometer-cool", THERMO, "M17 5v8", "M13.5 7l7 4", "M20.5 7l-7 4")
     val ThermometerWarm = icon("thermometer-warm", THERMO, "M15 6h5", "M15 10h5", "M15 14h5")
     val Car = icon("car", "M5 17H4v-5l2-5h12l2 5v5h-1", "M4 12h16", "M5 17v2h3v-2", "M16 17v2h3v-2")
@@ -76,7 +77,7 @@ object HeyIcons {
 
     /** Every icon, in the order the gallery shows them. */
     val all: List<ImageVector> = listOf(
-        ArrowLeft, ArrowRight, Check, Close, ChevronDown, ChevronRight, Search, Pin, Flag, Door, Luggage, Walk,
+        ArrowLeft, ArrowRight, Check, Close, ChevronDown, ChevronRight, Search, Pin, Flag, Door, Mic, VolumeOff, Music,
         ThermometerCool, ThermometerWarm, Car, Clock, Route, Toll, Speaker, Message, Send, User, Users, Globe,
         Menu, Info, Warning, Error, Refresh, Map, Qr, Card, Plus, Minus, Link, Logout,
     )

@@ -21,9 +21,6 @@
     <string name="hey_join_approve">승인할게요</string>
     <string name="hey_join_decline">거절할게요</string>
     <string name="hey_join_parked_only">차를 세우면 승인할 수 있어요</string>
-    <string name="hey_pin_title">승객이 고른 내릴 곳</string>
-    <string name="hey_pin_accept">여기로 해요</string>
-    <string name="hey_pin_decline">어려워요</string>
     <string name="hey_driving_destination">목적지</string>
     <string name="hey_driving_last_spoken">방금 읽어 드린 요청</string>
     <string name="hey_driving_none">아직 읽어 드린 요청이 없어요</string>

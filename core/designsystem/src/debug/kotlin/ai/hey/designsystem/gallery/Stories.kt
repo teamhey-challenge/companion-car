@@ -35,7 +35,10 @@ import ai.hey.designsystem.component.HeyWordmark
 import ai.hey.designsystem.component.JoinRequestCard
 import ai.hey.designsystem.component.KoreanSummary
 import ai.hey.designsystem.component.LanguageGreetingStrip
-import ai.hey.designsystem.component.PassengerPinCard
+import ai.hey.designsystem.component.QuickReplyGroup
+import ai.hey.designsystem.component.VoiceConfirmDialog
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import ai.hey.designsystem.component.ProposalState
 import ai.hey.designsystem.component.ProposalStatus
 import ai.hey.designsystem.component.QuickReplyGrid
@@ -93,10 +96,10 @@ private fun Box32(content: @Composable () -> Unit) {
 private fun part(id: String, content: @Composable () -> Unit) = Story(id, StoryFrame.Part) { Plate(content) }
 
 private val conditions4 = listOf(
-    ConditionLine(HeyIcons.Luggage, "짐이 있어요"),
-    ConditionLine(HeyIcons.Walk, "덜 걷고 싶어요"),
     ConditionLine(HeyIcons.Door, "만나기로 한 입구가 있어요: 3번 출구 앞"),
     ConditionLine(HeyIcons.ThermometerCool, "시원하게 해 주세요", changed = true),
+    ConditionLine(HeyIcons.VolumeOff, "조용히 가고 싶어요"),
+    ConditionLine(HeyIcons.Music, "작게 틀어 주세요"),
 )
 
 private fun stripFor(party: Int, connection: HeyConnection, driving: Boolean = false): @Composable () -> Unit = {
@@ -324,7 +327,7 @@ object Stories {
         })
         add(part("condition-line") {
             VStack(HeyGap.G8) {
-                HeyCardless(ConditionLine(HeyIcons.Luggage, "짐이 있어요"))
+                HeyCardless(ConditionLine(HeyIcons.VolumeOff, "조용히 가고 싶어요"))
                 HeyCardless(ConditionLine(HeyIcons.ThermometerWarm, "따뜻하게 해 주세요", changed = true))
                 HeyCardless(ConditionLine(HeyIcons.Door, GalleryData.LONG_KO, changed = true))
             }
@@ -370,8 +373,30 @@ object Stories {
         add(part("quick-replies-two") {
             QuickReplyGrid(listOf(QuickReplyUi("a", "네"), QuickReplyUi("b", "어려워요")), {}, Modifier.fillMaxWidth())
         })
-        add(part("passenger-pin") { PassengerPinCard("롯데호텔 서울 정문 건너편", "180m", {}, {}, Modifier.fillMaxWidth()) })
-        add(part("passenger-pin-long") { PassengerPinCard(GalleryData.LONG_ADDRESS_KO, "1.2km", {}, {}, Modifier.fillMaxWidth()) })
+        add(part("quick-reply-group-answer") {
+            QuickReplyGroup("답장", listOf("네", "어려워요", "잠시만요").map { QuickReplyUi(it, it) }, {}, Modifier.fillMaxWidth())
+        })
+        add(part("quick-reply-group-driver-first") {
+            QuickReplyGroup("기사님이 먼저", listOf("여기서 세울게요", "5분 걸려요", "카드 돼요").map { QuickReplyUi(it, it) }, {}, Modifier.fillMaxWidth())
+        })
+        add(part("quick-reply-group-loading") {
+            QuickReplyGroup("답장", listOf("네", "어려워요", "잠시만요").map { QuickReplyUi(it, it) }, {}, Modifier.fillMaxWidth(), loadingId = "네")
+        })
+        add(part("voice-confirm") {
+            Box(Modifier.size(900.dp, 420.dp)) {
+                VoiceConfirmDialog("이 내용으로 보낼까요?", "네, 입구 앞에서 기다릴게요.", HeyDialogAction("보내기") {}, HeyDialogAction("다시 말하기") {}, HeyDialogAction("취소") {}, Modifier.fillMaxSize())
+            }
+        })
+        add(part("voice-confirm-long") {
+            Box(Modifier.size(900.dp, 520.dp)) {
+                VoiceConfirmDialog("이 내용으로 보낼까요?", GalleryData.LONG_KO, HeyDialogAction("보내기") {}, HeyDialogAction("다시 말하기") {}, HeyDialogAction("취소") {}, Modifier.fillMaxSize())
+            }
+        })
+        add(part("voice-confirm-sending") {
+            Box(Modifier.size(900.dp, 420.dp)) {
+                VoiceConfirmDialog("이 내용으로 보낼까요?", "네, 입구 앞에서 기다릴게요.", HeyDialogAction("보내기") {}, HeyDialogAction("다시 말하기") {}, HeyDialogAction("취소") {}, Modifier.fillMaxSize(), sending = true)
+            }
+        })
 
         // Trip glance
         add(part("eta-block") {
@@ -591,7 +616,7 @@ private fun RequestsScreen(many: Boolean) {
                 RequestRow("카드 결제가 되나요?", RequestKind.Question, RequestState.Answered, "오후 11:38", {}, Modifier.fillMaxWidth())
                 RequestRow("에어컨을 조금 약하게 해 주세요", RequestKind.Notice, RequestState.Spoken, "오후 11:37", {}, Modifier.fillMaxWidth())
             } else {
-                PassengerPinCard("롯데호텔 서울 정문 건너편", "180m", {}, {}, Modifier.fillMaxWidth())
+                HeyText("승객이 기다리고 있어요", tone = HeyTone.Muted)
             }
         }
     }

@@ -104,11 +104,15 @@ private fun VehicleIssueBanners(state: CarUiState, commands: CarCommands) {
 
 @Composable
 private fun WaitingContent(state: CarUiState, qrUrl: String, commands: CarCommands) {
-    // The Korean line repeats the screen's own "QR을 찍어 주세요" heading, so only the passenger languages are listed.
+    // The Korean line repeats the screen's own "QR을 찍어 주세요" heading, so only the six passenger languages are listed.
+    // The sentences come from the shared copy catalog (`car.scanQr`), see feature/trip/build.gradle.kts.
     val greetings = listOf(
-        stringResource(R.string.trip_greeting_en),
-        stringResource(R.string.trip_greeting_ja),
-        stringResource(R.string.trip_greeting_zh),
+        stringResource(R.string.trip_scan_qr_en),
+        stringResource(R.string.trip_scan_qr_ja),
+        stringResource(R.string.trip_scan_qr_zh_hans),
+        stringResource(R.string.trip_scan_qr_zh_hant),
+        stringResource(R.string.trip_scan_qr_vi),
+        stringResource(R.string.trip_scan_qr_th),
     )
     HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillSize()) {
         VStack(HeyGap.G16, modifier = Modifier.grow()) {
@@ -118,12 +122,17 @@ private fun WaitingContent(state: CarUiState, qrUrl: String, commands: CarComman
         VStack(HeyGap.G16, modifier = Modifier.grow()) {
             val online = state.online
             HeyCard(Modifier.fillWidth()) {
-                HeyText(stringResource(R.string.trip_waiting_plate_label), tone = HeyTone.Muted, maxLines = 1)
-                HeyText(state.view?.plateSuffix ?: state.settings.plateSuffix, variant = HeyTextVariant.Hero, maxLines = 1)
-                HeyStatusPill(
-                    stringResource(if (online) R.string.trip_waiting_connected else R.string.trip_waiting_offline),
-                    if (online) HeyStatusTone.Success else HeyStatusTone.Warning,
-                )
+                // One compact row (label + plate left, status right) so the six-language grid below fits at 1280x720.
+                HStack(HeyGap.G16, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
+                    VStack(HeyGap.G4, modifier = Modifier.grow()) {
+                        HeyText(stringResource(R.string.trip_waiting_plate_label), tone = HeyTone.Muted, maxLines = 1)
+                        HeyText(state.view?.plateSuffix ?: state.settings.plateSuffix, variant = HeyTextVariant.Hero, maxLines = 1)
+                    }
+                    HeyStatusPill(
+                        stringResource(if (online) R.string.trip_waiting_connected else R.string.trip_waiting_offline),
+                        if (online) HeyStatusTone.Success else HeyStatusTone.Warning,
+                    )
+                }
             }
             if (state.connection == ConnectionStatus.Reconnecting || state.connection == ConnectionStatus.Connecting) {
                 HeyBanner(HeyStatusTone.Warning, stringResource(R.string.trip_waiting_server_error), Modifier.fillWidth())

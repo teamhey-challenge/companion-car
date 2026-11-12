@@ -18,22 +18,22 @@
 
 기획자 질문 Q1~Q30(`pleos-challenge` 브랜치 `heyyy`의 `HANDOFF-planner.md`)에 답이 오기 전까지는 각 질문의 추천안을 기본값으로 구현한다. 답이 오면 이 표를 고치고 해당 값만 바꾼다. 값은 코드 한 곳(`packages/protocol/src/config.ts`, 차량 앱 `core/model/HeyConfig.kt`)에만 둔다.
 
-| Q | 기본값 | 코드에 닿는 곳 |
+| Q | 값 (planner answers 2026-11-12, 프로토콜 3.0.0) | 코드에 닿는 곳 |
 |---|---|---|
 | Q2 | 앱 이름 HEY, 탑승 인원 1~4명에 따라 HEY·HEYY·HEYYY·HEYYYY | `Wordmark`(웹), `HeyWordmark`(차량) |
-| Q3 | 대표 장면은 하차 위치 제안·확인 | 화면 우선순위 |
+| Q3 | 대표 장면: 기사 하차 제안 → 승객이 자기 언어로 확인 → 승객 요청(입구·온도·조용히)이 기사에게 도달, 한 흐름 | 화면 우선순위 |
 | Q4 | 1차 상황은 공항→호텔 | 시연 데이터 |
-| Q10 | 승객 언어 en, ja, zh-Hans (+ 검수용 ko) | `packages/copy` |
-| Q11 | 탑승 카드 조건: 짐 있음, 덜 걷기, 만나기로 한 입구, 실내 온도(시원하게·따뜻하게) | `ConditionId` |
-| Q12 | 빠른 답장: 네 / 잠시만요 / 5분 걸려요 / 여기서 세울게요 / 카드 돼요 / 어려워요 | `QuickReplyId` |
-| Q13 | 요금은 경로 통행료만 승객 언어로 안내, 미터 요금은 표시하지 않음 | `TollNotice` |
-| Q14 | 승객 지도는 목적지·하차 지점만, 차량 위치 없음 | `MapView` |
-| Q15 | 기사 음성 답장은 빼고 버튼만 | 차량 앱 STT 미사용 |
-| Q16 | 하차 위치는 기사·승객 모두 제안, 승객 핀은 정차 중 기사가 확인 | `DropoffProposal.by` |
+| Q10 | 승객 언어 en, ja, zh-Hans, zh-Hant, vi, th (+ 검수용 ko). zh-Hant·vi·th는 `REVIEW_PENDING`(화면에 표시하지 않음). D1 안내는 6개 언어 | `packages/copy`, `LanguageGreetingStrip` |
+| Q11 | 탑승 카드 조건: 만나기로 한 입구, 실내 온도, 조용히, 음악(끄기·작게). 짐·덜 걷기는 없다 | `ConditionId` |
+| Q12 | 빠른 답장 두 묶음: 답장(네·어려워요·잠시만요, 열린 질문이 있을 때만), 기사님이 먼저(여기서 세울게요·5분 걸려요·카드 돼요, 정차 중 언제든) | `QuickReplyId.set`, `QuickReplyGroup` |
+| Q13 | 요금은 경로 통행료가 있을 때만 승객 언어로 안내, 미터 요금은 표시하지 않음 | `TollNotice` |
+| Q14 | 승객 화면에 지도 없음. 하차 지점은 글(이름+이유+목적지에서 거리) | 차량 영향 없음 |
+| Q15 | 기사 음성 답장 있음: 정차 중 한국어 음성(Pleos STT ON_DEVICE `Locale.KOREA`) → 확인 → `reply.send kind voice` → 릴레이 번역. 버튼도 유지, 주행 중에는 음성 출력만 | `VoiceInput`, `PleosVoiceInput`, `VoiceConfirmDialog` |
+| Q16 | 하차 위치는 기사만 제안한다. 승객 핀·핀 결정 없음, `elsewhere`는 다른 곳 제안 요청 | `DropoffProposal` |
 | Q18 | Y 늘리기는 승객 웹 상단과 차량 화면 모두 | 두 Wordmark |
-| Q19 | 슬로건 "내릴 곳까지, 같은 뜻으로." | `copy` |
-| Q21 | 저장소 이름 `hey-taxi` | — |
-
+| Q19 | 슬로건 "내 취향대로, 내릴 곳까지." | `copy` |
+| Q21 | 저장소 4개로 분리(`hey-shared`·`hey-relay`·`hey-passenger-web`·`hey-car`) + `hey-e2e` | — |
+| Q6·Q7 | 기사 무료, 승객 화면 여행 광고(차량에는 광고 없음) | 승객 웹만 |
 ## 2. 상태와 흐름
 
 ### 2.1 차량과 QR
@@ -46,7 +46,7 @@ QR은 연결 요청만 만든다. 기사님이 정차 중 한 번 승인해야 �
 
 차량 등록(`carId`, `carCode`, `driverTokenHash`, `plateSuffix`)은 서버 재시작 뒤에도 남아야 고정 QR이 유지되므로 서버 로컬 파일(`HEY_DATA_DIR/cars.json`, 기본 `./data`)에 저장한다. 운행·기기·대화는 메모리에만 두고 재시작하면 사라진다(승객 화면은 `TRIP_ENDED`).
 
-권한: 대표 승객(`role: "lead"`)만 탑승 카드 보내기·고치기, 하차 제안 응답, 핀 제안, 초대 링크 보기, 운행 나가기(=운행 종료)를 한다. 일행(`role: "guest"`)은 카드·하차 상태를 보고 요청(프리셋·직접 입력)을 보낼 수 있다. 일행의 `trip.leave`는 그 기기만 빠진다. 대표가 아닌 기기의 대표 전용 메시지는 `NOT_LEAD`.
+권한: 대표 승객(`role: "lead"`)만 탑승 카드 보내기·고치기, 하차 제안 응답, 초대 링크 보기, 운행 나가기(=운행 종료)를 한다. 일행(`role: "guest"`)은 카드·하차 상태를 보고 요청(프리셋·직접 입력)을 보낼 수 있다. 일행의 `trip.leave`는 그 기기만 빠진다. 대표가 아닌 기기의 대표 전용 메시지는 `NOT_LEAD`.
 
 ### 2.2 운행 상태
 
@@ -64,11 +64,11 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 
 ### 2.3 하차 위치 제안 (대표 장면)
 
-제안은 버전을 가진다. `DropoffProposal = { version, by: "driver" | "passenger", point: { lat, lng }, label, reasonId?, status }`. `status`는 기사 제안이면 `pending | ok | elsewhere | unsure | superseded`, 승객 핀이면 `pending | accepted | declined | superseded`다. 합의된 하차 위치(`agreedDropoff`)는 기사 제안 `ok` 또는 승객 핀 `accepted`인 가장 최근 버전이다.
+제안은 버전을 가진다. `DropoffProposal = { version, point: { lat, lng }, label, reasonId?, status }`(기사 제안 하나뿐). `status`는 `pending | ok | elsewhere | unsure | superseded`다. 합의된 하차 위치(`agreedDropoff`)는 승객이 `ok`로 답한 가장 최근 버전이다.
 
 - 기사 제안의 승객 응답은 `ok`(여기 좋아요) / `elsewhere`(다른 곳을 원해요) / `unsure`(위치를 모르겠어요) 셋이다. 응답 없음은 `pending`으로 남고 동의로 바꾸지 않는다.
-- 새 제안이 오면 이전의 **대기 중** 제안은 `superseded`가 되고, 이전 응답을 새 버전에 재사용하지 않는다. 이미 응답이 끝난 제안은 그 응답(`ok`·`elsewhere`·`unsure`·`accepted`·`declined`)을 남긴다. 대기 중인 제안은 언제나 하나뿐이다.
-- 승객 핀 제안(`by: "passenger"`)은 기사 화면에 쌓이고, 기사님이 정차 중 `accept`/`decline` 한다. 주행 중에는 음성으로 "승객이 내릴 곳을 지도에서 골랐어요. 정차하면 확인해 주세요"만 나간다.
+- 새 제안이 오면 이전의 **대기 중** 제안은 `superseded`가 되고, 이전 응답을 새 버전에 재사용하지 않는다. 이미 응답이 끝난 제안은 그 응답(`ok`·`elsewhere`·`unsure`)을 남긴다. 대기 중인 제안은 언제나 하나뿐이다.
+- 하차 지점은 기사님만 제안한다(3.0.0, Q16). 승객은 지도에서 핀을 찍을 수 없고(승객 화면에 지도가 없다), 응답만 한다. 주행 중에는 제안을 보낼 수 없다.
 - 합의된 하차 위치가 내비 목적지와 다르면 기사님이 다시 경로 시작을 눌러야 내비가 바뀐다. 승인 없이 경로를 바꾸지 않는다.
 
 하차 후보 목록은 서버가 OSM Overpass로 목적지 반경 150m 안의 출입구(`entrance=*`) 노드를 찾아 만든다(`GET /v1/places/{placeId}/entrances`). 없으면 "목적지 기본 위치"만 준다.
@@ -77,7 +77,7 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 
 승객 요청은 프리셋 또는 직접 입력이다. 프리셋 한국어 음성 문장은 검수된 고정 문장(`packages/copy/ko.ts`의 `speech.*`)을 쓰고, 직접 입력은 서버가 번역해 한국어 문장으로 만든다. 요청 상태는 셋을 구분해 보여 준다: `received`(차량 수신) → `spoken`(음성 전달) → `answered`(기사 응답). 알림형 프리셋은 `spoken`에서 끝나고, 질문형과 직접 입력은 `answered`까지 간다. 음성 완료를 기사 수락으로 표시하지 않는다. 차량이 오프라인이라 전달하지 못한 요청은 `failed`이며 승객 화면에 다시 보내기가 붙는다. 번역에 실패한 직접 입력은 요청으로 저장하지 않는다: 서버는 그 요청의 `clientRef`를 실은 `error(TRANSLATE_FAILED)`만 돌려주고 분당 한도(3회)를 쓰지 않는다. 클라이언트는 입력창에 쓴 글을 되살리고 오류를 보여 준다(`RATE_LIMITED`·`TOO_LONG`과 같은 경로). 직접 입력 분당 3회 제한은 기기별이다.
 
-음성 우선순위 `high`는 탑승 카드 도착·변경, 하차 제안 응답, 승객 핀 제안, `stopHere` 프리셋이다. 나머지는 `normal`이며 도착 순서대로 `speech.gapSec` 간격을 둔다.
+음성 우선순위 `high`는 탑승 카드 도착·변경, 하차 제안 응답, `stopHere` 프리셋이다. 나머지는 `normal`이며 도착 순서대로 `speech.gapSec` 간격을 둔다.
 
 도착(`trip.arrive`)은 차량 앱이 내비 `onDestinationArrived`를 받거나, 이 이벤트가 오지 않는 경우를 대비해 기사님이 D5·D6의 "도착" 버튼을 누를 때 보낸다. 기사님이 끌 수 없는 프리셋은 `stopHere`와 `card`다.
 
@@ -111,19 +111,18 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 | `say` | 서버→차량 | `{ speechId, textKo, priority: "high" \| "normal" }` |
 | `notice` | 서버→기기 | `{ noticeId, kind }` |
 | `join.approve` / `join.decline` | 차량→서버 | `{ joinRequestId }` |
-| `card.submit` | 대표 승객→서버 | `{ destinationPlaceId, conditions: ConditionId[], entranceNote?, temperature?: "cooler" \| "warmer" }` — 목적지는 장소 전체가 아니라 `GET /v1/places`가 돌려준 `placeId` |
-| `card.update` | 승객→서버 | `card.submit`의 일부 필드(`destinationPlaceId?`, `conditions?`, `entranceNote?`, `temperature?`). 바뀐 부분만 기사에게 음성 |
+| `card.submit` | 대표 승객→서버 | `{ destinationPlaceId, conditions: ConditionId[], entranceNote?, temperature?: "cooler" \| "warmer", quiet?: boolean, music?: "off" \| "low" }` — 목적지는 장소 전체가 아니라 `GET /v1/places`가 돌려준 `placeId` |
+| `card.update` | 승객→서버 | `card.submit`의 일부 필드. `entranceNote`·`temperature`·`music`은 null로, `quiet`는 false로 지운다. 바뀐 부분만 기사에게 음성 |
 | `invite.rotate` | 대표 승객→서버 | `{}` — 초대 링크(`inviteCode`)를 새로 발급한다 |
 | `card.recheck` | 차량→서버 | `{}` |
 | `route.started` | 차량→서버 | `{ durationSec, distanceM, tollFare }` |
 | `route.failed` | 차량→서버 | `{ code }` |
 | `trip.progress` | 차량→서버 | `{ etaSec, distanceM, stale }` (60초 간격) |
-| `dropoff.propose` | 차량 또는 승객→서버 | `{ point, label, kind?, entranceType?, ref?, street?, reasonId?, candidateId? }` — 승객은 `candidateId`로 후보를 고르면 서버가 후보 구조·좌표를 쓴다(못 찾으면 핀) |
-| `dropoff.respond` | 승객→서버 | `{ version, response: "ok" \| "elsewhere" \| "unsure" }` |
-| `dropoff.decide` | 차량→서버 | `{ version, decision: "accept" \| "decline" }` |
+| `dropoff.propose` | 차량→서버 | `{ point, label, kind?, entranceType?, ref?, street?, reasonId? }` — 하차 지점은 기사님만 제안한다(3.0.0) |
+| `dropoff.respond` | 승객→서버 | `{ version, response: "ok" \| "elsewhere" \| "unsure" }` — `elsewhere`는 기사님께 다른 곳을 제안해 달라는 요청 |
 | `request.send` | 승객→서버 | `{ kind: "preset" \| "free", presetId?, text?, clientRef }` — `clientRef`(1~80자)는 보낸 기기의 `RequestItem.clientRef`와 오류의 `clientRef`로 돌아온다 |
 | `request.spoken` | 차량→서버 | `{ requestId }` |
-| `reply.send` | 차량→서버 | `{ requestId?, replyId: QuickReplyId }` |
+| `reply.send` | 차량→서버 | `{ kind: "button", replyId, requestId? }` 또는 `{ kind: "voice", textKo(1~100자), requestId? }` — `answer` 묶음 버튼은 열린 질문의 `requestId`가 필요, `driverFirst` 묶음과 음성은 질문 없이도 보낸다. 음성은 정차 중 인식 문장을 기사님이 확인한 뒤에만 |
 | `driving.state` | 차량→서버 | `{ driving: boolean }` |
 | `trip.arrive` / `trip.end` | 차량→서버 | `{}` |
 | `trip.leave` | 승객→서버 | `{}` |
@@ -132,9 +131,10 @@ IN_TRIP --승객 목적지 변경--> CARD_SENT
 
 ### 3.3 ID 목록 (정본: `packages/protocol/src/catalog.ts`)
 
-- `ConditionId`: `luggage`, `lessWalking`, `meetEntrance`, `temperature`
+- `ConditionId`: `meetEntrance`, `temperature`, `quiet`, `music` (`CardInput.quiet?: boolean`, `music?: "off" | "low"`; 목록에 있는 조건은 값 필드와 맞아야 한다)
 - `PresetId`(승객→기사): `slower`, `cooler`, `warmer`, `window`(질문), `card`(질문), `howLong`(질문), `stopHere`, `trunk`
-- `QuickReplyId`(기사→승객): `yes`, `moment`, `fiveMin`, `stopHere`, `cardOk`, `cannot`
+- `QuickReplyId`(기사→승객): `yes`, `cannot`, `moment`(묶음 `answer`, 열린 질문이 있을 때만), `stopHere`, `fiveMin`, `cardOk`(묶음 `driverFirst`, 기사님이 먼저). 정본 `QUICK_REPLY_META[id].set`, 차량은 `QuickReplyId.set`
+- `ReplyKind`: `button`(`replyId`), `voice`(`textKo`, 릴레이가 승객 언어로 번역)
 - `DropoffReasonId`: `frontNoStop`, `sideCloser`, `luggageEasier`, `parkingEntrance`, `acrossSafer`, `construction`
 - `ErrorCode`: `CAR_NOT_FOUND`, `CAR_BUSY`, `CAR_OFFLINE`, `JOIN_DECLINED`, `JOIN_EXPIRED`, `TRIP_FULL`, `TRIP_ENDED`, `NOT_LEAD`, `RATE_LIMITED`, `TOO_LONG`, `TRANSLATE_FAILED`, `PLACE_NOT_FOUND`, `ROUTE_FAILED`, `STALE_VERSION`, `PROTOCOL_MISMATCH`, `BAD_REQUEST`
 
@@ -208,13 +208,16 @@ hey-taxi/
 - `:core:session` — OkHttp WebSocket 클라이언트, 재연결(1·2·4·8·15초), ack, `TripRepository`(`StateFlow<CarUiState>`), 음성 큐(`speech.*` 정책).
   - 상태 기계는 하나다. `phaseOf(view, driving, local): CarPhase`가 스냅숏·주행 상태·로컬 플래그에서 화면 단계를 계산하고, 화면 선택은 그 결과만 본다(`when`은 빠짐없이, `else` 없음). 새 `TripState`를 더하면 이 함수가 컴파일되지 않는다.
   - 주행 잠금과 상태별 명령은 조건문이 아니라 타입이다. 손이 필요한 명령은 `ParkedCommands`에만 있고, 그 값은 저장소만 만들어(생성자가 모듈 안으로 닫혀 있다) `CarUiState.parked: ParkedCommands?`로만 내준다. 주행·미확인 단계에서는 `null`이라 호출할 대상이 없다. 정차 단계(`CarPhase.Parked`)는 `enabled: Set<CarCommand>`를 들고 있다: 그 상황에서 릴레이가 받는 명령만이다. `BoardingCard` 하나이던 단계는 `AwaitingCard`(CONNECTED)·`CardSent`(CARD_SENT)·`InTrip`(IN_TRIP)으로 나뉘어, CONNECTED에서는 경로 시작·하차 제안·도착이, IN_TRIP에서는 재확인이 켜지지 않는다. 질문이 있으면 CONNECTED·CARD_SENT·IN_TRIP·ARRIVED 어디서나 D6(`Requests`)이 열리고, `trip.end`는 D3·D6·D7 어디서나 확인창을 거쳐 보낼 수 있다. 화면은 버튼을 `enabled`에서만 켜고, 저장소의 각 명령도 지금 단계의 `enabled`를 다시 본다. 단계별 `enabled`가 `docs/transitions.json`(hey-relay의 `TRANSITIONS`에서 생성)의 부분집합인지는 `CarPhaseTransitionsTest`가 확인한다. 이 파일은 Gradle이 `HEY_RELAY_DIR`(기본 `../hey-relay`)의 것을 시험 자원으로 복사하고, 없으면 이 저장소에 커밋된 사본을 쓴다. 시험용 진입점은 운영 클래스에 없다: 저장소는 `RelayTransport` 생성자 인자로 연결을 받고, 시험은 기록용 가짜를 넣어 같은 리스너로 메시지를 흘린다.
-  - 하차 제안은 `by`로 갈라진 두 타입이다: `DriverProposal`(상태 `pending|ok|elsewhere|unsure|superseded`)과 `PassengerPin`(`pending|accepted|declined|superseded`). 한 타입에서 다른 쪽 상태를 표현할 수 없다.
+  - 하차 제안은 기사만 한다(3.0.0). `DropoffProposal` 한 타입이고 상태는 `pending|ok|elsewhere|unsure|superseded`다. `elsewhere`는 "기사님이 다른 곳을 제안해 달라"는 뜻이라 D4에 "승객이 다른 곳을 원해요"(`hey_proposal_elsewhere`)로 보이고, 릴레이가 같은 뜻을 음성으로 읽는다. 승객 핀·`PassengerPinCard`·`DecidePin`·`CommandKey.Pin`·`pendingPins`는 없다.
+  - **답장은 두 묶음이다(`QuickReplyId.set`, 정본 `QUICK_REPLY_META`).** 답장(yes·cannot·moment): 열린 질문이 있을 때만 D6 위쪽에 보이고 그 질문에 답한다(`requestId` 필수). 기사님이 먼저(stopHere·fiveMin·cardOk): D6의 "먼저 말하기" 단추를 눌러 펼치며 질문 없이 언제든(정차 중) 보낸다(`requestId` 없음). D3 오른쪽 열의 "답장하기"(`Panel.Reply`)가 질문 없이 D6을 연다. 같은 `QuickReplyGroup` 부품 하나가 두 묶음을 그린다.
+  - **음성 답장(Q15, 정차 중에만).** D6의 "음성으로 답하기"는 `VoiceInput`(Pleos SpeechToText ON_DEVICE, `Locale.KOREA` — `ko`만 쓰면 실패, `PleosVoiceInput`)을 한 번 듣는다: `Idle → (권한 없으면 NeedsPermission → MainActivity가 RECORD_AUDIO 요청 → voicePermissionResult) → Listening → Confirm(textKo) → 보내기 → Sent`. 인식된 문장은 `VoiceConfirmDialog`로 보여 주고 기사님이 "보내기"를 눌러야만 `reply.send {kind:"voice", textKo(1~100자)}`가 나간다(릴레이가 승객 언어로 번역, 실패하면 같은 `ref`의 `TRANSLATE_FAILED`). 차가 움직이면(주행·미확인) 듣던 것을 취소하고 인식 문장을 버린다: `startVoiceReply`는 `ParkedCommands`에만 있어 주행 중에는 호출할 대상이 없고, 버튼 답장도 같다. 주행 중 음성 출력만 남는다. 매니페스트: `pleos.car.permission.STT_SERVICE`, `android.permission.RECORD_AUDIO`(런타임 권한).
+  - **시연용 인식기(디버그·`releaseE2e`만).** 에뮬레이터 마이크는 무음이라 `app/src/e2e`의 `DemoVoice`가 `ScriptedVoiceInput`을 넣는다: 기본 문장은 번들 `assets/voice-fixture.txt`("네, 입구 앞에서 기다릴게요.")를 0.8초 "듣는 중" 뒤에 돌려준다. 실행 중 바꾸기: `adb shell am broadcast -a ai.hey.car.DEBUG_VOICE -p ai.hey.car --es text "<한국어 문장>"`(빈 문자열이면 다음 듣기가 "알아듣지 못했어요"). 실제 `release`에는 이 소스가 없고 `src/release`의 no-op 쌍둥이만 있다.
   - 합류 요청 남은 시간은 기기 시계가 아니라 릴레이 시계로 센다. 저장소가 스냅숏 봉투의 `ts`로 `clockOffsetMs`를 갱신하고(1초 안쪽 흔들림은 무시, 승객 웹의 `nextClockOffset`과 같은 규칙), D2는 `expiresAt - serverNow(...)`를 쓴다.
   - 명령 상태는 운행 하나에 속한다: 스냅숏의 `tripId`가 바뀌면 `commands`와 봉투 대응표를 비운다. 버튼 없이 보낸 메시지(읽음 보고 등)가 거절돼도 배너를 띄우지 않는다.
   - 버튼 하나의 진행은 `Map<CommandKey, CommandState>` 하나에 있다(`Idle`은 항목 없음). 해제 규칙은 셋뿐이다: ① 그 명령의 결과가 스냅숏에 보임 ② 릴레이가 그 봉투(`ref`)를 거절함 ③ 20초 안전 시간 초과. 무관한 스냅숏은 버튼을 풀지 않는다.
 - `:core:model` — 프로토콜 Kotlin 타입(kotlinx.serialization), `HeyConfig`. 서버와 주고받는 `DrivingState`(`PARKED`/`DRIVING`)는 프로토콜 값이고, 앱 안의 `DrivingStatus`와 다른 타입이다.
-- **주행 중에는 화면이 없다 — 음성 전용 (에뮬레이터 실측 2026-11-12, `.review/emu/16-driving.png`).** 주행 중에는 Pleos 시스템이 `distractionOptimized=true`인 서드파티 앱 위에도 "주행 중에는 사용할 수 없습니다" 화면을 덮는다. 그래서 D5(주행 화면)는 지금 빌드에서 승객·기사 누구에게도 보이지 않는다. 코드는 그대로 둔다(나중 빌드가 허용하면 보이고, 해롭지 않다). 대신 제품은 음성만으로 성립해야 한다: 승객 요청은 `say`로 TTS가 읽고, 연결 요청·승객 핀·도착도 음성으로 알리며, 주행 중에 꼭 봐야 하는 것은 없다. 눌러야 하는 것(승인·경로 시작·내릴 곳 확인·종료)은 모두 정차 중 D2·D3·D4·D6·D7에 있다. 새 기능은 "주행 중에 보이는 것"에 기대지 않는다.
-  - **주행 중 들려야 하는 것은 표로 못 박았다.** 연결 요청·일행 합류·탑승 카드 도착과 변경·승객 핀·하차 제안 응답(좋아요/다른 곳/모르겠어요)·프리셋과 직접 입력 요청(질문 포함)·`stopHere`·승객 나감은 릴레이의 `say`가 읽는다(`RelayIntegrationTest.everyEventTheDriverMustKnowIsHeard`가 실제 릴레이로 하나씩 확인). 릴레이에 `say`가 없는 세 사건은 차가 `LocalSpeech`로 직접 읽는다: 도착(`ARRIVED`), 운행 끝(`ENDED`, 사유와 무관 — "운행을 마쳤어요."), 승인 전에 사라진 연결 요청(`JOIN_EXPIRED`, 기사가 직접 처리한 요청은 제외). hey-shared에 이 문장들이 없어 차 로컬 문자열이다. `TripRepositoryTest`의 `aTripThatEndsForAnyReasonSpeaksTheEndOnce`·`arrivalSpeaksTheArrivalAndNothingElseSpeaksOnPlainTransitions`·`aJoinRequestThatLapsesIsSpokenButOneTheDriverDecidedIsNot`가 확인한다. "도착 제안"이라는 별도 사건은 릴레이에도 차에도 없다.
+- **주행 중에는 화면이 없다 — 음성 전용 (에뮬레이터 실측 2026-11-12, `.review/emu/16-driving.png`).** 주행 중에는 Pleos 시스템이 `distractionOptimized=true`인 서드파티 앱 위에도 "주행 중에는 사용할 수 없습니다" 화면을 덮는다. 그래서 D5(주행 화면)는 지금 빌드에서 승객·기사 누구에게도 보이지 않는다. 코드는 그대로 둔다(나중 빌드가 허용하면 보이고, 해롭지 않다). 대신 제품은 음성만으로 성립해야 한다: 승객 요청은 `say`로 TTS가 읽고, 연결 요청·도착도 음성으로 알리며, 주행 중에 꼭 봐야 하는 것은 없다. 눌러야 하는 것(승인·경로 시작·답장·음성 답장·종료)은 모두 정차 중 D2·D3·D4·D6·D7에 있다. 주행 중에는 버튼 답장과 음성 입력이 모두 잠긴다(명령이 없고 마이크도 닫힌다). 새 기능은 "주행 중에 보이는 것"에 기대지 않는다.
+  - **주행 중 들려야 하는 것은 표로 못 박았다.** 연결 요청·일행 합류·탑승 카드 도착과 변경(조건: 만나는 입구·실내 온도·조용히·음악)·하차 제안 응답(좋아요/다른 곳을 원해요/모르겠어요)·프리셋과 직접 입력 요청(질문 포함)·`stopHere`·승객 나감은 릴레이의 `say`가 읽는다(`RelayIntegrationTest.everyEventTheDriverMustKnowIsHeard`가 실제 릴레이로 하나씩 확인). 릴레이에 `say`가 없는 세 사건은 차가 `LocalSpeech`로 직접 읽는다: 도착(`ARRIVED`), 운행 끝(`ENDED`, 사유와 무관 — "운행을 마쳤어요."), 승인 전에 사라진 연결 요청(`JOIN_EXPIRED`, 기사가 직접 처리한 요청은 제외). hey-shared에 이 문장들이 없어 차 로컬 문자열이다. `TripRepositoryTest`의 `aTripThatEndsForAnyReasonSpeaksTheEndOnce`·`arrivalSpeaksTheArrivalAndNothingElseSpeaksOnPlainTransitions`·`aJoinRequestThatLapsesIsSpokenButOneTheDriverDecidedIsNot`가 확인한다. "도착 제안"이라는 별도 사건은 릴레이에도 차에도 없다.
   - 설정 저장은 `SaveResult.Saved | Failed(reason)`를 돌려주고, 실패하면 D8이 배너를 띄운다(값은 이번 실행에는 계속 쓴다).
 - **경로 시작은 명시적 상태다 (`RouteStartState`, 실측 2026-11-12).** 내비(Navi42)는 `requestRoute`를 받으면 경로 미리보기를 띄우고 사람이 "안내 시작"을 눌러야 `onRouteStarted`가 온다. 한 번도 열린 적 없으면 `navi not ready`로 요청이 버려진다. 그래서 `Requested`(내비가 답할 때까지 최대 15초 기다리며 3초마다 `getCurrentLocationInfo`로 깨운다; 안 오면 `Failed(NAVI_NOT_READY)`) → `AwaitingNaviConfirm`(요청 전달됨, D3가 "내비에서 안내 시작을 눌러 주세요"와 취소를 보임) → `Started`(`onRouteStarted`) | `Failed(code)`(`onError` 코드, 전달 예외 `NAVI_ERROR`, 안내 시작을 3분 안에 안 누르면 `NAVI_CONFIRM_TIMEOUT`)이다. 요청이 아직 나가지 않은 `Requested` 동안 온 무관한 내비 오류(예: `CAUSE_LOW_BATTERY`)는 이 시도의 실패로 세지 않는다. 확인 대기 중에는 짧은 시간 초과 실패가 없다. 요청이 전달된 뒤 `Started` 없이 끝나면(취소·3분 초과·`onError`·새 운행·릴레이의 목적지/합의 지점 변경) 상태 기계가 `NaviHelper.cancelRoute()`로 내비의 미리보기를 닫는다(`abort`). 시도는 요청한 `Place`에 묶여서, 대기 중 `routeDestination()`이 바뀐 스냅숏이 오면 같은 방식으로 취소한다. 취소하면 `Idle`이고 그 뒤에 오는 `onRouteStarted`는 무시한다. 릴레이에는 `Started`일 때만 `route.started`, `Failed`일 때만 `route.failed`를 한 번씩 보낸다(대기 중에는 아무것도 보내지 않는다). `NAVI_NOT_READY`이면 D3가 "내비 열기"(`PackageManager.getLaunchIntentForPackage("ai.umos.maps.android.navigation.app")`)와 "다시 시도"를 보인다. 상태 기계는 SDK에 닿지 않는 `RouteStartMachine`이고 `RouteStartMachineTest`가 검증한다.
 - 시계 글자는 시스템 기본 시간대(`ZoneId.systemDefault()`)로 쓴다(`clockZone()`). 앱이 시간대를 따로 고르지 않는다. 미리보기·스냅숏만 `LocalClockZone`으로 Asia/Seoul을 고정한다.
@@ -243,8 +246,8 @@ hey-taxi/
 |---|---|
 | `REQUESTED` | `join.approve`, `join.decline`, `driving.state`, `trip.end`, `trip.leave`, `device.lang` |
 | `CONNECTED` | `card.submit`, `card.update`, `driving.state`, `request.send`, `request.spoken`, `reply.send`, `trip.end`, `trip.leave`, `device.lang` |
-| `CARD_SENT` | `card.submit`, `card.update`, `card.recheck`, `route.started`, `route.failed`, `dropoff.propose`, `dropoff.respond`, `dropoff.decide`, `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.arrive`, `trip.end`, `trip.leave`, `device.lang` |
-| `IN_TRIP` | `card.submit`, `card.update`, `route.started`, `route.failed`, `trip.progress`, `dropoff.propose`, `dropoff.respond`, `dropoff.decide`, `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.arrive`, `trip.end`, `trip.leave`, `device.lang` |
+| `CARD_SENT` | `card.submit`, `card.update`, `card.recheck`, `route.started`, `route.failed`, `dropoff.propose`, `dropoff.respond`, `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.arrive`, `trip.end`, `trip.leave`, `device.lang` |
+| `IN_TRIP` | `card.submit`, `card.update`, `route.started`, `route.failed`, `trip.progress`, `dropoff.propose`, `dropoff.respond`, `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.arrive`, `trip.end`, `trip.leave`, `device.lang` |
 | `ARRIVED` | `request.send`, `request.spoken`, `reply.send`, `driving.state`, `trip.end`, `trip.leave`, `device.lang` |
 | `ENDED` | `driving.state` |
 | `DECLINED` | `driving.state` |

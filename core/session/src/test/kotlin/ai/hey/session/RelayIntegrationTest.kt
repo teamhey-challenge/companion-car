@@ -4,6 +4,7 @@ import ai.hey.model.DropoffCandidate
 import ai.hey.model.DropoffKind
 import ai.hey.model.LatLng
 import ai.hey.model.QuickReplyId
+import ai.hey.vehicle.ScriptedVoiceInput
 import ai.hey.model.TripState
 import ai.hey.vehicle.DrivingStatus
 import ai.hey.vehicle.FakeVehicleGateway
@@ -197,7 +198,7 @@ class RelayIntegrationTest {
         val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=ja").header("Authorization", "Device $deviceToken").build())
             .execute().use { it.body!!.string() }
         val placeId = Json.parseToJsonElement(found).jsonArray.first().jsonObject.getValue("placeId").jsonPrimitive.content
-        passenger.send("card.submit", """{"destinationPlaceId":"$placeId","conditions":["luggage"]}""")
+        passenger.send("card.submit", """{"destinationPlaceId":"$placeId","conditions":["quiet"],"quiet":true}""")
         val cardSent = eventually("CARD_SENT") { repo.state.value.takeIf { it.view?.state == TripState.CARD_SENT } }
         assertEquals("롯데호텔 서울", cardSent.view?.card?.destination?.nameKo)
         // the card text is spoken: "카드가 왔어요 + 목적지" reaches the vehicle
@@ -213,7 +214,7 @@ class RelayIntegrationTest {
         val withCandidates = eventually("candidates") { repo.state.value.takeIf { it.candidates.items.size > 1 } }
         val entrance = withCandidates.candidates.items.first { it.kind != ai.hey.model.DropoffKind.Default }
         repo.state.value.parked!!.proposeDropoff(entrance, null)
-        val proposed = eventually("proposal") { repo.state.value.view?.dropoff?.takeIf { (it as? ai.hey.model.DriverProposal)?.status == ai.hey.model.DriverProposalStatus.Pending } }
+        val proposed = eventually("proposal") { repo.state.value.view?.dropoff?.takeIf { it.status == ai.hey.model.DriverProposalStatus.Pending } }
         assertEquals(entrance.kind, proposed.kind)
         val seenByPassenger = eventually("passenger sees the proposal") {
             passenger.lastSnapshot()?.get("dropoff")?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.jsonObject
@@ -223,7 +224,7 @@ class RelayIntegrationTest {
         passenger.send("dropoff.respond", """{"version":${proposed.version},"response":"ok"}""")
         val agreed = eventually("agreed") { repo.state.value.view?.agreedDropoff }
         assertEquals(entrance.label, agreed.label)
-        assertEquals(ai.hey.model.DriverProposalStatus.Ok, (repo.state.value.view?.dropoff as? ai.hey.model.DriverProposal)?.status)
+        assertEquals(ai.hey.model.DriverProposalStatus.Ok, repo.state.value.view?.dropoff?.status)
 
         // arrival by the manual button (navigation may never report it); a second press must not send again
         repo.closeDropoff() // D4 offers no arrive button; the driver closes it first
@@ -348,7 +349,7 @@ class RelayIntegrationTest {
         val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=en").header("Authorization", "Device $deviceToken").build())
             .execute().use { it.body!!.string() }
         val placeId = Json.parseToJsonElement(found).jsonArray.first().jsonObject.getValue("placeId").jsonPrimitive.content
-        passenger.send("card.submit", """{"destinationPlaceId":"$placeId","conditions":["luggage"]}""")
+        passenger.send("card.submit", """{"destinationPlaceId":"$placeId","conditions":["quiet"],"quiet":true}""")
         eventually("CARD_SENT") { repo.state.value.takeIf { it.view?.state == TripState.CARD_SENT } }
         passenger.send("request.send", """{"kind":"preset","presetId":"window","clientRef":"race-1"}""")
         val open = eventually("open question") { repo.state.value.view?.requests?.firstOrNull { it.replyExpected } }
@@ -393,7 +394,7 @@ class RelayIntegrationTest {
 
         val vehicle = FakeVehicleGateway(scope)
         val storage = InMemoryCarStorage(ai.hey.model.CarSettings(speechGapSec = 1, plateSuffix = "2468", relayUrl = base))
-        val repo = TripRepository(scope, vehicle, storage, http = http, progressPollMs = 3_600_000)
+        val repo = TripRepository(scope, vehicle, storage, http = http, progressPollMs = 3_600_000, voiceInput = ScriptedVoiceInput(text = "입구 앞에서 기다릴게요."))
         repo.start()
         eventually("online idle") { repo.state.value.takeIf { it.online && it.view?.state == TripState.IDLE } }
         val registration = storage.loadRegistration(base)!!
@@ -424,12 +425,12 @@ class RelayIntegrationTest {
         val found = http.newCall(Request.Builder().url("$base/v1/places?q=lotte&lang=ja").header("Authorization", "Device $deviceToken").build())
             .execute().use { it.body!!.string() }
         val placeId = Json.parseToJsonElement(found).jsonArray.first().jsonObject.getValue("placeId").jsonPrimitive.content
-        passenger.send("card.submit", """{"destinationPlaceId":"$placeId","conditions":["luggage"]}""")
+        passenger.send("card.submit", """{"destinationPlaceId":"$placeId","conditions":["quiet"],"quiet":true}""")
         heard("card arrival", sentence("speech.cardSent", "destination" to "롯데호텔 서울"))
         eventually("CARD_SENT") { repo.state.value.takeIf { it.view?.state == TripState.CARD_SENT } }
-        passenger.send("card.update", """{"conditions":["luggage","lessWalking"]}""")
+        passenger.send("card.update", """{"conditions":["quiet","music"],"quiet":true,"music":"off"}""")
         heard("card conditions changed", sentence("speech.cardUpdate.conditions", "conditions" to "").trim())
-        passenger.send("card.update", """{"temperature":"cooler"}""")
+        passenger.send("card.update", """{"conditions":["quiet","music","temperature"],"temperature":"cooler"}""")
         heard("card temperature changed", sentence("speech.cardUpdate.temperature", "temperature" to "").trim())
 
         // requests: a notice preset, a question preset, the one the driver cannot disable, and free text
@@ -457,9 +458,25 @@ class RelayIntegrationTest {
             heard("dropoff answer $answer", sentence("speech.dropoff.$answer"))
         }
 
-        // the passenger puts a pin
+        // the passenger can no longer propose a point (3.0.0): the relay refuses it, and nothing reaches the driver
         passenger.send("dropoff.propose", """{"point":{"lat":37.5651,"lng":126.9807},"label":"pin"}""")
-        heard("passenger pin", sentence("speech.passengerPin"))
+        delay(300)
+        assertTrue("no passenger pin is spoken", vehicle.spoken.none { "고른" in it })
+
+        // the driver speaks first with a button (group B, no question), then with a confirmed voice sentence; both reach the passenger
+        repo.closeDropoff()
+        eventually("car can reply") { repo.state.value.parked?.takeIf { repo.state.value.replyInFlight == null } }.sendReply(null, QuickReplyId.StopHere)
+        eventually("button reply on the passenger device") {
+            passenger.lastSnapshot()?.get("replies")?.jsonArray?.firstOrNull { it.jsonObject["kind"]?.jsonPrimitive?.content == "button" }
+        }
+        repo.state.value.parked!!.startVoiceReply()
+        eventually("voice sentence heard") { (repo.state.value.voice as? VoiceState.Confirm)?.textKo }
+        repo.state.value.parked!!.sendVoiceReply()
+        val voiceReply = eventually("voice reply on the passenger device") {
+            passenger.lastSnapshot()?.get("replies")?.jsonArray?.firstOrNull { it.jsonObject["kind"]?.jsonPrimitive?.content == "voice" }
+        }
+        assertTrue("the relay translated the sentence for the passenger", voiceReply.jsonObject.getValue("text").jsonPrimitive.content.isNotBlank())
+        assertEquals("the car sees its own Korean words", "입구 앞에서 기다릴게요.", repo.state.value.view?.replies?.last { it.kind == ai.hey.model.ReplyKind.Voice }?.text)
 
         // arrival: the relay says nothing for it, the car speaks it itself
         repo.closeDropoff() // D4 offers no arrive button

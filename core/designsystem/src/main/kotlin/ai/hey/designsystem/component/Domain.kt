@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -299,32 +300,68 @@ fun QuickReplyGrid(
     }
 }
 
+/** One titled group of quick replies ("답장" / "기사님이 먼저"); the grid inside is the same [QuickReplyGrid] for both groups. */
 @Composable
-fun PassengerPinCard(
-    label: String,
-    distanceText: String,
-    onAccept: () -> Unit,
-    onDecline: () -> Unit,
+fun QuickReplyGroup(
+    title: String,
+    replies: List<QuickReplyUi>,
+    onReply: (QuickReplyUi) -> Unit,
     modifier: Modifier = Modifier,
-    /** Off while offline, while an answer is on its way, or when the phase does not allow it. */
     enabled: Boolean = true,
+    loadingId: String? = null,
 ) {
-    HeyCard(modifier = modifier, tone = HeyCardTone.Accent) {
-        HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
-            HeyIcon(HeyIcons.Pin, null, tone = HeyTone.Accent)
-            VStack(gap = HeyGap.G4, modifier = Modifier.grow()) {
-                HeyText(stringResource(R.string.hey_pin_title), variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 1)
-                HeyText(label, variant = HeyTextVariant.Heading, maxLines = 2)
-            }
-            HeyText(distanceText, variant = HeyTextVariant.Label, tone = HeyTone.Muted, maxLines = 1)
-        }
-        HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
-            HeyButton(stringResource(R.string.hey_pin_decline), onDecline, Modifier.grow(), variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, enabled = enabled)
-            HeyButton(stringResource(R.string.hey_pin_accept), onAccept, Modifier.grow(), variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large, enabled = enabled)
-        }
+    VStack(gap = HeyGap.G8, modifier = modifier) {
+        HeyText(title, variant = HeyTextVariant.Heading, maxLines = 1)
+        QuickReplyGrid(replies, onReply, Modifier.fillMaxWidth(), enabled, loadingId)
     }
 }
 
+/**
+ * The recognized Korean sentence, shown for the driver to confirm before it is sent. Drawn in the composition (scrim +
+ * centred card) like [HeyDialog]; the caller places it last inside a full-size Box. Nothing is sent until [send].
+ */
+@Composable
+fun VoiceConfirmDialog(
+    title: String,
+    textKo: String,
+    send: HeyDialogAction,
+    retry: HeyDialogAction,
+    cancel: HeyDialogAction,
+    modifier: Modifier = Modifier,
+    sending: Boolean = false,
+    enabled: Boolean = true,
+) {
+    val colors = HeyTheme.colors
+    val shape = RoundedCornerShape(HeyTokens.Radius.xl)
+    Box(
+        modifier
+            .background(colors.scrim)
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {},
+        contentAlignment = Alignment.Center,
+    ) {
+        VStack(
+            gap = HeyGap.G24,
+            modifier = Modifier
+                .widthIn(max = HeyTokens.Sheet.maxWidth + HeyTokens.Space.s32 * 4)
+                .clip(shape)
+                .background(colors.bgRaised, shape)
+                .border(HeyTokens.Border.strong, colors.borderStrong, shape)
+                .padding(HeyTokens.Space.s32),
+            align = HeyAlign.Start,
+        ) {
+            HStack(gap = HeyGap.G16) {
+                HeyIcon(HeyIcons.Mic, null, tone = HeyTone.Accent)
+                HeyText(title, variant = HeyTextVariant.Title, maxLines = 2)
+            }
+            HeyText(textKo, variant = HeyTextVariant.Heading, maxLines = 4)
+            HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
+                HeyButton(cancel.text, cancel.onClick, Modifier.grow(), variant = HeyButtonVariant.Ghost, size = HeyButtonSize.Large, enabled = enabled && !sending)
+                HeyButton(retry.text, retry.onClick, Modifier.grow(), variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, icon = HeyIcons.Mic, enabled = enabled && !sending)
+                HeyButton(send.text, send.onClick, Modifier.grow(), variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large, icon = HeyIcons.Send, enabled = enabled, loading = sending)
+            }
+        }
+    }
+}
 // ---------------------------------------------------------------- trip glance
 
 @Composable

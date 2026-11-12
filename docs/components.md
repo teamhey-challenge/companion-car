@@ -161,7 +161,7 @@ val HeyLightColors: HeyColors; val HeyDarkColors: HeyColors
 | `HeySegmented` | `options`, `selected`, `onSelect` | — |
 | `HeyDialog` | `title`, `message`, `confirm`, `dismiss` | — |
 | `HeyQrCode` | `content: String`, `size: Dp`(부모가 줌) | 실제 URL |
-| `LanguageGreetingStrip` | `lines: List<String>` (QR 안내 4개 언어) | 4줄 |
+| `LanguageGreetingStrip` | `lines: List<String>` (QR 안내 6개 승객 언어, 문장은 hey-shared `car.scanQr`에서 빌드 때 생성), `columns = 2` | 2열×3행 격자, 1280에서 스크롤 없음 |
 | `JoinRequestCard` | `langLabel`, `partySize`, `expiresInSec`, `onApprove`, `onDecline`, `enabled`(정차 중만) | 정차·주행(비활성) |
 | `KoreanSummary` | `destinationKo`, `addressKo`, `nameLocal`, `conditions: List<ConditionLine>` | 조건 0·4개, 긴 주소 |
 | `ConditionLine` | `icon`, `text`, `changed: Boolean`(바뀐 부분 강조) | 바뀜 표시 |
@@ -169,8 +169,10 @@ val HeyLightColors: HeyColors; val HeyDarkColors: HeyColors
 | `ReasonChips` | `reasons`, `selected`, `onSelect` | 6개 |
 | `ProposalStatus` | `state(Pending,Ok,Elsewhere,Unsure,Superseded)` | 다섯 |
 | `RequestRow` | `textKo`, `kind(Notice,Question,Free)`, `state`, `time`, `onReplay` | 각 상태, 긴 직접 입력 |
-| `QuickReplyGrid` | `replies: List<QuickReplyUi>`, `onReply`, `enabled` | 6개, 비활성 |
-| `PassengerPinCard` | `label`, `distanceText`, `onAccept`, `onDecline` | — |
+| `QuickReplyGrid` | `replies: List<QuickReplyUi>`, `onReply`, `enabled` | 3개, 비활성 |
+| `QuickReplyGroup` | `title`, `replies`, `onReply`, `enabled`, `loadingId?` — 제목 있는 한 묶음. "답장"(yes·cannot·moment, 열린 질문이 있을 때만)과 "기사님이 먼저"(stopHere·fiveMin·cardOk, `QUICK_REPLY_META` 묶음) 둘 다 이 부품 | 답장·기사님이 먼저·로딩 |
+| `VoiceConfirmDialog` | `title`, `textKo`, `send`, `retry`, `cancel`, `sending`, `enabled` — 인식된 한국어 문장을 보내기 전에 확인(정차 중 D6). `HeyDialog`와 같은 막+카드 | 기본·긴 문장·보내는 중 |
+| `PassengerPinCard` | (삭제됨) 3.0.0에서 승객 핀 제안이 없어져 부품도 없다 | — |
 | `DrivingPanel` | `lastSpokenKo?`, `destinationKo`, `etaText`, `pendingCount` | 요청 없음·있음 |
 | `EtaBlock` | `etaText`, `distanceText`, `stale` | — |
 | `TripSummaryCard` | `rows: List<Pair<String,String>>` | — |

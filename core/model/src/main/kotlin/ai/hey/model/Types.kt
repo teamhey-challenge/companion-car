@@ -1,16 +1,7 @@
 package ai.hey.model
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.JsonClassDiscriminator
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.JsonTransformingSerializer
-import kotlinx.serialization.json.jsonObject
 
 // Hand-mirrored from packages/protocol/src/{catalog,types}.ts. The fixtures in packages/protocol/fixtures
 // are parsed and round-tripped by ModelFixturesTest, which is what keeps the two sides the same shape.
@@ -20,15 +11,18 @@ enum class Lang(val wire: String, val label: String) {
     @SerialName("en") En("en", "English"),
     @SerialName("ja") Ja("ja", "日本語"),
     @SerialName("zh-Hans") ZhHans("zh-Hans", "简体中文"),
+    @SerialName("zh-Hant") ZhHant("zh-Hant", "繁體中文"),
+    @SerialName("vi") Vi("vi", "Tiếng Việt"),
+    @SerialName("th") Th("th", "ไทย"),
     @SerialName("ko") Ko("ko", "한국어"),
 }
 
 @Serializable
 enum class ConditionId {
-    @SerialName("luggage") Luggage,
-    @SerialName("lessWalking") LessWalking,
     @SerialName("meetEntrance") MeetEntrance,
     @SerialName("temperature") Temperature,
+    @SerialName("quiet") Quiet,
+    @SerialName("music") Music,
 }
 
 @Serializable
@@ -49,14 +43,32 @@ enum class PresetId(val driverCanDisable: Boolean, val question: Boolean) {
     @SerialName("trunk") Trunk(true, false),
 }
 
+/**
+ * Which group a quick reply belongs to (catalog metadata, packages/protocol QUICK_REPLY_META). [Answer] is shown only
+ * while a passenger question is open; [DriverFirst] is opened by the driver any time while parked.
+ */
+enum class QuickReplySet { Answer, DriverFirst }
+
 @Serializable
-enum class QuickReplyId {
-    @SerialName("yes") Yes,
-    @SerialName("moment") Moment,
-    @SerialName("fiveMin") FiveMin,
-    @SerialName("stopHere") StopHere,
-    @SerialName("cardOk") CardOk,
-    @SerialName("cannot") Cannot,
+enum class QuickReplyId(val set: QuickReplySet) {
+    @SerialName("yes") Yes(QuickReplySet.Answer),
+    @SerialName("cannot") Cannot(QuickReplySet.Answer),
+    @SerialName("moment") Moment(QuickReplySet.Answer),
+    @SerialName("stopHere") StopHere(QuickReplySet.DriverFirst),
+    @SerialName("fiveMin") FiveMin(QuickReplySet.DriverFirst),
+    @SerialName("cardOk") CardOk(QuickReplySet.DriverFirst),
+}
+
+@Serializable
+enum class MusicPref {
+    @SerialName("off") Off,
+    @SerialName("low") Low,
+}
+
+@Serializable
+enum class ReplyKind {
+    @SerialName("button") Button,
+    @SerialName("voice") Voice,
 }
 
 @Serializable
@@ -82,9 +94,7 @@ enum class NoticeKind {
     @SerialName("routeStarted") RouteStarted,
     @SerialName("routeFailed") RouteFailed,
     @SerialName("dropoffProposed") DropoffProposed,
-    @SerialName("dropoffPinned") DropoffPinned,
     @SerialName("dropoffAgreed") DropoffAgreed,
-    @SerialName("dropoffDeclined") DropoffDeclined,
     @SerialName("reply") Reply,
     @SerialName("arrived") Arrived,
     @SerialName("guestJoined") GuestJoined,
@@ -111,13 +121,7 @@ enum class RequestKind {
     @SerialName("free") Free,
 }
 
-@Serializable
-enum class DropoffBy {
-    @SerialName("driver") Driver,
-    @SerialName("passenger") Passenger,
-}
-
-/** Driver proposal statuses (`by: "driver"`). */
+/** Statuses of the driver's proposal; `elsewhere` asks the driver to propose another spot. */
 @Serializable
 enum class DriverProposalStatus {
     @SerialName("pending") Pending,
@@ -125,21 +129,6 @@ enum class DriverProposalStatus {
     @SerialName("elsewhere") Elsewhere,
     @SerialName("unsure") Unsure,
     @SerialName("superseded") Superseded,
-}
-
-/** Passenger pin statuses (`by: "passenger"`). */
-@Serializable
-enum class PinProposalStatus {
-    @SerialName("pending") Pending,
-    @SerialName("accepted") Accepted,
-    @SerialName("declined") Declined,
-    @SerialName("superseded") Superseded,
-}
-
-@Serializable
-enum class DriverDecision {
-    @SerialName("accept") Accept,
-    @SerialName("decline") Decline,
 }
 
 @Serializable
@@ -162,7 +151,6 @@ enum class DropoffKind {
     @SerialName("entrance") Entrance,
     @SerialName("side") Side,
     @SerialName("curated") Curated,
-    @SerialName("pin") Pin,
 }
 
 @Serializable
@@ -191,69 +179,27 @@ data class DropoffCandidate(
 )
 
 /**
- * One versioned drop-off proposal. The wire `by` picks the variant, and each variant has only its own status set,
- * so a driver proposal "accepted" or a pin "ok" cannot be represented.
+ * One versioned drop-off proposal. Only the driver proposes a drop-off point (protocol 3.0.0); the passenger answers
+ * it, and `elsewhere` only asks the driver to propose another spot.
  */
-@OptIn(ExperimentalSerializationApi::class)
-@JsonClassDiscriminator("by")
 @Serializable
-sealed interface DropoffProposal {
-    val version: Int
-    val point: LatLng
-    val kind: DropoffKind
-    val entranceType: EntranceType?
-    val ref: String?
-    val street: StreetName?
-    val label: String
-    val labelLocal: String
-    val reasonId: DropoffReasonId?
-    val reasonText: String?
-}
-
-@Serializable
-@SerialName("driver")
-data class DriverProposal(
-    override val version: Int,
-    override val point: LatLng,
-    override val kind: DropoffKind,
-    override val entranceType: EntranceType? = null,
-    override val ref: String? = null,
-    override val street: StreetName? = null,
-    override val label: String,
-    override val labelLocal: String,
-    override val reasonId: DropoffReasonId? = null,
-    override val reasonText: String? = null,
+data class DropoffProposal(
+    val version: Int,
+    val point: LatLng,
+    val kind: DropoffKind,
+    val entranceType: EntranceType? = null,
+    val ref: String? = null,
+    val street: StreetName? = null,
+    val label: String,
+    val labelLocal: String,
+    val reasonId: DropoffReasonId? = null,
+    val reasonText: String? = null,
     val status: DriverProposalStatus,
-) : DropoffProposal
-
-@Serializable
-@SerialName("passenger")
-data class PassengerPin(
-    override val version: Int,
-    override val point: LatLng,
-    override val kind: DropoffKind,
-    override val entranceType: EntranceType? = null,
-    override val ref: String? = null,
-    override val street: StreetName? = null,
-    override val label: String,
-    override val labelLocal: String,
-    override val reasonId: DropoffReasonId? = null,
-    override val reasonText: String? = null,
-    val status: PinProposalStatus,
-) : DropoffProposal
-
-/** The pins in `pendingPins`: decoded as [PassengerPin] (the wire `by` is implied), written back with `by: "passenger"`. */
-object PinSerializer : JsonTransformingSerializer<PassengerPin>(PassengerPin.serializer()) {
-    override fun transformSerialize(element: JsonElement): JsonElement =
-        JsonObject(element.jsonObject + ("by" to JsonPrimitive("passenger")))
-}
-
-object PinListSerializer : KSerializer<List<PassengerPin>> by ListSerializer(PinSerializer)
+)
 
 @Serializable
 data class AgreedDropoff(
     val version: Int,
-    val by: DropoffBy,
     val point: LatLng,
     val kind: DropoffKind,
     val entranceType: EntranceType? = null,
@@ -269,6 +215,8 @@ data class CardInput(
     val conditions: List<ConditionId>,
     val entranceNote: String? = null,
     val temperature: Temperature? = null,
+    val quiet: Boolean? = null,
+    val music: MusicPref? = null,
 )
 
 /** `card.submit` payload: the destination is referenced by the id of a place the relay already resolved. */
@@ -278,6 +226,8 @@ data class CardSubmit(
     val conditions: List<ConditionId>,
     val entranceNote: String? = null,
     val temperature: Temperature? = null,
+    val quiet: Boolean? = null,
+    val music: MusicPref? = null,
 )
 
 @Serializable
@@ -286,6 +236,8 @@ data class CardUpdate(
     val conditions: List<ConditionId>? = null,
     val entranceNote: String? = null,
     val temperature: Temperature? = null,
+    val quiet: Boolean? = null,
+    val music: MusicPref? = null,
 )
 
 @Serializable
@@ -303,8 +255,9 @@ data class RequestItem(
     val clientRef: String? = null,
 )
 
+/** [kind] button: [replyId] names the quick reply; voice: [text] is the driver's recognized Korean sentence (the car's own words). */
 @Serializable
-data class ReplyItem(val replyId: QuickReplyId, val requestId: String? = null, val text: String, val ts: Long)
+data class ReplyItem(val kind: ReplyKind, val replyId: QuickReplyId? = null, val requestId: String? = null, val text: String, val ts: Long)
 
 @Serializable
 data class RouteInfo(val durationSec: Int, val distanceM: Int, val tollFare: Int)
@@ -377,6 +330,9 @@ data class CarCardView(
     val entranceNote: String? = null,
     val temperature: Temperature? = null,
     val temperatureLabelKo: String? = null,
+    val quiet: Boolean? = null,
+    val music: MusicPref? = null,
+    val musicLabelKo: String? = null,
 )
 
 /** [checkCode]: 2 digits the relay made for this request; the passenger sees the same on P1. The driver approves only if they match. */
@@ -400,7 +356,6 @@ data class CarView(
     val routeStale: Boolean = false,
     val progress: ProgressInfo? = null,
     val dropoff: DropoffProposal? = null,
-    @Serializable(with = PinListSerializer::class) val pendingPins: List<PassengerPin> = emptyList(),
     val agreedDropoff: AgreedDropoff? = null,
     val requests: List<RequestItem> = emptyList(),
     val replies: List<ReplyItem> = emptyList(),

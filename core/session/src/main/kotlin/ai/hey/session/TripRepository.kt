@@ -5,10 +5,8 @@ import ai.hey.model.CarSettings
 import ai.hey.model.CarView
 import ai.hey.model.ClientType
 import ai.hey.model.ConditionId
-import ai.hey.model.DriverDecision
 import ai.hey.model.DrivingStateData
 import ai.hey.model.DropoffCandidate
-import ai.hey.model.DropoffDecideData
 import ai.hey.model.DropoffProposeData
 import ai.hey.model.DropoffReasonId
 import ai.hey.model.EmptyData
@@ -19,13 +17,15 @@ import ai.hey.model.HeyJson
 import ai.hey.model.HeyLog
 import ai.hey.model.LocalSpeech
 import ai.hey.model.Place
+import ai.hey.model.ReplyKind
+import ai.hey.model.ReplySendData
+import ai.hey.model.QuickReplySet
 import ai.hey.model.SpeechPriority
 
 import ai.hey.model.JoinDecision
 import ai.hey.model.ProgressInfo
 import ai.hey.model.QuickReplyId
 import ai.hey.model.isOpenQuestion
-import ai.hey.model.ReplySendData
 import ai.hey.model.RequestSpokenData
 import ai.hey.model.RequestState
 import ai.hey.model.RouteFailedData
@@ -33,12 +33,16 @@ import ai.hey.model.RouteInfo
 import ai.hey.model.ServerMessage
 import ai.hey.model.TripState
 import ai.hey.model.actionableCount
+import ai.hey.model.replyTarget
 import ai.hey.model.nextClockOffset
 import ai.hey.model.routeDestination
 import ai.hey.vehicle.DrivingStatus
 import ai.hey.vehicle.RouteFailure
 import ai.hey.vehicle.RouteStartState
 import ai.hey.vehicle.SpeechSettings
+import ai.hey.vehicle.VoiceInput
+import ai.hey.vehicle.VoiceResult
+import ai.hey.vehicle.NoVoiceInput
 import ai.hey.vehicle.VehicleEvent
 import ai.hey.vehicle.VehicleGateway
 import kotlinx.coroutines.CoroutineScope
@@ -90,6 +94,8 @@ class TripRepository(
     private val progressPollMs: Long = HeyConfig.TRIP_PROGRESS_POLL_SEC * 1000L,
     private val backoffSec: List<Long> = HeyConfig.RECONNECT_BACKOFF_SEC,
     private val ackTimeoutMs: Long = HeyConfig.WS_ACK_TIMEOUT_MS,
+    /** Korean speech recognition for the driver's voice reply; previews and tests without one get [NoVoiceInput]. */
+    private val voiceInput: VoiceInput = NoVoiceInput,
     transport: (RelayTransport.Listener) -> RelayTransport = { listener -> RelayLink(http, scope, listener, ackTimeoutMs, backoffSec, clock) },
 ) : CarCommands {
     private val hands = Hands()
@@ -133,7 +139,14 @@ class TripRepository(
         }
         scope.launch {
             vehicle.drivingState.collect { d ->
-                _state.update { it.copy(driving = d, endDialogOpen = if (d == DrivingStatus.Parked) it.endDialogOpen else false) }
+                if (d != DrivingStatus.Parked) voiceJob?.cancel() // the microphone closes the moment the car is not known to be parked
+                _state.update {
+                    it.copy(
+                        driving = d,
+                        endDialogOpen = if (d == DrivingStatus.Parked) it.endDialogOpen else false,
+                        voice = if (d == DrivingStatus.Parked) it.voice else VoiceState.Idle,
+                    )
+                }
                 sendDriving(d)
             }
         }
@@ -250,7 +263,7 @@ class TripRepository(
         is CommandKey.Join -> view.pendingJoin?.joinRequestId != key.joinRequestId
         CommandKey.Recheck -> view.state != TripState.CARD_SENT
         is CommandKey.Propose -> (view.dropoff?.version ?: 0) > key.previousVersion
-        is CommandKey.Pin -> view.pendingPins.none { it.version == key.version }
+        is CommandKey.Voice -> view.replies.lastOrNull() != key.newestReplyBefore
         // The relay keeps only the newest replies, so the count can stop growing: the newest reply changing is the sign.
         is CommandKey.Reply ->
             view.replies.lastOrNull() != key.newestReplyBefore ||
@@ -295,8 +308,15 @@ class TripRepository(
                 view = view,
                 commands = if (tripChanged) emptyMap() else old.commands.filterNot { (key, _) -> settled(key, view) },
                 changedConditions = changed,
+                voice = if (old.voice is VoiceState.Confirm && old.commands.keys.any { it is CommandKey.Voice } && tripChanged.not() &&
+                    old.commands.filterNot { (key, _) -> settled(key, view) }.keys.none { it is CommandKey.Voice }) VoiceState.Sent
+                else if (tripChanged) VoiceState.Idle else old.voice,
                 // a new/other proposal makes the typed selection obsolete (activeDraft); D4 closes where the relay stops accepting proposals
-                panel = if (old.panel == Panel.Dropoff && !dropoffPossible) Panel.None else old.panel,
+                panel = when {
+                    old.panel == Panel.Dropoff && !dropoffPossible -> Panel.None
+                    old.panel == Panel.Reply && !dropoffPossible && view.state != TripState.CONNECTED && view.state != TripState.ARRIVED -> Panel.None
+                    else -> old.panel
+                },
                 requestsDismissedAt = minOf(old.requestsDismissedAt, view.actionableCount),
                 lastSpokenKo = if (tripEnded) null else old.lastSpokenKo,
                 endDialogOpen = if (tripEnded) false else old.endDialogOpen,
@@ -396,8 +416,10 @@ class TripRepository(
         override fun cancelRoute() = this@TripRepository.cancelRouteStart()
         override fun openNavi() = this@TripRepository.openNavi()
         override fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?) = this@TripRepository.propose(candidate, reasonId)
-        override fun decidePin(version: Int, accept: Boolean) = this@TripRepository.decide(version, accept)
-        override fun sendReply(requestId: String, replyId: QuickReplyId) = this@TripRepository.reply(requestId, replyId)
+        override fun sendReply(requestId: String?, replyId: QuickReplyId) = this@TripRepository.reply(requestId, replyId)
+        override fun openReply() = this@TripRepository.openReplyScreen()
+        override fun startVoiceReply() = this@TripRepository.beginVoice()
+        override fun sendVoiceReply() = this@TripRepository.sendVoice()
         override fun arrive() = this@TripRepository.arriveByButton()
         override fun endTrip() = this@TripRepository.end()
         override fun openDropoff() = this@TripRepository.showDropoff()
@@ -479,32 +501,86 @@ class TripRepository(
         )
     }
 
-    private fun decide(version: Int, accept: Boolean) {
-        if (!allowed(CarCommand.DecidePin)) return
-        val key = CommandKey.Pin(version)
-        if (_state.value.isLoading(key)) return
-        val decision = if (accept) DriverDecision.Accept else DriverDecision.Decline
-        sendCommand(
-            ClientType.DROPOFF_DECIDE,
-            HeyJson.encodeToJsonElement(DropoffDecideData.serializer(), DropoffDecideData(version, decision)),
-            key,
-        )
-    }
-
     private fun markSpoken(requestId: String) {
         link.send(ClientType.REQUEST_SPOKEN, HeyJson.encodeToJsonElement(RequestSpokenData.serializer(), RequestSpokenData(requestId)))
     }
 
-    private fun reply(requestId: String, replyId: QuickReplyId) {
+    private fun reply(requestId: String?, replyId: QuickReplyId) {
         if (!allowed(CarCommand.Reply)) return
         val s = _state.value
-        if (s.replyInFlight != null) return
-        // Only an open question can be answered: a stale tap for a request that is answered or gone is not sent.
-        if (s.view?.requests?.firstOrNull { it.requestId == requestId }?.isOpenQuestion != true) return
+        if (s.replyInFlight != null || s.voiceInFlight) return
+        when (replyId.set) {
+            // Only an open question can be answered: a stale tap for a request that is answered or gone is not sent.
+            QuickReplySet.Answer -> if (requestId == null || s.view?.requests?.firstOrNull { it.requestId == requestId }?.isOpenQuestion != true) return
+            QuickReplySet.DriverFirst -> Unit
+        }
         sendCommand(
             ClientType.REPLY_SEND,
-            HeyJson.encodeToJsonElement(ReplySendData.serializer(), ReplySendData(requestId, replyId)),
+            HeyJson.encodeToJsonElement(ReplySendData.serializer(), ReplySendData.button(requestId, replyId)),
             CommandKey.Reply(requestId, replyId, s.view?.replies?.lastOrNull()),
+        )
+    }
+
+    // ---------------------------------------------------------------- voice reply (parked only)
+
+    private var voiceJob: Job? = null
+
+    private fun openReplyScreen() {
+        if (!allowed(CarCommand.Reply)) return
+        _state.update { it.copy(panel = Panel.Reply) }
+    }
+
+    private fun beginVoice() {
+        if (!allowed(CarCommand.Reply)) return
+        val s = _state.value
+        if (s.voice is VoiceState.Listening || s.voiceInFlight || s.replyInFlight != null) return
+        if (!voiceInput.hasPermission()) {
+            _state.update { it.copy(voice = VoiceState.NeedsPermission) }
+            return
+        }
+        listenOnce()
+    }
+
+    private fun listenOnce() {
+        voiceJob?.cancel()
+        _state.update { it.copy(voice = VoiceState.Listening) }
+        voiceJob = scope.launch {
+            val result = voiceInput.listen()
+            // The car may have started to move while the microphone was open: the sentence is thrown away.
+            if (_state.value.phase !is CarPhase.Parked) return@launch
+            _state.update {
+                it.copy(
+                    voice = when (result) {
+                        is VoiceResult.Text -> VoiceState.Confirm(result.text.take(HeyConfig.FREE_MAX_CHARS))
+                        VoiceResult.NoSpeech -> VoiceState.Failed(VoiceState.Reason.NoSpeech)
+                        VoiceResult.PermissionDenied -> VoiceState.Failed(VoiceState.Reason.PermissionDenied)
+                        is VoiceResult.Unavailable -> VoiceState.Failed(VoiceState.Reason.Unavailable)
+                    },
+                )
+            }
+        }
+    }
+
+    override fun voicePermissionResult(granted: Boolean) {
+        if (_state.value.voice != VoiceState.NeedsPermission) return
+        if (granted && parkedNow()) listenOnce() else _state.update { it.copy(voice = VoiceState.Failed(VoiceState.Reason.PermissionDenied)) }
+    }
+
+    override fun cancelVoice() {
+        voiceJob?.cancel()
+        _state.update { it.copy(voice = VoiceState.Idle) }
+    }
+
+    private fun sendVoice() {
+        if (!allowed(CarCommand.Reply)) return
+        val s = _state.value
+        val confirm = s.voice as? VoiceState.Confirm ?: return
+        if (s.voiceInFlight || s.replyInFlight != null) return
+        val target = s.view?.replyTarget?.requestId
+        sendCommand(
+            ClientType.REPLY_SEND,
+            HeyJson.encodeToJsonElement(ReplySendData.serializer(), ReplySendData.voice(target, confirm.textKo)),
+            CommandKey.Voice(s.view?.replies?.lastOrNull()),
         )
     }
 
@@ -572,7 +648,12 @@ class TripRepository(
         it.copy(draft = d.copy(reasonIndex = index))
     }
 
-    override fun dismissRequests() = _state.update { it.copy(requestsDismissedAt = it.view?.actionableCount ?: 0) }
+    override fun dismissRequests() {
+        voiceJob?.cancel()
+        _state.update { it.copy(requestsDismissedAt = it.view?.actionableCount ?: 0, panel = if (it.panel == Panel.Reply) Panel.None else it.panel, driverFirstOpen = false, voice = VoiceState.Idle) }
+    }
+
+    override fun toggleDriverFirst() = _state.update { it.copy(driverFirstOpen = !it.driverFirstOpen) }
 
     private fun showSettings() {
         if (!parkedNow()) return

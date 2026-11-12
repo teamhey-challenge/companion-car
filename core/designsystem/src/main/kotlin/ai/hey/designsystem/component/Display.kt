@@ -284,24 +284,31 @@ fun HeyQrCode(content: String, size: Dp, modifier: Modifier = Modifier) {
     }
 }
 
-/** The same greeting in each passenger language; one compact line per language (must fit three lines beside the plate card at 1280x720). */
+/**
+ * The same greeting in each passenger language, as a compact grid of [columns] columns (2 columns x 3 rows for the six
+ * passenger languages) so it fits beside the plate card at 1280x720 without scrolling. Each cell wraps to two lines.
+ */
 @Composable
-fun LanguageGreetingStrip(lines: List<String>, modifier: Modifier = Modifier) {
+fun LanguageGreetingStrip(lines: List<String>, modifier: Modifier = Modifier, columns: Int = 2) {
     val colors = HeyTheme.colors
     val shape = RoundedCornerShape(HeyTokens.Radius.lg)
     VStack(
-        gap = HeyGap.G8,
+        gap = HeyGap.G16,
         modifier = modifier
             .clip(shape)
             .background(colors.bgSurface, shape)
             .border(HeyTokens.Border.hairline, colors.borderDefault, shape)
             .padding(HeyTokens.Space.s16),
     ) {
-        lines.forEachIndexed { index, line ->
-            if (index > 0) HeyDivider()
-            HStack(gap = HeyGap.G16) {
-                Box(Modifier.size(HeyTokens.Space.s16).clip(CircleShape).background(colors.accent))
-                HeyText(line, Modifier.grow(), variant = HeyTextVariant.Body, maxLines = 1)
+        lines.chunked(columns).forEach { row ->
+            HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
+                row.forEach { line ->
+                    HStack(gap = HeyGap.G8, modifier = Modifier.grow()) {
+                        Box(Modifier.size(HeyTokens.Space.s8).clip(CircleShape).background(colors.accent))
+                        HeyText(line, Modifier.grow(), variant = HeyTextVariant.Caption, maxLines = 2)
+                    }
+                }
+                repeat(columns - row.size) { Box(Modifier.grow()) }
             }
         }
     }
