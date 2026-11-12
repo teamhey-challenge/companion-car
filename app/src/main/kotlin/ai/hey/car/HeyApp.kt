@@ -17,7 +17,9 @@ class AppGraph(private val app: Application) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val storage: CarStorage by lazy { PrefsCarStorage(app, BuildConfig.RELAY_URL) }
     val vehicle: VehicleGateway by lazy { PleosVehicleGateway(app, scope) }
-    val repository: TripRepository by lazy { TripRepository(scope, vehicle, storage).also { it.start() } }
+    val repository: TripRepository by lazy {
+        TripRepository(scope, vehicle, storage, provisionSecret = BuildConfig.PROVISION_SECRET).also { it.start() }
+    }
 }
 
 class HeyApp : Application() {

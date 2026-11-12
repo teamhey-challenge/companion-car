@@ -1,3 +1,6 @@
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermissions
+import java.security.SecureRandom
 import java.util.Properties
 
 plugins {
@@ -28,11 +31,24 @@ android {
             keyPassword = p.getProperty("keyPassword")
         }
     } else null
+    // Registration secret (relay HEY_PROVISION_SECRET). Release reads ~/.config/hey/provision.properties (600, outside the repo,
+    // created with a random value on first use, never printed); debug uses the dev default, which only a HEY_ENV=dev relay accepts.
+    val provisionFile = File(System.getProperty("user.home"), ".config/hey/provision.properties")
+    fun releaseProvisionSecret(): String {
+        if (!provisionFile.isFile) {
+            provisionFile.parentFile.mkdirs()
+            Files.createFile(provisionFile.toPath(), PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
+            val bytes = ByteArray(32).also { SecureRandom().nextBytes(it) }
+            provisionFile.writeText("secret=" + bytes.joinToString("") { "%02x".format(it) } + "\n")
+        }
+        return Properties().apply { provisionFile.inputStream().use { load(it) } }.getProperty("secret").trim()
+    }
     buildTypes {
         debug {
             // Non-secret default relay; the emulator reaches the host at 10.0.2.2. Override: -PrelayUrl=...
             val relay = providers.gradleProperty("relayUrl").getOrElse("http://10.0.2.2:8787")
             buildConfigField("String", "RELAY_URL", "\"$relay\"")
+            buildConfigField("String", "PROVISION_SECRET", "\"dev\"")
         }
         release {
             // Cleartext is off in release (main network_security.xml), so the relay must be https. Pass the real
@@ -40,6 +56,7 @@ android {
             val relay = providers.gradleProperty("relayUrl").getOrElse("https://relay.hey.invalid")
             require(relay.startsWith("https://")) { "release relayUrl must be https" }
             buildConfigField("String", "RELAY_URL", "\"$relay\"")
+            buildConfigField("String", "PROVISION_SECRET", "\"${releaseProvisionSecret()}\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
