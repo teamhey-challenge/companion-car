@@ -26,6 +26,7 @@ import android.os.Handler
 import android.os.Looper
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -42,6 +43,7 @@ private const val TAG = "PleosVehicle"
 private const val TRIP_TIMEOUT_MS = 5_000L
 private const val SPEECH_TIMEOUT_MS = 30_000L
 private const val TTS_RETRY_BACKOFF_MS = 5_000L
+private val AUDIO_ATTRIBUTES = AudioTrackSink.ASSISTANT
 
 /**
  * Pleos SDK + android.car behind [VehicleGateway]. Every SDK touch is wrapped so a missing service never crashes the
@@ -65,6 +67,7 @@ class PleosVehicleGateway(
     private val _gear = MutableStateFlow(VehicleGear.Unknown)
     private val _doors = MutableStateFlow<Set<VehicleDoor>>(emptySet())
     private val _events = MutableSharedFlow<VehicleEvent>(extraBufferCapacity = 64)
+    private val _mouth = MutableStateFlow(0)
 
     @Volatile private var settings = SpeechSettings()
 
@@ -72,8 +75,9 @@ class PleosVehicleGateway(
     override val gear: StateFlow<VehicleGear> = _gear.asStateFlow()
     override val doors: StateFlow<Set<VehicleDoor>> = _doors.asStateFlow()
     override val events: SharedFlow<VehicleEvent> = _events.asSharedFlow()
+    override val mouth: StateFlow<Int> = _mouth.asStateFlow()
 
-    private val ttsEngine = PleosSpeechEngine(app)
+    private val ttsEngine = PleosSpeechEngine(app) { _mouth.value = it }
     private val queue = SpeechQueue(
         scope = scope,
         engine = ttsEngine,
@@ -196,6 +200,12 @@ class PleosVehicleGateway(
         this.settings = settings
     }
 
+    override fun stopSpeech() = queue.stopAll()
+
+    override fun warmUpSpeech() {
+        scope.launch { ttsEngine.warmUp() }
+    }
+
     override suspend fun requestTrip(place: Place): TripInfo? = tripMutex.withLock {
         val helper = navi
         if (helper == null || !naviBound) return@withLock null
@@ -240,7 +250,11 @@ class PleosVehicleGateway(
  * speech service that starts late after boot does not silence the car for the life of the process. A text is reported
  * as read only when the engine said so; with no engine it is reported as not read.
  */
-internal class PleosSpeechEngine(private val context: Context) : SpeechEngine {
+internal class PleosSpeechEngine(
+    private val context: Context,
+    private val thresholds: MouthThresholds = MouthThresholds.PLEOS,
+    private val onMouth: (Int) -> Unit = {},
+) : SpeechEngine {
     @Volatile private var tts: TextToSpeech? = null
     @Volatile private var ready = false
     @Volatile private var retryAfter = 0L
@@ -249,15 +263,36 @@ internal class PleosSpeechEngine(private val context: Context) : SpeechEngine {
     private val events = object : EventListener {
         override fun onStart() = Unit
         override fun onReady() = Unit
-        override fun onDone() { current.get()?.complete(true) }
+        override fun onDone() { onMouth(0); current.get()?.complete(true) }
         override fun onError(e: ErrorType) {
             HeyLog.w(TAG, "tts error $e")
+            onMouth(0)
             current.get()?.complete(false)
         }
-        override fun onStop() { current.get()?.complete(false) }
-        override fun onUpdatedRms(rms: Double) = Unit
+        override fun onStop() { onMouth(0); current.get()?.complete(false) }
+
+        // The mouth follows the engine's own loudness callback (D-13). The raw value is logged at a low rate so the thresholds can be tuned.
+        override fun onUpdatedRms(rms: Double) {
+            val level = thresholds.level(rms)
+            if (level != lastLevel) {
+                lastLevel = level
+                HeyLog.d(TAG, "pleos rms=${"%.4f".format(rms)} mouth=$level")
+                onMouth(level)
+            }
+        }
     }
 
+    @Volatile private var lastLevel = 0
+
+    /** Opens the engine now (app start) so the first reply does not wait for the initialisation (Go/No-go 8.2). */
+    suspend fun warmUp() { ensureReady() }
+
+    /** Cuts what is being read; the pending [speak] ends as not delivered. */
+    override fun stop() {
+        try { tts?.stop() } catch (t: Throwable) { HeyLog.w(TAG, "tts stop threw ${t.javaClass.simpleName}") }
+        current.get()?.complete(false)
+        onMouth(0)
+    }
     private suspend fun ensureReady(): Boolean {
         if (ready) return true
         val now = System.currentTimeMillis()
@@ -273,6 +308,7 @@ internal class PleosSpeechEngine(private val context: Context) : SpeechEngine {
                     try {
                         engine.addEventListener(events)
                         engine.setLocale(Locale.KOREA)
+                        try { engine.setAudioAttributes(AUDIO_ATTRIBUTES) } catch (t: Throwable) { HeyLog.w(TAG, "tts audio attributes not set: ${t.javaClass.simpleName}") }
                         init.complete(true)
                     } catch (t: Throwable) {
                         HeyLog.w(TAG, "tts setup threw ${t.javaClass.simpleName}: ${t.message}")

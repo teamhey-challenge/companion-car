@@ -9,6 +9,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** One utterance at a time. [speak] reports whether the text was read to the end, and why not when it was not. */
 interface SpeechEngine {
     suspend fun speak(text: String): SpeechResult
+
+    /** Cuts the utterance that is being read right now (the pending [speak] then ends as not delivered). */
+    fun stop() = Unit
 }
 
 /**
@@ -75,6 +78,11 @@ class SpeechQueue(
         if (heardRecently) emit(VehicleEvent.SpeechDone(id!!))
         dropped.forEach { emit(VehicleEvent.SpeechDropped(it, SpeechDropReason.QueueOverflow)) }
         wake.trySend(Unit)
+    }
+    /** Drops everything waiting and cuts what is being read: the driver pressed the button, or the focus went (D-14, D-24). Nothing is read again. */
+    fun stopAll() {
+        synchronized(lock) { pending.clear() }
+        engine.stop()
     }
 
     private fun best(): Item? = synchronized(lock) {

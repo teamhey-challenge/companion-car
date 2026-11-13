@@ -7,7 +7,10 @@ import ai.hey.session.PrefsCarStorage
 import ai.hey.session.TalkLink
 import ai.hey.session.TalkRepository
 import ai.hey.session.newHttpClient
+import ai.hey.vehicle.AudioFocusGateAndroid
+import ai.hey.vehicle.AudioTrackSink
 import ai.hey.vehicle.PleosVehicleGateway
+import ai.hey.vehicle.StreamingReplyAudio
 import ai.hey.vehicle.PleosVoiceInput
 import ai.hey.vehicle.VehicleGateway
 import ai.hey.vehicle.VoiceInput
@@ -57,6 +60,8 @@ class AppGraph(private val app: Application) {
                     provisionSecret = { readProvisionSecret(app) },
                 )
             },
+            audio = StreamingReplyAudio({ AudioTrackSink() }, AudioFocusGateAndroid(app)),
+            speechFocus = AudioFocusGateAndroid(app),
         ).also { it.start() }
     }
 }

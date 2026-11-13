@@ -57,6 +57,8 @@ data class CarUiState(
     /** The reply text of this turn, growing while it streams. */
     val reply: String = "",
     val error: TurnError? = null,
+    /** Mouth openness 0..3 of the character while a voice plays (D-13). */
+    val mouth: Int = 0,
     /** The repository's hands-on commands; reachable only through [parked]. */
     internal val hands: ParkedCommands? = null,
 ) {

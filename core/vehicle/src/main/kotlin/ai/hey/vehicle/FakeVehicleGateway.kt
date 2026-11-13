@@ -28,6 +28,7 @@ class FakeVehicleGateway(
     private val _gear = MutableStateFlow(VehicleGear.Park)
     private val _doors = MutableStateFlow<Set<VehicleDoor>>(emptySet())
     private val _events = MutableSharedFlow<VehicleEvent>(extraBufferCapacity = 64)
+    private val _mouth = MutableStateFlow(0)
 
     private val _spoken = ArrayList<String>()
     @Volatile private var settings = SpeechSettings()
@@ -48,6 +49,7 @@ class FakeVehicleGateway(
     override val gear: StateFlow<VehicleGear> = _gear.asStateFlow()
     override val doors: StateFlow<Set<VehicleDoor>> = _doors.asStateFlow()
     override val events: SharedFlow<VehicleEvent> = _events.asSharedFlow()
+    override val mouth: StateFlow<Int> = _mouth.asStateFlow()
 
     private val queue = SpeechQueue(
         scope = scope,
@@ -102,6 +104,17 @@ class FakeVehicleGateway(
 
     override fun configureSpeech(settings: SpeechSettings) {
         this.settings = settings
+    }
+
+    override fun warmUpSpeech() = Unit
+
+    /** How often [stopSpeech] was called. */
+    @Volatile var stops = 0
+        private set
+
+    override fun stopSpeech() {
+        stops++
+        queue.stopAll()
     }
 
     override suspend fun requestTrip(place: Place): TripInfo? = tripInfo
