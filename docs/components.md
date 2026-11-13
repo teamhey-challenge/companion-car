@@ -48,7 +48,7 @@ val HeyLightColors: HeyColors; val HeyDarkColors: HeyColors
 
 | 부품 | 주요 인자 | 스냅숏 상황 |
 |---|---|---|
-| `HeyTheme(dark = true)` | `CompositionLocal`로 `HeyColors`·글꼴(Pretendard) 제공 | 라이트·다크 |
+| `HeyTheme(dark = true)` | `CompositionLocal`로 `HeyColors`·글꼴(Chiron GoRound TC, `shared/android` 제공) 제공 | 라이트(바다)·다크(심해) |
 | `VStack` / `HStack` | `gap: HeyGap`(`G4,G8,G16,G24,G32`), `align` | — |
 | `CarFrame` | `statusStrip`, `driving: Boolean`, `content`, `actionRail?` | 정차·주행(행동 막대 숨김) |
 | `StatusStrip` | `wordmarkParty`, `drivingLabel`, `connection`, `clock?` | 인원 1~4, 오프라인 |

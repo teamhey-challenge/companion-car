@@ -1,6 +1,6 @@
 package ai.hey.designsystem.theme
 
-import ai.hey.designsystem.R
+import ai.hey.tokens.R as TokensR
 import ai.hey.designsystem.token.HeyColors
 import ai.hey.designsystem.token.HeyDarkColors
 import ai.hey.designsystem.token.HeyLightColors
@@ -40,10 +40,10 @@ enum class HeyTextVariant(internal val spec: HeyTypeSpec) {
 enum class HeyTone { Default, Muted, Subtle, Disabled, Accent, Danger, Success, OnAccent }
 
 internal val HeyFontFamily = FontFamily(
-    Font(R.font.pretendard_regular, FontWeight.Normal),
-    Font(R.font.pretendard_medium, FontWeight.Medium),
-    Font(R.font.pretendard_semibold, FontWeight.SemiBold),
-    Font(R.font.pretendard_bold, FontWeight.Bold),
+    Font(TokensR.font.chiron_goround_tc_regular, FontWeight.Normal),
+    Font(TokensR.font.chiron_goround_tc_medium, FontWeight.Medium),
+    Font(TokensR.font.chiron_goround_tc_semibold, FontWeight.SemiBold),
+    Font(TokensR.font.chiron_goround_tc_bold, FontWeight.Bold),
 )
 
 internal val LocalHeyColors = staticCompositionLocalOf<HeyColors> { error("HeyTheme is missing above this composable") }
