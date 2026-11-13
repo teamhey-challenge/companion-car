@@ -45,7 +45,19 @@ class RiveSmokeActivity : Activity() {
             val requested = if (force == "canvas") RendererType.Canvas else Rive.defaultRendererType
             Log.i(TAG, "requested=$requested default=${Rive.defaultRendererType} force=$force")
             Rive.init(this, requested)
-            val view = RiveAnimationView(this, null)
+            val cap30 = intent.getBooleanExtra("fps30", false)
+            val act = this
+            val view = if (cap30) object : RiveAnimationView(act, null) {
+                // 30 fps cap: skip every other vsync (the Choreographer callback re-arms itself via scheduleFrame()).
+                override fun createRenderer(): app.rive.runtime.kotlin.renderers.Renderer =
+                    object : app.rive.runtime.kotlin.renderers.RiveArtboardRenderer(false, Rive.defaultRendererType, controller) {
+                        private var n = 0
+                        override fun doFrame(frameTimeNanos: Long) {
+                            if (n++ % 2 == 1) { scheduleFrame(); return }
+                            super.doFrame(frameTimeNanos)
+                        }
+                    }
+            } else RiveAnimationView(this, null)
             root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             view.registerListener(object : RiveFileController.Listener {
                 override fun notifyPlay(playableInstance: PlayableInstance) { Log.i(TAG, "play $playableInstance") }
@@ -61,6 +73,7 @@ class RiveSmokeActivity : Activity() {
             val anim = intent.getStringExtra("anim")
             Log.i(TAG, "asset=$asset res=$resId stateMachine=$sm animation=$anim")
             view.setRiveResource(resId, stateMachineName = sm, animationName = anim, autoplay = true)
+            if (asset == "companion") bindCompanion(view, h0 = Handler(Looper.getMainLooper()))
             // artboardRenderer is null until the view is attached to a window, so it is read after layout.
             label.text = "rive requested=$requested gl=$glLine"
             val view0 = view
@@ -93,6 +106,27 @@ class RiveSmokeActivity : Activity() {
     override fun onDestroy() { live = false; super.onDestroy() }
 
     private var glLine = "?"
+    /** Rig v1 measurement (DV-11): bind view model "Companion", state=extra `state` (0..5), mode=parked|driving|driving_nofreeze. */
+    private fun bindCompanion(view: RiveAnimationView, h0: Handler) {
+        val file = view.file ?: run { Log.e(TAG, "companion: file null"); return }
+        val vm = file.getViewModelByName("Companion")
+        val inst = vm.createDefaultInstance()
+        view.controller.stateMachines.forEach { it.viewModelInstance = inst }
+        val st = intent.getIntExtra("state", 0)
+        inst.getNumberProperty("state").value = st.toFloat()
+        inst.getNumberProperty("mouth").value = 0f
+        inst.getBooleanProperty("driving").value = false
+        val mode = intent.getStringExtra("mode") ?: "parked"
+        Log.i(TAG, "companion bound vm=${vm.name} state=$st mode=$mode sms=${view.controller.stateMachines.map { it.name }}")
+        if (mode.startsWith("driving")) {
+            h0.postDelayed({
+                inst.getBooleanProperty("driving").value = true
+                Log.i(TAG, "companion driving=true")
+                if (mode == "driving") h0.postDelayed({ view.pause(); view.stop(); Log.i(TAG, "companion frozen (stop)") }, 500)
+            }, 3_000)
+        }
+    }
+
 
     /** Create a throwaway pbuffer EGL context (ES3, falling back to ES2) and log GL_VERSION / GL_RENDERER. */
     private fun logGl() {
