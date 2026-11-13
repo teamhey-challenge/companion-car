@@ -105,6 +105,8 @@ dependencies {
     // Go/No-go spike (debug only): GngActivity talks to the Pleos STT/TTS directly.
     debugImplementation(libs.pleos.stt)
     debugImplementation(libs.pleos.tts)
+    // Rive GLES smoke test (debug only, spike): RiveSmokeActivity.
+    debugImplementation("app.rive:rive-android:11.16.3")
     testImplementation(libs.junit)
 }
 
