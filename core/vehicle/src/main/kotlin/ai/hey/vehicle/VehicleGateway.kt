@@ -76,6 +76,9 @@ interface VehicleGateway {
     val doors: StateFlow<Set<VehicleDoor>>
     val events: SharedFlow<VehicleEvent>
 
+    /** Mouth level 0..3 while the local (Pleos) voice reads, from its `onUpdatedRms` (D-13); 0 when it is quiet. */
+    val mouth: StateFlow<Int>
+
     /**
      * Queues [textKo] for the driver. [speechId] comes back in [VehicleEvent.SpeechDone] / [VehicleEvent.SpeechDropped].
      * High priority goes first and skips the gap; request speech (has an id, normal priority) is de-duplicated.
@@ -87,6 +90,11 @@ interface VehicleGateway {
 
     fun configureSpeech(settings: SpeechSettings)
 
+    /** The driver pressed the button or the audio focus went: cut what is being read and drop what waits. Nothing is read again (D-14, D-24). */
+    fun stopSpeech()
+
+    /** Opens the on-device voice now so the first spoken reply does not wait for its start-up (Go/No-go 8.2). */
+    fun warmUpSpeech()
 
     /** Null when the navigation service does not answer (no route, service missing). */
     suspend fun requestTrip(place: Place): TripInfo?

@@ -3,6 +3,10 @@ package ai.hey.session
 import ai.hey.model.AudioSpec
 import ai.hey.model.ServerFrame
 import ai.hey.vehicle.FakeVehicleGateway
+import ai.hey.vehicle.FocusGate
+import ai.hey.vehicle.PlaybackEnd
+import ai.hey.vehicle.PlaybackListener
+import ai.hey.vehicle.ReplyAudio
 import ai.hey.vehicle.ScriptedVoiceInput
 import ai.hey.vehicle.VoiceInput
 import ai.hey.vehicle.VoiceResult
@@ -11,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -26,12 +31,30 @@ private class FakeTransport(val listener: TalkTransport.Listener) : TalkTranspor
     override fun close() = Unit
 }
 
-private fun types(sent: List<String>) = sent.map { Regex("\"type\":\"([^\"]+)\"").find(it)!!.groupValues[1] }
+private class FakeReplyAudio : ReplyAudio {
+    override var listener: PlaybackListener? = null
+    var begins = 0
+    var writes = 0
+    var finishes = 0
+    var stops = 0
+    override fun begin(spec: AudioSpec) { begins++ }
+    override fun write(pcm: ByteArray) { writes++ }
+    override fun finish() { finishes++ }
+    override fun stop() { stops++ }
+}
 
+private class FakeFocusGate : FocusGate {
+    var held = false
+    var loss: (() -> Unit)? = null
+    override fun request(onLoss: () -> Unit): Boolean { held = true; loss = onLoss; return true }
+    override fun abandon() { held = false }
+}
+
+private fun types(sent: List<String>) = sent.map { Regex("\"type\":\"([^\"]+)\"").find(it)!!.groupValues[1] }
 @OptIn(ExperimentalCoroutinesApi::class)
 class TalkRepositoryTest {
-    private class Rig(scope: CoroutineScope, voice: VoiceInput) {
-        val vehicle = FakeVehicleGateway(scope)
+    private class Rig(scope: CoroutineScope, voice: VoiceInput, audio: ReplyAudio? = null, focus: FocusGate? = null, speechMillis: Long = 0) {
+        val vehicle = FakeVehicleGateway(scope, speechMillis = speechMillis)
         lateinit var transport: FakeTransport
         val repo = TalkRepository(
             scope = scope,
@@ -40,10 +63,12 @@ class TalkRepositoryTest {
             voiceInput = voice,
             transport = { FakeTransport(it).also { t -> transport = t } },
             newTurnId = { "t1" },
+            audio = audio,
+            speechFocus = focus,
         ).also { it.start() }
     }
 
-    private fun rigScope(testScheduler: kotlinx.coroutines.test.TestCoroutineScheduler) =
+    private fun rigScope(testScheduler: TestCoroutineScheduler) =
         CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler))
 
     @Test fun `a turn sends start text end and shows the streamed reply`() = runTest {
@@ -57,10 +82,10 @@ class TalkRepositoryTest {
         rig.transport.listener.onFrame(ServerFrame.ReplyDelta("t1", "워요"))
         assertEquals("반가워요", rig.repo.state.value.reply)
         rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", "반가워요", 100, 900))
-        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
         testScheduler.advanceUntilIdle()
-        // audio:none -> the car reads the text with its own TTS
+        // audio:none -> the car reads the text with its own TTS, and the turn is over when it was read
         assertEquals(listOf("반가워요"), rig.vehicle.spoken)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
         cs.cancel()
     }
 
@@ -84,7 +109,6 @@ class TalkRepositoryTest {
         gate.complete(Unit)
         assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
         assertTrue(rig.transport.sent.any { it.contains("달리는 중이야") })
-        rig.vehicle.setDriving(true)
         rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", "조심히 가요", null, 800))
         assertEquals("조심히 가요", rig.repo.state.value.reply)
         cs.cancel()
@@ -97,6 +121,90 @@ class TalkRepositoryTest {
         rig.repo.startTalk()
         assertEquals(TurnState.Idle, rig.repo.state.value.turn)
         assertEquals(TurnError.NotConnected, rig.repo.state.value.error)
+        cs.cancel()
+    }
+
+    @Test fun `audio focus loss stops the voice and a late reply end does not resume it`() = runTest {
+        val cs = rigScope(testScheduler)
+        val audio = FakeReplyAudio()
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"), audio = audio)
+        rig.repo.startTalk()
+        val l = rig.transport.listener
+        l.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.Pcm(24_000, 1)))
+        assertEquals(1, audio.begins)
+        l.onAudio(ByteArray(1440))
+        assertEquals(1, audio.writes)
+        audio.listener!!.onEnded(PlaybackEnd.FocusLost) // navigation guidance took the focus
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(1, rig.vehicle.stops) // the Pleos voice is cut too (D-14)
+        l.onFrame(ServerFrame.ReplyEnd("t1", "안녕하세요", 100, 900)) // arrives late: nothing is read, nothing resumes
+        testScheduler.advanceUntilIdle()
+        assertEquals(emptyList<String>(), rig.vehicle.spoken)
+        assertEquals(0, audio.finishes)
+        cs.cancel()
+    }
+
+    @Test fun `a button press while the character talks stops the voice and listens at once`() = runTest {
+        val cs = rigScope(testScheduler)
+        val audio = FakeReplyAudio()
+        val rig = Rig(cs, ScriptedVoiceInput(text = "다음 질문"), audio = audio)
+        rig.repo.startTalk()
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.Pcm(24_000, 1)))
+        assertEquals(TurnState.Replying, rig.repo.state.value.turn)
+        rig.transport.sent.clear()
+        rig.repo.startTalk() // D-24
+        assertEquals(1, audio.stops)
+        assertEquals(1, rig.vehicle.stops)
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn) // the new sentence is already on its way
+        assertTrue(rig.transport.sent.any { it.contains("다음 질문") })
+        cs.cancel()
+    }
+
+    @Test fun `server audio plays to the end then the turn is over, and the Pleos voice stays silent`() = runTest {
+        val cs = rigScope(testScheduler)
+        val audio = FakeReplyAudio()
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"), audio = audio)
+        rig.repo.startTalk()
+        val l = rig.transport.listener
+        l.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.Pcm(24_000, 1)))
+        l.onFrame(ServerFrame.ReplyEnd("t1", "반가워요", 100, 900))
+        assertEquals(1, audio.finishes)
+        assertEquals(TurnState.Replying, rig.repo.state.value.turn) // still playing
+        audio.listener!!.onMouth(2)
+        assertEquals(2, rig.repo.state.value.mouth)
+        audio.listener!!.onEnded(PlaybackEnd.Completed)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(emptyList<String>(), rig.vehicle.spoken)
+        cs.cancel()
+    }
+
+    @Test fun `the server going away mid reply hands the rest to the Pleos voice`() = runTest {
+        val cs = rigScope(testScheduler)
+        val audio = FakeReplyAudio()
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"), audio = audio)
+        rig.repo.startTalk()
+        val l = rig.transport.listener
+        l.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.Pcm(24_000, 1)))
+        l.onFrame(ServerFrame.ReplyDelta("t1", "반가워요"))
+        l.onConnection(ConnectionStatus.Reconnecting)
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, audio.stops)
+        assertEquals(listOf("반가워요"), rig.vehicle.spoken)
+        cs.cancel()
+    }
+
+    @Test fun `a Pleos reading is cut by a focus loss and not read again`() = runTest {
+        val cs = rigScope(testScheduler)
+        val focus = FakeFocusGate()
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"), focus = focus, speechMillis = 3_000)
+        rig.repo.startTalk()
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", "반가워요", 100, 900))
+        assertTrue(focus.held)
+        focus.loss!!.invoke()
+        assertEquals(1, rig.vehicle.stops)
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, rig.vehicle.spoken.size) // read once, never again
         cs.cancel()
     }
 
