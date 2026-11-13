@@ -19,9 +19,16 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          ssh-key: ${{ secrets.SHARED_SSH_KEY }}
+      - name: Checkout shared submodule (read-only deploy key)
+        env:
+          SHARED_SSH_KEY: ${{ secrets.SHARED_SSH_KEY }}
+        run: |
+          key="$RUNNER_TEMP/shared_key"
+          (umask 077; printf '%s\n' "$SHARED_SSH_KEY" > "$key")
+          ssh-keyscan github.com > "$RUNNER_TEMP/known_hosts" 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts -o StrictHostKeyChecking=yes"
+          git submodule update --init --recursive
+          rm -f "$key"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
