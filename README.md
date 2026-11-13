@@ -1,3 +1,5 @@
+> 2026-11-14 보관. AI 컴패니언으로 피봇했습니다. 재사용 코드는 darren-pleos-challenge/companion-car로 옮깁니다.
+
 # hey-car
 
 HEY 차량 앱(Pleos Connect, AAOS 가로, Kotlin + Jetpack Compose). 모노레포 `hey-taxi`의 `apps/car-android`를 기록째 떼어 냈다. 제품·프로토콜 계약은 `hey-relay/docs/architecture.md`, 차량 규칙과 구조는 `docs/architecture.md`, 차량 부품·화면 목록은 `docs/components.md`.
