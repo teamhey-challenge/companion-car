@@ -28,6 +28,5 @@ include(
     ":core:model",
     ":core:session",
     ":core:vehicle",
-    ":feature:trip",
     ":feature:settings",
 )

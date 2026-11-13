@@ -1,21 +1,27 @@
-# hey-car
+# companion-car
 
-HEY 차량 앱(Pleos Connect, AAOS 가로, Kotlin + Jetpack Compose). 모노레포 `hey-taxi`의 `apps/car-android`를 기록째 떼어 냈다. 제품·프로토콜 계약은 `hey-relay/docs/architecture.md`, 차량 규칙과 구조는 `docs/architecture.md`, 차량 부품·화면 목록은 `docs/components.md`.
+Pleos 차량용 캐릭터 AI 컴패니언 앱(임시 이름 `companion-*`)의 차량 앱 저장소다. HEY 시절 `hey-car@8b8de8c`의 기록을 그대로 이어받았고, 택시 운행 화면(`feature/trip`)과 내비 경로 시작 상태 기계(`RouteStartMachine`)는 지웠다. 지금 화면은 자리표시 홈(`CompanionHome`)과 설정(D8)뿐이다.
 
-## 클론과 공유 코드
+## 재사용 중인 부분
+
+| 위치 | 내용 |
+|---|---|
+| `core/vehicle` | Pleos 차량 게이트웨이(주행 상태·기어·문), Pleos TTS(`PleosSpeechEngine`)·STT(`PleosVoiceInput`), `SpeechQueue` |
+| `core/session` | 서버 연결(`RelayLink`, 재연결 1·2·4·8·15초), 정차 때만 쓰는 명령(`ParkedCommands`) 구조 |
+| `core/designsystem` | Compose 부품·테마·Paparazzi 시험 (토큰은 `shared/android`) |
+| `core/model` | 설정·메시지 모델 |
+| `feature/settings` | 설정 화면 |
+
+음성 인식·합성은 서버가 아니라 Pleos 내장 서비스(STT ON_DEVICE `Locale.KOREA`, Pleos TTS)를 쓴다.
+
+## 빌드
 
 ```sh
-git clone --recurse-submodules git@github.com:darren-pleos-challenge/hey-car.git   # 이미 클론했다면: git submodule update --init
+git clone --recurse-submodules git@github.com:darren-pleos-challenge/companion-car.git
+./check.sh    # 조립·단위 시험·Paparazzi 스냅숏 검증 (nice, --max-workers=2)
 ```
 
-`shared/`는 `hey-shared` 서브모듈(태그 `v0.7.1` 고정, 프로토콜 3.0.0)이다. 토큰은 `includeBuild("shared/android")`로 `ai.hey:tokens-compose`에 의존하고, 프로토콜 fixture는 `shared/packages/protocol/fixtures`를 `:core:model` 시험이 읽는다. D1의 QR 안내 6개 언어 문장은 `shared/packages/copy/src/<lang>.ts`의 `car.scanQr`에서 빌드 때 생성한다. 버전 올리기: `git -C shared fetch --tags && git -C shared checkout <새 태그>` 후 포인터를 커밋.
-
-## 로컬 점검 (CI 없음)
-
-```sh
-./check.sh   # :app:assembleDebug + check(시험, lint, checkDesignSystemUsage) + Paparazzi verify 3개
-```
-
-relay 통합 시험은 `HEY_RELAY_DIR`(기본 `../hey-relay`)의 `hey-relay`를 `bun`으로 띄운다. 그 폴더에서 `bun install`(서브모듈 초기화 포함)이 끝나 있어야 하며, 폴더가 없거나 `bun`이 없으면 이유를 출력하고 건너뛴다. JDK 17, Android SDK 필요. 스냅숏 기록: `./gradlew recordPaparazziDebug`.
-
-릴리스(로컬 전용, CI 없음): `./gradlew :app:assembleRelease -PrelayUrl=https://…` → `dist/apk/TEAM_HEY_release.apk`(팀 이름이 정해지면 `-PteamName=…`). R8 축소·리소스 축소, https만 허용. 서명 키는 저장소 밖 `~/.config/hey/signing.properties`(권한 600)에서 읽고, 없으면 복사 단계가 실패한다. 버전은 `gradle.properties`의 `hey.versionCode`/`hey.versionName` 한 곳.
+- JDK 17, Android SDK(compileSdk 36)가 필요하다. `shared/`는 `companion-shared` v0.1.0에 고정한 서브모듈이다.
+- 에뮬레이터는 `darren-mbp-14`에서만 띄운다. darren-vm에서는 띄우지 않는다.
+- 패키지 이름 `ai.hey.*`는 앱 이름이 확정될 때까지 바꾸지 않는다.
+- `docs/`에는 HEY 시절 문서가 남아 있다. 컴패니언 기준은 기획 저장소의 PRD가 정본이다.

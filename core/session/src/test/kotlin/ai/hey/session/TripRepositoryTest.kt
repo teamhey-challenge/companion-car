@@ -18,7 +18,6 @@ import ai.hey.model.RequestState
 import ai.hey.model.ServerMessage
 import ai.hey.model.TripState
 import ai.hey.vehicle.DrivingStatus
-import ai.hey.vehicle.RouteStartState
 import ai.hey.vehicle.FakeVehicleGateway
 import ai.hey.vehicle.SpeechDropReason
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -149,27 +148,11 @@ class TripRepositoryTest {
         kept.openDropoff()
         kept.openSettings()
         kept.openEndDialog()
-        kept.startRoute()
 
         assertEquals(before, rig.transport.sent.size)
         assertTrue(rig.repo.state.value.commands.isEmpty())
         assertEquals(Panel.None, rig.repo.state.value.panel)
         assertFalse(rig.repo.state.value.endDialogOpen)
-        assertTrue(vehicle.routes.isEmpty())
-    }
-
-    /** B3: in CONNECTED the relay refuses route.started; the car must not start navigation or send it. */
-    @Test fun startRouteInConnectedStartsNoNavigationAndSendsNothing() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope)
-        val rig = rig(backgroundScope, vehicle)
-        snapshot(rig, cardView.copy(state = TripState.CONNECTED))
-
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10)
-
-        assertTrue(vehicle.routes.isEmpty())
-        assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
-        assertFalse(rig.repo.state.value.route == RouteStartState.Requested)
     }
 
     @Test fun recheckInTripAndArriveInCardSentAreNotSent() = runTest {
@@ -209,93 +192,6 @@ class TripRepositoryTest {
 
             assertTrue("$state: reply.send goes out", ClientType.REPLY_SEND in rig.transport.types())
         }
-    }
-
-    /** M8: a failed route start belongs to its trip; the next trip must not show it. */
-    @Test fun aFailedRouteStartDoesNotCarryOverToTheNextTrip() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope).also { it.routeFailure = "NAVI_UNAVAILABLE" }
-        val rig = rig(backgroundScope, vehicle)
-        rig.repo.start()
-        advanceTimeBy(10)
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, tripId = "t1"))
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10)
-        assertTrue(rig.repo.state.value.routeFailed)
-        assertEquals(listOf(ClientType.ROUTE_FAILED), rig.transport.types().filter { it == ClientType.ROUTE_FAILED })
-
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, tripId = "t2"))
-        advanceTimeBy(10)
-
-        assertFalse("the next trip starts clean", rig.repo.state.value.routeFailed)
-        assertTrue(rig.repo.state.value.commands.isEmpty())
-    }
-
-    /** The navigation preview needs a person: nothing goes to the relay until onRouteStarted, then route.started once. */
-    @Test fun routeStartedIsSentOnlyWhenTheNavigationConfirms() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
-        val rig = rig(backgroundScope, vehicle)
-        rig.repo.start()
-        advanceTimeBy(10)
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
-
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(60_000)
-
-        assertEquals(RouteStartState.AwaitingNaviConfirm, rig.repo.state.value.route)
-        assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
-        assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
-
-        vehicle.confirmRoute()
-        advanceTimeBy(10)
-
-        assertEquals(1, rig.transport.types().count { it == ClientType.ROUTE_STARTED })
-        assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
-    }
-
-    /** A cancel in D3 abandons the attempt; the navigation's late "started" must not reach the relay. */
-    @Test fun aLateRouteStartedAfterCancelSendsNothing() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
-        val rig = rig(backgroundScope, vehicle)
-        rig.repo.start()
-        advanceTimeBy(10)
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10)
-        assertEquals(RouteStartState.AwaitingNaviConfirm, rig.repo.state.value.route)
-
-        rig.repo.state.value.parked!!.cancelRoute()
-        advanceTimeBy(10)
-        vehicle.confirmRoute()
-        advanceTimeBy(10)
-
-        assertEquals(RouteStartState.Idle, rig.repo.state.value.route)
-        assertFalse(rig.repo.state.value.routeFailed)
-        assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
-        assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
-    }
-
-    /** Navi never opened: after 15 s the car says so (specific code, "open navi" offered), and only then route.failed goes out. */
-    @Test fun anUnreadyNavigationFailsWithItsOwnCodeAndOpeningItAllowsARetry() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviReady = false }
-        val rig = rig(backgroundScope, vehicle)
-        rig.repo.start()
-        advanceTimeBy(10)
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10_000)
-        assertEquals(RouteStartState.Requested, rig.repo.state.value.route)
-        assertFalse(ClientType.ROUTE_FAILED in rig.transport.types())
-
-        advanceTimeBy(6_000)
-        assertEquals(ai.hey.vehicle.RouteFailure.NAVI_NOT_READY, rig.repo.state.value.routeFailureCode)
-        assertEquals(1, rig.transport.types().count { it == ClientType.ROUTE_FAILED })
-
-        rig.repo.state.value.parked!!.openNavi()
-        assertEquals(1, vehicle.naviOpened)
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10)
-
-        assertEquals(1, rig.transport.types().count { it == ClientType.ROUTE_STARTED })
     }
 
     /** Rule 1: the snapshot shows the effect, so the button is released. */
@@ -436,25 +332,6 @@ class TripRepositoryTest {
         advanceTimeBy(10)
 
         assertTrue(rig.repo.state.value.issues.isEmpty())
-    }
-
-    @Test fun aStartedRouteClearsTheNaviIssue() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope)
-        val rig = rig(backgroundScope, vehicle)
-        rig.repo.start()
-        advanceTimeBy(10)
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
-        val issue = VehicleIssue.Navi("NAVI_UNAVAILABLE")
-        vehicle.emitNavigationUnavailable("NAVI_UNAVAILABLE")
-        advanceTimeBy(10)
-        assertTrue(rig.repo.state.value.issues.contains(issue))
-
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10)
-
-        assertFalse(rig.repo.state.value.issues.contains(issue))
-        assertEquals(1, vehicle.routes.size)
-        assertTrue(ClientType.ROUTE_STARTED in rig.transport.types())
     }
 
     /** D8: a storage that cannot keep the value is reported (the value stays in use), and a later good write clears it. */
@@ -706,76 +583,4 @@ class TripRepositoryTest {
         assertTrue(declined.spoken.isEmpty())
     }
 
-    private fun agreed(lat: Double) = ai.hey.model.AgreedDropoff(
-        1, ai.hey.model.LatLng(lat, 127.0), ai.hey.model.DropoffKind.Default,
-        null, null, null, "정문", "정문",
-    )
-
-    /** M2: the preview was requested for one point; a changed agreed point makes pressing 안내 시작 start nothing and closes the preview. */
-    @Test fun aRouteWaitingForTheConfirmDiesWhenTheAgreedPointChanges() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
-        val rig = rig(backgroundScope, vehicle)
-        rig.repo.start()
-        advanceTimeBy(10)
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10)
-        assertEquals(RouteStartState.AwaitingNaviConfirm, rig.repo.state.value.route)
-
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, agreedDropoff = agreed(37.6)))
-        advanceTimeBy(10)
-        vehicle.confirmRoute()
-        advanceTimeBy(10)
-
-        assertEquals(RouteStartState.Idle, rig.repo.state.value.route)
-        assertEquals(1, vehicle.routesAborted)
-        assertFalse(ClientType.ROUTE_STARTED in rig.transport.types())
-    }
-
-    @Test fun aSnapshotThatKeepsTheDestinationLeavesTheWaitingRouteAlone() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
-        val rig = rig(backgroundScope, vehicle)
-        rig.repo.start()
-        advanceTimeBy(10)
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10)
-
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, partySize = 2))
-        vehicle.confirmRoute()
-        advanceTimeBy(10)
-
-        assertEquals(0, vehicle.routesAborted)
-        assertEquals(1, rig.transport.types().count { it == ClientType.ROUTE_STARTED })
-    }
-
-    /** M1: the previous trip's preview is closed in the navigation when a new trip begins. */
-    @Test fun aNewTripClosesThePreviousTripsPreview() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
-        val rig = rig(backgroundScope, vehicle)
-        rig.repo.start()
-        advanceTimeBy(10)
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10)
-
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT, tripId = "t2"))
-        advanceTimeBy(10)
-
-        assertEquals(1, vehicle.routesAborted)
-    }
-
-    @Test fun cancellingInD3ClosesThePreviewInTheNavigation() = runTest {
-        val vehicle = FakeVehicleGateway(backgroundScope).also { it.naviConfirms = false }
-        val rig = rig(backgroundScope, vehicle)
-        rig.repo.start()
-        advanceTimeBy(10)
-        snapshot(rig, cardView.copy(state = TripState.CARD_SENT))
-        rig.repo.state.value.parked!!.startRoute()
-        advanceTimeBy(10)
-
-        rig.repo.state.value.parked!!.cancelRoute()
-
-        assertEquals(1, vehicle.routesAborted)
-    }
 }

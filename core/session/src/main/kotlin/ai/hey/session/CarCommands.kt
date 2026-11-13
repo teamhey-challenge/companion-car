@@ -46,7 +46,6 @@ enum class CarCommand(vararg wireTypes: String) {
     ApproveJoin(ClientType.JOIN_APPROVE),
     DeclineJoin(ClientType.JOIN_DECLINE),
     Recheck(ClientType.CARD_RECHECK),
-    StartRoute(ClientType.ROUTE_STARTED, ClientType.ROUTE_FAILED),
     Propose(ClientType.DROPOFF_PROPOSE),
     Reply(ClientType.REPLY_SEND),
     Arrive(ClientType.TRIP_ARRIVE),
@@ -66,13 +65,6 @@ abstract class ParkedCommands internal constructor() {
     abstract fun approveJoin(joinRequestId: String)
     abstract fun declineJoin(joinRequestId: String)
     abstract fun recheckCard()
-    abstract fun startRoute()
-
-    /** Abandons the route start that waits for 안내 시작 in the navigation; a late answer from it is ignored. */
-    abstract fun cancelRoute()
-
-    /** Opens the navigation app (it must have been opened once after boot to take a route), then the start can be retried. */
-    abstract fun openNavi()
 
     /** Sends the chosen candidate with its structured fields (kind, entranceType, ref, street) so passengers get localized labels. */
     abstract fun proposeDropoff(candidate: DropoffCandidate, reasonId: DropoffReasonId?)

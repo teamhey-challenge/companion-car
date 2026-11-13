@@ -2,14 +2,10 @@ package ai.hey.car
 
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.feature.settings.SettingsScreen
-import ai.hey.feature.trip.TripScreen
-import ai.hey.feature.trip.clockLabel
-import ai.hey.feature.trip.rememberNowMillis
-import ai.hey.feature.trip.toStrip
-import ai.hey.model.TripState
 import ai.hey.session.Panel
-import ai.hey.session.VoiceState
 import ai.hey.session.SaveResult
+import ai.hey.session.VoiceState
+import ai.hey.vehicle.DrivingStatus
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -41,24 +37,21 @@ class MainActivity : ComponentActivity() {
                     permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                 }
             }
-            val now by rememberNowMillis()
             HeyTheme(dark = state.settings.dark) {
-                // Settings only while parked, and a connection request always wins over it: its 5 minutes keep running.
-                val joinWaiting = state.view?.state == TripState.REQUESTED && state.view?.pendingJoin != null
-                val showSettings = state.panel == Panel.Settings && state.isParked && !joinWaiting
-                if (showSettings) {
+                // Settings only while parked. The HEY trip screens (feature/trip) were dropped; the companion home screen replaces this placeholder.
+                if (state.panel == Panel.Settings && state.isParked) {
                     BackHandler(onBack = repository::closeSettings)
                     SettingsScreen(
                         settings = state.settings,
                         onChange = repository::updateSettings,
                         onClose = repository::closeSettings,
                         connection = state.connection.toStrip(),
-                        wordmarkParty = state.view?.partySize ?: 1,
-                        clock = clockLabel(now),
+                        wordmarkParty = 1,
+                        clock = "",
                         saveFailed = state.settingsSave is SaveResult.Failed,
                     )
                 } else {
-                    TripScreen(state, repository, now)
+                    CompanionHome(state.connection.toStrip(), state.driving != DrivingStatus.Parked, onSettings = state.parked?.let { p -> p::openSettings })
                 }
             }
         }

@@ -76,7 +76,6 @@ class CarPhaseTransitionsTest {
 
     /** The table is not vacuous: it does refuse these, so a phase listing them (the pre-fix BoardingCard did) fails above. */
     @Test fun theTableRefusesWhatTheOldBoardingCardOffered() {
-        assertTrue(CarCommand.StartRoute.wire.none { it in table.getValue("CONNECTED") })
         assertTrue(CarCommand.Propose.wire.none { it in table.getValue("CONNECTED") })
         assertTrue(CarCommand.Recheck.wire.none { it in table.getValue("IN_TRIP") })
         assertEquals(true, CarCommand.End.wire.all { it in table.getValue("ARRIVED") })

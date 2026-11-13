@@ -6,7 +6,6 @@ import ai.hey.model.DropoffCandidate
 import ai.hey.model.ErrorCode
 import ai.hey.model.QuickReplyId
 import ai.hey.vehicle.DrivingStatus
-import ai.hey.vehicle.RouteStartState
 import ai.hey.vehicle.SpeechDropReason
 
 enum class ConnectionStatus {
@@ -129,15 +128,13 @@ data class CarUiState(
     val progressAt: Long? = null,
     /** Milliseconds this device's clock runs ahead of the relay's (from snapshot `ts`), so countdowns use the relay's deadlines. */
     val clockOffsetMs: Long = 0,
-    /** The car's own route-start attempt (navigation preview confirm, failure); reset when the trip changes. */
-    val route: RouteStartState = RouteStartState.Idle,
     /** The repository's hands-on commands; reachable only through [parked]. */
     internal val hands: ParkedCommands? = null,
 ) {
     val online: Boolean get() = connection == ConnectionStatus.Online
 
     /** The one state machine; screens read this, never the raw fields. */
-    val phase: CarPhase get() = phaseOf(view, driving, LocalUi(panel, requestsDismissedAt, route))
+    val phase: CarPhase get() = phaseOf(view, driving, LocalUi(panel, requestsDismissedAt))
 
     val isParked: Boolean get() = phase is CarPhase.Parked
 
@@ -150,9 +147,6 @@ data class CarUiState(
     fun commandState(key: CommandKey): CommandState = commands[key] ?: CommandState.Idle
 
     fun isLoading(key: CommandKey): Boolean = commandState(key) is CommandState.InFlight
-
-    val routeFailed: Boolean get() = route is RouteStartState.Failed
-    val routeFailureCode: String? get() = (route as? RouteStartState.Failed)?.code
 
     val joinInFlight: Boolean get() = commands.any { (key, state) -> key is CommandKey.Join && state is CommandState.InFlight }
     val proposeInFlight: Boolean get() = commands.any { (key, state) -> key is CommandKey.Propose && state is CommandState.InFlight }

@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 [ -f shared/android/settings.gradle.kts ] || git submodule update --init
-exec nice -n 19 ./gradlew --max-workers=4 \
+exec nice -n 19 ./gradlew --max-workers=2 \
   :app:assembleDebug check \
-  :feature:trip:verifyPaparazziDebug :feature:settings:verifyPaparazziDebug :core:designsystem:verifyPaparazziDebug \
+  :feature:settings:verifyPaparazziDebug :core:designsystem:verifyPaparazziDebug \
   "$@"

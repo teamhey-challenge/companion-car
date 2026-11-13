@@ -2,7 +2,6 @@ package ai.hey.vehicle
 
 import ai.hey.model.HeyConfig
 import ai.hey.model.Place
-import ai.hey.model.RouteInfo
 import ai.hey.model.SpeechPriority
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,36 +46,6 @@ sealed interface SpeechResult {
     data class Dropped(val reason: SpeechDropReason) : SpeechResult
 }
 
-/**
- * One "start the route in the car's navigation" attempt as explicit states. The navigation app shows a route preview
- * that a person must confirm with "안내 시작", so a request being accepted is not the route having started.
- *
- * `Idle -> Requested -> AwaitingNaviConfirm -> Started | Failed`; cancelling returns an active attempt to `Idle`.
- * [Started] and [Failed] carry the attempt number so two attempts with equal content stay distinguishable.
- */
-sealed interface RouteStartState {
-    data object Idle : RouteStartState
-
-    /** Asked for; waiting for the navigation service to be ready, then handing it the destination. */
-    data object Requested : RouteStartState
-
-    /** The navigation accepted the destination and shows its preview; waiting for the person to press 안내 시작 there. */
-    data object AwaitingNaviConfirm : RouteStartState
-
-    data class Started(val attempt: Int, val route: RouteInfo) : RouteStartState
-    data class Failed(val attempt: Int, val code: String) : RouteStartState
-}
-
-/** [RouteStartState.Failed] codes the screens explain specifically; any other code is a generic failure. */
-object RouteFailure {
-    /** The navigation app did not answer (not opened since boot). Opening it and trying again fixes it. */
-    const val NAVI_NOT_READY = "NAVI_NOT_READY"
-    const val NAVI_ERROR = "NAVI_ERROR"
-
-    /** The preview was not confirmed with 안내 시작 within [RouteStartMachine.CONFIRM_TIMEOUT_MS]. */
-    const val NAVI_CONFIRM_TIMEOUT = "NAVI_CONFIRM_TIMEOUT"
-}
-
 sealed interface VehicleEvent {
     /** The text with this id was heard (read to the end by the speaker). Never emitted for text that was not spoken. */
     data class SpeechDone(val speechId: String) : VehicleEvent
@@ -118,19 +87,6 @@ interface VehicleGateway {
 
     fun configureSpeech(settings: SpeechSettings)
 
-    /**
-     * Begins one route attempt (ignored while one is active); progress is [routeState]. Success is only
-     * [RouteStartState.Started], which the navigation reports when the person confirms its preview.
-     */
-    fun startRoute(place: Place)
-
-    val routeState: StateFlow<RouteStartState>
-
-    /** Abandons the active attempt: [routeState] returns to [RouteStartState.Idle] and a late navigation answer is ignored. */
-    fun cancelRoute()
-
-    /** Brings the navigation app to the front (it has to be opened once after boot). False when it cannot be launched. */
-    fun openNavi(): Boolean
 
     /** Null when the navigation service does not answer (no route, service missing). */
     suspend fun requestTrip(place: Place): TripInfo?
