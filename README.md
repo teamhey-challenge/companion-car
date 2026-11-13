@@ -1,18 +1,26 @@
 # companion-car
 
-Pleos 차량용 캐릭터 AI 컴패니언 앱(임시 이름 `companion-*`)의 차량 앱 저장소다. HEY 시절 `hey-car@8b8de8c`의 기록을 그대로 이어받았고, 택시 운행 화면(`feature/trip`)과 내비 경로 시작 상태 기계(`RouteStartMachine`)는 지웠다. 지금 화면은 자리표시 홈(`CompanionHome`)과 설정(D8)뿐이다.
+Pleos 차량용 캐릭터 AI 컴패니언 "헤이파리"(임시 이름 `companion-*`)의 차량 앱 저장소다. HEY 시절 `hey-car@8b8de8c`의 기록을 이어받았고, 택시 운행 화면·경로 시작 상태 기계·HEY 중계 서버 연결(`RelayLink`, `TripRepository`)은 지웠다. 지금 화면은 자리표시 홈(`CompanionHome`)과 설정(D8)뿐이다.
 
 ## 재사용 중인 부분
 
 | 위치 | 내용 |
 |---|---|
 | `core/vehicle` | Pleos 차량 게이트웨이(주행 상태·기어·문), Pleos TTS(`PleosSpeechEngine`)·STT(`PleosVoiceInput`), `SpeechQueue` |
-| `core/session` | 서버 연결(`RelayLink`, 재연결 1·2·4·8·15초), 정차 때만 쓰는 명령(`ParkedCommands`) 구조 |
+| `core/session` | `/v1/talk` 클라이언트: `TalkLink`(등록 → 세션 → 티켓 WebSocket, 재연결 1·2·4·8·15초), `TalkRepository`(한 턴: Pleos STT → 서버 → 응답). 주행 중에도 듣기·턴은 끊지 않는다(AC-4.4-18, 4.5-07). 정차 때만 쓰는 명령(`ParkedCommands`) 구조 |
 | `core/designsystem` | Compose 부품·테마·Paparazzi 시험 (토큰은 `shared/android`) |
 | `core/model` | 설정·메시지 모델 |
 | `feature/settings` | 설정 화면 |
 
-음성 인식·합성은 서버가 아니라 Pleos 내장 서비스(STT ON_DEVICE `Locale.KOREA`, Pleos TTS)를 쓴다.
+음성 인식은 Pleos 내장 STT(ON_DEVICE `Locale.KOREA`)다. 답은 서버가 글자로 보내고, `reply.start.audio`가 `none`이면 Pleos TTS가 읽는다.
+
+## 등록 비밀(provision secret)
+
+APK에는 비밀이 없다(APK는 `https://hey.lastmile.ltd/download/latest.apk`로 공개된다). 처음 연결할 때 기기가 `X-Provision-Secret`로 등록하려면 시연 기기에 파일 하나가 있어야 한다.
+
+- 경로: `/data/data/ai.hey.car/files/provision.secret` (앱 전용, 권한 600) — 첫 줄에 비밀 값만.
+- 넣는 법(디버그 빌드): `adb shell run-as ai.hey.car sh -c 'umask 077; cat > files/provision.secret' < 파일` (값을 화면에 찍지 않는다). run-as가 안 되는 기기는 `/sdcard/Android/data/ai.hey.car/files/provision.secret`.
+- 값은 서버의 `COMPANION_PROVISION_SECRET`(`~/.config/companion/server.env`)과 같다. 저장소·로그·보고서에 쓰지 않는다. 등록이 끝나면 차량 토큰은 앱이 저장하고, 이 파일은 다시 읽지 않는다.
 
 ## 빌드
 
@@ -21,7 +29,7 @@ git clone --recurse-submodules git@github.com:darren-pleos-challenge/companion-c
 ./check.sh    # 조립·단위 시험·Paparazzi 스냅숏 검증 (nice, --max-workers=2)
 ```
 
-- JDK 17, Android SDK(compileSdk 36)가 필요하다. `shared/`는 `companion-shared` v0.1.0에 고정한 서브모듈이다.
-- 에뮬레이터는 `darren-mbp-14`에서만 띄운다. darren-vm에서는 띄우지 않는다.
+- JDK 17, Android SDK(compileSdk 36)가 필요하다. `shared/`는 `companion-shared` v0.3.0에 고정한 서브모듈이다.
+- 에뮬레이터는 `darren-mbp-16`의 `emulator-5602`(mbp16b)에서 시험한다. darren-vm에서는 띄우지 않는다.
 - 패키지 이름 `ai.hey.*`는 앱 이름이 확정될 때까지 바꾸지 않는다.
 - `docs/`에는 HEY 시절 문서가 남아 있다. 컴패니언 기준은 기획 저장소의 PRD가 정본이다.

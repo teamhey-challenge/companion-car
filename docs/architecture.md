@@ -1,5 +1,7 @@
 # hey-car 개발 계약 (2026-11-12 초판)
 
+> **2026-11-14 DV-07 단계 1:** 이 문서의 HEY 서버 계약·`TripRepository`·`CarPhase`·`RelayLink`·`transitions.json` 설명은 낡았다(코드는 지웠다). 지금 차량 앱의 서버 연결은 `core/session`의 `TalkLink`(등록 → 세션 → 티켓 WebSocket)와 `TalkRepository`(한 턴: Pleos STT → `/v1/talk` → 응답)이고, 프로토콜 정본은 `companion-shared` `packages/protocol`(v0.2.0)이다. 주행 중에도 듣기와 턴은 끊지 않는다(AC-4.4-18, AC-4.5-07). 차량 설정은 `serverUrl` 하나다. 이 문서의 나머지는 화면 작업(C1–C8) 때 다시 쓴다.
+
 이 문서는 **hey-car가 소유하는 것**만 적는다: 차량 디자인 시스템 규칙(4절), 이 저장소의 구조(5절), 차량 앱 구조(6절), 실행과 검증(7절). 제품·프로토콜·서버 계약(범위, 기획자 답변 기본값, 상태 흐름, REST·WebSocket, ID 목록, 정책값, 서버 상태 표)은 사본을 두지 않고 `hey-relay/docs/architecture.md`가 정본이다. 웹 디자인 시스템 규칙과 웹 부품 목록은 `hey-passenger-web`, 부품 목록(차량)은 이 저장소의 `docs/components.md`다. 절 번호는 분리 전 `hey-taxi` 문서와 같게 유지했고 코드 주석이 그 번호를 쓴다. 제품 설명은 기획 저장소 `darren-pleos-challenge/pleos-challenge`의 `proposal/hey/`에 있다. 바꿀 때는 이 문서를 먼저 고치고 코드를 맞춘다.
 
 ## 0~3. 제품·프로토콜 계약 (이 저장소 밖)

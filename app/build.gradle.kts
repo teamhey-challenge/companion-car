@@ -1,6 +1,3 @@
-import java.nio.file.Files
-import java.nio.file.attribute.PosixFilePermissions
-import java.security.SecureRandom
 import java.util.Properties
 
 plugins {
@@ -31,46 +28,28 @@ android {
             keyPassword = p.getProperty("keyPassword")
         }
     } else null
-    // Registration secret (relay HEY_PROVISION_SECRET). Release reads ~/.config/hey/provision.properties (600, outside the repo,
-    // created with a random value on first use, never printed); debug uses the dev default, which only a HEY_ENV=dev relay accepts.
-    val provisionFile = File(System.getProperty("user.home"), ".config/hey/provision.properties")
-    fun releaseProvisionSecret(): String {
-        if (!provisionFile.isFile) {
-            provisionFile.parentFile.mkdirs()
-            Files.createFile(provisionFile.toPath(), PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
-            val bytes = ByteArray(32).also { SecureRandom().nextBytes(it) }
-            provisionFile.writeText("secret=" + bytes.joinToString("") { "%02x".format(it) } + "\n")
-        }
-        return Properties().apply { provisionFile.inputStream().use { load(it) } }.getProperty("secret").trim()
-    }
+    // The registration secret is NOT built into the APK (the debug APK is public at /download/latest.apk): the device reads it
+    // from a 600 file at run time, see readProvisionSecret in HeyApp.kt.
+    // Companion server: https only (main network_security.xml). Override with -PserverUrl=https://...
+    val serverUrl = providers.gradleProperty("serverUrl").getOrElse("https://hey.lastmile.ltd/api")
+    require(serverUrl.startsWith("https://")) { "serverUrl must be https" }
     buildTypes {
         debug {
-            // Non-secret default relay; the emulator reaches the host at 10.0.2.2. Override: -PrelayUrl=...
-            val relay = providers.gradleProperty("relayUrl").getOrElse("http://10.0.2.2:8787")
-            buildConfigField("String", "RELAY_URL", "\"$relay\"")
-            buildConfigField("String", "PROVISION_SECRET", "\"dev\"")
+            buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
         }
         release {
-            // Cleartext is off in release (main network_security.xml), so the relay must be https. Pass the real
-            // address with -PrelayUrl=https://...; the placeholder never resolves, and D8 can still change it.
-            val relay = providers.gradleProperty("relayUrl").getOrElse("https://relay.hey.invalid")
-            require(relay.startsWith("https://")) { "release relayUrl must be https" }
-            buildConfigField("String", "RELAY_URL", "\"$relay\"")
-            buildConfigField("String", "PROVISION_SECRET", "\"${releaseProvisionSecret()}\"")
+            buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = releaseSigning
         }
-        // R8 proof for the field release: minified and shrunk exactly like release, but debug-signed and with plain http to the
-        // e2e relay on the emulator host (res in src/releaseE2e). Never shipped; `assembleRelease` is unaffected.
-        // Build: ./gradlew :app:assembleReleaseE2e [-PrelayUrl=http://10.0.2.2:8787]
+        // R8 proof for the field release: minified and shrunk exactly like release but debug-signed, with the injectable demo
+        // recognizer (src/e2e). Never shipped. Build: ./gradlew :app:assembleReleaseE2e
         create("releaseE2e") {
             initWith(getByName("release"))
             matchingFallbacks += "release"
-            val relay = providers.gradleProperty("relayUrl").getOrElse("http://10.0.2.2:8787")
-            buildConfigField("String", "RELAY_URL", "\"$relay\"")
-            buildConfigField("String", "PROVISION_SECRET", "\"dev\"")
+            buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
             signingConfig = signingConfigs.getByName("debug")
         }
     }

@@ -4,8 +4,7 @@ import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.feature.settings.SettingsScreen
 import ai.hey.session.Panel
 import ai.hey.session.SaveResult
-import ai.hey.session.VoiceState
-import ai.hey.vehicle.DrivingStatus
+import ai.hey.session.TurnState
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -32,13 +31,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             val state by repository.state.collectAsState()
             // The driver pressed the microphone without RECORD_AUDIO: ask once, the answer goes back to the session.
-            LaunchedEffect(state.voice is VoiceState.NeedsPermission) {
-                if (state.voice is VoiceState.NeedsPermission) {
+            LaunchedEffect(state.turn is TurnState.NeedsPermission) {
+                if (state.turn is TurnState.NeedsPermission) {
                     permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                 }
             }
             HeyTheme(dark = state.settings.dark) {
-                // Settings only while parked. The HEY trip screens (feature/trip) were dropped; the companion home screen replaces this placeholder.
+                // Settings only while parked. The C1-C8 companion screens replace this placeholder.
                 if (state.panel == Panel.Settings && state.isParked) {
                     BackHandler(onBack = repository::closeSettings)
                     SettingsScreen(
@@ -51,7 +50,7 @@ class MainActivity : ComponentActivity() {
                         saveFailed = state.settingsSave is SaveResult.Failed,
                     )
                 } else {
-                    CompanionHome(state.connection.toStrip(), state.driving != DrivingStatus.Parked, onSettings = state.parked?.let { p -> p::openSettings })
+                    CompanionHome(state, repository::startTalk, repository::cancelTalk, onSettings = state.parked?.let { p -> p::openSettings })
                 }
             }
         }

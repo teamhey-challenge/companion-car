@@ -6,20 +6,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-/**
- * What the relay gave this car. The driver token lives only on the device; it is never logged and never part of
- * [CarUiState].
- */
-data class Registration(
-    val carCode: String,
-    val driverToken: String,
-    val qrUrl: String,
-    val relayUrl: String,
-    val plateSuffix: String,
-) {
-    override fun toString(): String = "Registration(carCode=$carCode, relayUrl=$relayUrl, plateSuffix=$plateSuffix)"
-}
-
 /** Why the device refused to keep a value. */
 enum class SaveFailure {
     /** The platform reported that the write did not happen (disk full, storage unavailable). */
@@ -35,6 +21,10 @@ sealed interface SaveResult {
     data class Failed(val reason: SaveFailure) : SaveResult
 }
 
+/**
+ * Device-only storage. The car token (what /v1/cars/register gave this install) lives here and nowhere else; it is
+ * never logged and never part of [CarUiState].
+ */
 interface CarStorage {
     val settings: StateFlow<CarSettings>
 
@@ -44,25 +34,29 @@ interface CarStorage {
      */
     suspend fun updateSettings(transform: (CarSettings) -> CarSettings): SaveResult
 
-    /** The registration for exactly this relay address; one per relay, never overwritten by another relay's. */
-    suspend fun loadRegistration(relayUrl: String): Registration?
-    suspend fun saveRegistration(registration: Registration)
-    suspend fun forgetRegistration(relayUrl: String)
+    /** Random, stable per installation (8-64 chars of A-Za-z0-9_-): what the server keys the car token on. */
+    suspend fun installId(): String
+
+    /** The car token for exactly this server address; one per server, never overwritten by another server's. */
+    suspend fun loadCarToken(serverUrl: String): String?
+    suspend fun saveCarToken(serverUrl: String, token: String)
+    suspend fun forgetCarToken(serverUrl: String)
 }
 
-class InMemoryCarStorage(initial: CarSettings = CarSettings()) : CarStorage {
+class InMemoryCarStorage(initial: CarSettings = CarSettings(), private val install: String = "test-install-0001") : CarStorage {
     private val _settings = MutableStateFlow(initial)
-    private val registrations = HashMap<String, Registration>()
+    private val tokens = HashMap<String, String>()
     override val settings: StateFlow<CarSettings> = _settings.asStateFlow()
     override suspend fun updateSettings(transform: (CarSettings) -> CarSettings): SaveResult {
         _settings.update(transform)
         return SaveResult.Saved
     }
-    override suspend fun loadRegistration(relayUrl: String): Registration? = synchronized(registrations) { registrations[relayUrl.trimEnd('/')] }
-    override suspend fun saveRegistration(registration: Registration) {
-        synchronized(registrations) { registrations[registration.relayUrl.trimEnd('/')] = registration }
+    override suspend fun installId(): String = install
+    override suspend fun loadCarToken(serverUrl: String): String? = synchronized(tokens) { tokens[serverUrl.trimEnd('/')] }
+    override suspend fun saveCarToken(serverUrl: String, token: String) {
+        synchronized(tokens) { tokens[serverUrl.trimEnd('/')] = token }
     }
-    override suspend fun forgetRegistration(relayUrl: String) {
-        synchronized(registrations) { registrations.remove(relayUrl.trimEnd('/')) }
+    override suspend fun forgetCarToken(serverUrl: String) {
+        synchronized(tokens) { tokens.remove(serverUrl.trimEnd('/')) }
     }
 }

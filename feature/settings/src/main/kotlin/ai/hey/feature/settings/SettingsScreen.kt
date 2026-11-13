@@ -39,9 +39,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 
 /**
- * D8. Values are saved the moment they change ([onChange]), except the two text values: the plate suffix is checked as
- * it is typed and saved when valid; the relay address is only applied with its own button, because applying it
- * reconnects (and, for an address never used before, registers the car there).
+ * D8. Values are saved the moment they change ([onChange]), except the server address: it is only applied with its own
+ * button, because applying it reconnects (and, for an address never used before, registers the car there).
  * [connection], [wordmarkParty] and [clock] only dress the status strip.
  */
 @Composable
@@ -112,8 +111,7 @@ fun SettingsScreen(
                 }
                 VStack(HeyGap.G24, modifier = Modifier.grow()) {
                     HeySection(stringResource(R.string.settings_vehicle)) {
-                        PlateSetting(settings.plateSuffix) { value -> onChange { it.copy(plateSuffix = value) } }
-                        RelaySetting(settings.relayUrl) { value -> onChange { it.copy(relayUrl = value) } }
+                        ServerSetting(settings.serverUrl) { value -> onChange { it.copy(serverUrl = value) } }
                     }
                 }
             }
@@ -124,10 +122,9 @@ fun SettingsScreen(
 /** The stepper's formatter is not composable, so it gets a Context resolved by the caller. */
 private fun gapText(context: Context, seconds: Int): String = context.getString(R.string.settings_gap_value, seconds)
 
-private fun validPlate(value: String) = value.length in 1..8 && value.all(Char::isLetterOrDigit)
 
 /** http(s) with a host; anything else is rejected before it can trigger a connection. */
-private fun validRelay(value: String): Boolean {
+private fun validServer(value: String): Boolean {
     val rest = when {
         value.startsWith("http://") -> value.removePrefix("http://")
         value.startsWith("https://") -> value.removePrefix("https://")
@@ -137,41 +134,27 @@ private fun validRelay(value: String): Boolean {
     return host.length >= 3 && host.all { it.isLetterOrDigit() || it == '.' || it == '-' }
 }
 
-@Composable
-private fun PlateSetting(saved: String, onValid: (String) -> Unit) {
-    var draft by remember(saved) { mutableStateOf(saved) }
-    HeyTextField(
-        label = stringResource(R.string.settings_plate),
-        value = draft,
-        onValueChange = {
-            draft = it
-            if (validPlate(it) && it != saved) onValid(it)
-        },
-        modifier = Modifier.fillWidth(),
-        error = if (validPlate(draft)) null else stringResource(R.string.settings_plate_error),
-    )
-}
 
 @Composable
-private fun RelaySetting(saved: String, onApply: (String) -> Unit) {
+private fun ServerSetting(saved: String, onApply: (String) -> Unit) {
     var draft by remember(saved) { mutableStateOf(saved) }
     val value = draft.trim().trimEnd('/')
     // The apply button sits beside the field so the vehicle column stays two rows tall.
     HStack(HeyGap.G16, align = HeyAlign.End, modifier = Modifier.fillWidth()) {
         HeyTextField(
-            label = stringResource(R.string.settings_relay),
+            label = stringResource(R.string.settings_server),
             value = draft,
             onValueChange = { draft = it },
             modifier = Modifier.grow(),
             keyboard = HeyKeyboard.Uri,
-            placeholder = stringResource(R.string.settings_relay_hint),
-            error = if (validRelay(value)) null else stringResource(R.string.settings_relay_error),
+            placeholder = stringResource(R.string.settings_server_hint),
+            error = if (validServer(value)) null else stringResource(R.string.settings_server_error),
         )
         HeyButton(
-            stringResource(R.string.settings_relay_apply),
+            stringResource(R.string.settings_server_apply),
             { onApply(value) },
             variant = HeyButtonVariant.Secondary,
-            enabled = validRelay(value) && value != saved,
+            enabled = validServer(value) && value != saved,
         )
     }
 }
