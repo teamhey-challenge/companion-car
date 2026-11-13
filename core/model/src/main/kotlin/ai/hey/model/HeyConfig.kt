@@ -8,7 +8,7 @@ object HeyConfig {
     const val SPEECH_DEDUP_WINDOW_SEC = 60
     const val SPEECH_QUEUE_MAX = 5
 
-    /** The public companion server (reverse proxy: /api/* -> server). Overridable in D8 and with -PserverUrl at build time. */
+    /** The public companion server (reverse proxy path /api). Overridable in D8 and with -PserverUrl at build time. */
     const val DEFAULT_SERVER_URL = "https://hey.lastmile.ltd/api"
 
     /** Reconnect delays in seconds; the last value repeats. */

@@ -61,10 +61,18 @@ sealed interface ServerFrame {
 }
 
 /** Parses one text frame from the server; unknown or malformed frames give null (never throw). */
-fun parseServerFrame(raw: String): ServerFrame? = try {
+fun parseServerFrame(raw: String): ServerFrame? {
+    return try {
+        parseServerFrameOrThrow(raw)
+    } catch (e: Exception) {
+        null
+    }
+}
+
+private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
     val o = HeyJson.parseToJsonElement(raw).jsonObject
     fun s(k: String) = o[k]?.jsonPrimitive?.contentOrNull
-    when (s("type")) {
+    return when (s("type")) {
         "reply.start" -> {
             val audio = o["audio"]
             val spec = when {
@@ -88,6 +96,4 @@ fun parseServerFrame(raw: String): ServerFrame? = try {
         "error" -> ServerFrame.Error(s("code") ?: return null, s("turnId"), s("message"))
         else -> null
     }
-} catch (e: Exception) {
-    null
 }
