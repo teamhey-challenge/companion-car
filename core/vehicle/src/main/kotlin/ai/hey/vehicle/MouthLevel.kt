@@ -23,11 +23,14 @@ data class MouthThresholds(val t1: Double, val t2: Double, val t3: Double) {
     }
 
     companion object {
-        /** Speech from the character voice sits around 0.02..0.2 of full scale. */
+        /** Server PCM: RMS of a 30 ms window as a fraction of full scale. Speech from the character voice sits around 0.02..0.2. */
         val PCM = MouthThresholds(t1 = 0.02, t2 = 0.06, t3 = 0.12)
 
-        /** Pleos `onUpdatedRms` (scale not documented; calibrated on the emulator, see PleosVehicleGateway). */
-        val PLEOS = MouthThresholds(t1 = 0.02, t2 = 0.06, t3 = 0.12)
+        /**
+         * Pleos `onUpdatedRms`: the value is on a 16-bit sample scale (one emulator reading was 5526), not 0..1. Starting edges,
+         * to be tuned from the raw values the engine logs (`pleos rms raw=`).
+         */
+        val PLEOS = MouthThresholds(t1 = 800.0, t2 = 2500.0, t3 = 5000.0)
     }
 }
 

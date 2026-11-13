@@ -150,6 +150,7 @@ class TalkRepository(
             when (frame) {
                 is ServerFrame.ReplyStart -> if (frame.turnId == turnId) {
                     replyAudio = frame.audio
+                    HeyLog.i(TAG, "reply.start audio=${frame.audio} ${clock() - turnEndSentAt} ms after turn.end")
                     audio?.begin(frame.audio)
                     _state.update { it.copy(turn = TurnState.Replying) }
                 }
