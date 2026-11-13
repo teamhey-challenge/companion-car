@@ -102,6 +102,9 @@ dependencies {
     implementation(libs.compose.runtime)
     implementation(libs.compose.ui)
     implementation(libs.activity.compose)
+    // Go/No-go spike (debug only): GngActivity talks to the Pleos STT/TTS directly.
+    debugImplementation(libs.pleos.stt)
+    debugImplementation(libs.pleos.tts)
     testImplementation(libs.junit)
 }
 
