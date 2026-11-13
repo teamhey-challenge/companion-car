@@ -1,13 +1,11 @@
 package ai.hey.model
 
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -20,126 +18,75 @@ val HeyJson: Json = Json {
     explicitNulls = false
 }
 
-// ---------------------------------------------------------------- client -> server payloads (car side)
-
-@Serializable data class JoinDecision(val joinRequestId: String)
-@Serializable data class RouteFailedData(val code: String)
-@Serializable
-data class DropoffProposeData(
-    val point: LatLng,
-    val label: String,
-    val kind: DropoffKind? = null,
-    val entranceType: EntranceType? = null,
-    val ref: String? = null,
-    val street: StreetName? = null,
-    val reasonId: DropoffReasonId? = null,
-) {
-    companion object {
-        /** The structured fields of a candidate go back to the relay unchanged so passengers get localized labels. */
-        fun of(candidate: DropoffCandidate, reasonId: DropoffReasonId?) = DropoffProposeData(
-            point = candidate.point,
-            label = candidate.label,
-            kind = candidate.kind,
-            entranceType = candidate.entranceType,
-            ref = candidate.ref,
-            street = candidate.street,
-            reasonId = reasonId,
-        )
-    }
-}
-@Serializable data class RequestSpokenData(val requestId: String)
-@Serializable data class DrivingStateData(val driving: Boolean)
-
 /**
- * `reply.send`: a quick-reply button or the driver's confirmed Korean voice sentence. Encoded flat with a `kind` tag:
- * `{kind:"button",replyId,requestId?}` / `{kind:"voice",textKo,requestId?}`.
+ * The /v1/talk wire contract (companion-shared packages/protocol v0.2.0, developer.md 6.2): text frames are JSON with a
+ * `type`, binary frames are server -> app TTS audio only.
  */
-@Serializable
-data class ReplySendData(
-    val kind: ReplyKind,
-    val requestId: String? = null,
-    val replyId: QuickReplyId? = null,
-    val textKo: String? = null,
-) {
-    companion object {
-        fun button(requestId: String?, replyId: QuickReplyId) = ReplySendData(ReplyKind.Button, requestId, replyId = replyId)
-        fun voice(requestId: String?, textKo: String) = ReplySendData(ReplyKind.Voice, requestId, textKo = textKo)
-    }
+object Wire {
+    const val PROTOCOL_V = 1
+    const val MAX_TEXT_CHARS = 500
+    const val TRIGGER_PTT = "ptt"
+    const val TRIGGER_AFTER_PROACTIVE = "listen_after_proactive"
 }
 
-/** `{}` payload (card.recheck, trip.arrive, trip.end, invite.rotate). */
-@Serializable class EmptyData
+/** App -> server text frames, already encoded. */
+object ClientFrames {
+    fun hello(appVersion: String): String = obj { put("type", "hello"); put("v", Wire.PROTOCOL_V); put("appVersion", appVersion) }
 
-/** First frame on the socket, before any envelope: `{ type: "auth", token, protocol }`. Not an envelope (no id/ts/data). */
-@Serializable
-data class AuthMessage(val type: String = TYPE, val token: String, val protocol: String) {
-    companion object { const val TYPE = "auth" }
+    fun turnStart(turnId: String, trigger: String = Wire.TRIGGER_PTT): String =
+        obj { put("type", "turn.start"); put("turnId", turnId); put("trigger", trigger) }
+
+    fun text(turnId: String, text: String): String = obj { put("type", "text"); put("turnId", turnId); put("text", text) }
+
+    fun turnEnd(turnId: String): String = obj { put("type", "turn.end"); put("turnId", turnId) }
+
+    fun turnCancel(turnId: String): String = obj { put("type", "turn.cancel"); put("turnId", turnId) }
+
+    private fun obj(build: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): String = buildJsonObject(build).toString()
 }
 
-/** `invite.rotate` carries `{}`. */
-typealias InviteRotate = EmptyData
-
-/** Message types the car sends. */
-object ClientType {
-    const val JOIN_APPROVE = "join.approve"
-    const val JOIN_DECLINE = "join.decline"
-    const val CARD_RECHECK = "card.recheck"
-    const val ROUTE_STARTED = "route.started"
-    const val ROUTE_FAILED = "route.failed"
-    const val TRIP_PROGRESS = "trip.progress"
-    const val DROPOFF_PROPOSE = "dropoff.propose"
-    const val REQUEST_SPOKEN = "request.spoken"
-    const val REPLY_SEND = "reply.send"
-    const val DRIVING_STATE = "driving.state"
-    const val TRIP_ARRIVE = "trip.arrive"
-    const val TRIP_END = "trip.end"
+/** `reply.start.audio`: PCM s16le from the server, or `none` (the car reads the text with the Pleos TTS). */
+sealed interface AudioSpec {
+    data object None : AudioSpec
+    data class Pcm(val sampleRate: Int, val channels: Int) : AudioSpec
 }
 
-/** `{ type, id, ts, data }` ready to put on the socket. */
-fun envelopeJson(type: String, id: String, ts: Long, data: JsonElement): String =
-    buildJsonObject {
-        put("type", type)
-        put("id", id)
-        put("ts", ts)
-        put("data", data)
-    }.toString()
-
-inline fun <reified T> envelopeOf(type: String, id: String, ts: Long, data: T): String =
-    envelopeJson(type, id, ts, HeyJson.encodeToJsonElement(data))
-
-// ---------------------------------------------------------------- server -> car
-
-sealed interface ServerMessage {
-    val id: String
-
-    /** [ts] is the relay's clock when it built the snapshot; the car uses it to correct its own clock for countdowns. */
-    data class Snapshot(override val id: String, val view: CarView, val ts: Long? = null) : ServerMessage
-    data class Say(override val id: String, val data: SayData) : ServerMessage
-    data class Notice(override val id: String, val data: NoticeData) : ServerMessage
-    data class Error(override val id: String, val data: ErrorData) : ServerMessage
-    data class Ack(override val id: String) : ServerMessage
+/** Server -> app text frames. */
+sealed interface ServerFrame {
+    data class ReplyStart(val turnId: String, val audio: AudioSpec) : ServerFrame
+    data class ReplyDelta(val turnId: String, val text: String) : ServerFrame
+    data class ReplyEnd(val turnId: String, val text: String, val firstTokenMs: Long?, val totalMs: Long) : ServerFrame
+    data class Proactive(val id: String, val reason: String) : ServerFrame
+    data class Error(val code: String, val turnId: String?, val message: String?) : ServerFrame
 }
 
-/** Parses one text frame from the relay; unknown or malformed frames give null (never throw). */
-fun parseServerMessage(raw: String): ServerMessage? = try {
-    val obj = HeyJson.parseToJsonElement(raw).jsonObject
-    val type = obj.getValue("type").jsonPrimitive.content
-    val id = obj.getValue("id").jsonPrimitive.content
-    if (type == "ack") {
-        ServerMessage.Ack(id)
-    } else {
-        val data = obj.getValue("data")
-        when (type) {
-            "trip.snapshot" -> {
-                // The relay sends role-specific snapshots; a car only ever receives role "car".
-                val role = (data as? JsonObject)?.get("role")?.jsonPrimitive?.contentOrNull
-                if (role == "car") ServerMessage.Snapshot(id, HeyJson.decodeFromJsonElement<CarView>(data), obj["ts"]?.jsonPrimitive?.longOrNull) else null
+/** Parses one text frame from the server; unknown or malformed frames give null (never throw). */
+fun parseServerFrame(raw: String): ServerFrame? = try {
+    val o = HeyJson.parseToJsonElement(raw).jsonObject
+    fun s(k: String) = o[k]?.jsonPrimitive?.contentOrNull
+    when (s("type")) {
+        "reply.start" -> {
+            val audio = o["audio"]
+            val spec = when {
+                audio is JsonPrimitive && audio.contentOrNull == "none" -> AudioSpec.None
+                audio is JsonObject && audio["format"]?.jsonPrimitive?.contentOrNull == "pcm_s16le" -> AudioSpec.Pcm(
+                    sampleRate = audio["sampleRate"]?.jsonPrimitive?.intOrNull ?: return null,
+                    channels = audio["channels"]?.jsonPrimitive?.intOrNull ?: 1,
+                )
+                else -> return null
             }
-            "say" -> ServerMessage.Say(id, HeyJson.decodeFromJsonElement(data))
-            "notice" -> ServerMessage.Notice(id, HeyJson.decodeFromJsonElement(data))
-            "error" -> ServerMessage.Error(id, HeyJson.decodeFromJsonElement(data))
-            else -> null
+            ServerFrame.ReplyStart(s("turnId") ?: return null, spec)
         }
+        "reply.delta" -> ServerFrame.ReplyDelta(s("turnId") ?: return null, s("text") ?: return null)
+        "reply.end" -> ServerFrame.ReplyEnd(
+            turnId = s("turnId") ?: return null,
+            text = s("text") ?: return null,
+            firstTokenMs = o["firstTokenMs"]?.jsonPrimitive?.longOrNull,
+            totalMs = o["totalMs"]?.jsonPrimitive?.longOrNull ?: 0,
+        )
+        "proactive" -> ServerFrame.Proactive(s("id") ?: return null, s("reason").orEmpty())
+        "error" -> ServerFrame.Error(s("code") ?: return null, s("turnId"), s("message"))
+        else -> null
     }
 } catch (e: Exception) {
     null

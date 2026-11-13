@@ -2,27 +2,62 @@ package ai.hey.car
 
 import ai.hey.model.HeyLog
 import ai.hey.session.CarStorage
+import ai.hey.session.HttpTalkApi
 import ai.hey.session.PrefsCarStorage
-import ai.hey.session.TripRepository
+import ai.hey.session.TalkLink
+import ai.hey.session.TalkRepository
+import ai.hey.session.newHttpClient
 import ai.hey.vehicle.PleosVehicleGateway
 import ai.hey.vehicle.PleosVoiceInput
-import ai.hey.vehicle.VoiceInput
 import ai.hey.vehicle.VehicleGateway
+import ai.hey.vehicle.VoiceInput
 import android.app.Application
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import java.io.File
+
+/**
+ * The registration secret is NOT in the APK (it is public). The demo device carries it in a file that only the app can
+ * read: `<filesDir>/provision.secret` (mode 600; install it with `run-as` on debug builds) or, where there is no
+ * run-as, `<externalFilesDir>/provision.secret` (`adb push`). The first non-blank line is the secret. Never logged.
+ */
+internal fun readProvisionSecret(app: Application): String? =
+    listOfNotNull(app.filesDir, app.getExternalFilesDir(null))
+        .map { File(it, PROVISION_FILE) }
+        .firstOrNull { it.isFile }
+        ?.let { runCatching { it.readLines().firstOrNull { line -> line.isNotBlank() }?.trim() }.getOrNull() }
+
+internal const val PROVISION_FILE = "provision.secret"
 
 /** Manual DI: one graph per process, built lazily so the boot receiver and the activity share it. */
 class AppGraph(private val app: Application) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val storage: CarStorage by lazy { PrefsCarStorage(app, BuildConfig.RELAY_URL) }
+    val storage: CarStorage by lazy { PrefsCarStorage(app, BuildConfig.SERVER_URL) }
     val vehicle: VehicleGateway by lazy { PleosVehicleGateway(app, scope) }
+
     /** Pleos SpeechToText (ON_DEVICE, Locale.KOREA); the debug/e2e builds swap in the injectable demo source. */
     val voice: VoiceInput by lazy { demoVoiceOrNull(app) ?: PleosVoiceInput(app) }
-    val repository: TripRepository by lazy {
-        TripRepository(scope, vehicle, storage, provisionSecret = BuildConfig.PROVISION_SECRET, voiceInput = voice).also { it.start() }
+    val repository: TalkRepository by lazy {
+        val http = newHttpClient()
+        TalkRepository(
+            scope = scope,
+            vehicle = vehicle,
+            storage = storage,
+            voiceInput = voice,
+            transport = { listener ->
+                TalkLink(
+                    api = HttpTalkApi(http),
+                    http = http,
+                    storage = storage,
+                    scope = scope,
+                    listener = listener,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    provisionSecret = { readProvisionSecret(app) },
+                )
+            },
+        ).also { it.start() }
     }
 }
 

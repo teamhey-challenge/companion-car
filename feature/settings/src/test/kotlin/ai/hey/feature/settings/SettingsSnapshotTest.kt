@@ -23,10 +23,10 @@ private fun device(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
 private class Shot(val settings: CarSettings, val saveFailed: Boolean = false)
 
 private val shots: List<Pair<String, Shot>> = listOf(
-    "d8-settings" to Shot(CarSettings(plateSuffix = "1234")),
-    "d8-settings-changed" to Shot(CarSettings(speechGapSec = 30, plateSuffix = "1234", relayUrl = "https://hey-relay.example.com", dark = false)),
-    "d8-settings-min-gap" to Shot(CarSettings(speechGapSec = 4, plateSuffix = "서울12가3456")),
-    "d8-settings-save-failed" to Shot(CarSettings(speechGapSec = 12, plateSuffix = "1234"), saveFailed = true),
+    "d8-settings" to Shot(CarSettings()),
+    "d8-settings-changed" to Shot(CarSettings(speechGapSec = 30, serverUrl = "https://example.com/api", dark = false)),
+    "d8-settings-min-gap" to Shot(CarSettings(speechGapSec = 4)),
+    "d8-settings-save-failed" to Shot(CarSettings(speechGapSec = 12), saveFailed = true),
 )
 
 private fun Paparazzi.recordAll() {

@@ -451,7 +451,7 @@ object Stories {
         add(part("text-field") {
             VStack(HeyGap.G16) {
                 ai.hey.designsystem.component.HeyTextField("차량 번호 뒤 4자리", "1234", {}, Modifier.fillMaxWidth())
-                ai.hey.designsystem.component.HeyTextField("중계 서버 주소", "", {}, Modifier.fillMaxWidth(), placeholder = "http://10.0.2.2:8787")
+                ai.hey.designsystem.component.HeyTextField("서버 주소", "", {}, Modifier.fillMaxWidth(), placeholder = "https://서버주소/api")
                 ai.hey.designsystem.component.HeyTextField("차량 번호 뒤 4자리", "12가34567890", {}, Modifier.fillMaxWidth(), error = "글자나 숫자 1~8자로 써 주세요")
                 ai.hey.designsystem.component.HeyTextField("차량 번호 뒤 4자리", "1234", {}, Modifier.fillMaxWidth(), enabled = false)
                 ai.hey.designsystem.component.HeyTextField("중계 서버 주소", GalleryData.LONG_ADDRESS_KO + GalleryData.LONG_ADDRESS_KO, {}, Modifier.fillMaxWidth())
