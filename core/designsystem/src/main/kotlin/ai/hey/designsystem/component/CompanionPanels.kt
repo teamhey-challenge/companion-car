@@ -135,11 +135,14 @@ fun MemoryRow(
             .clip(shape)
             .background(surface, shape)
             .heightIn(min = HeyTokens.Size.touchCarPrimary)
-            .padding(HeyTokens.Space.s24),
+            // Mockup C6: card top to label top 39 dp (was 27), card pitch 198 dp (was 194).
+            .padding(start = HeyTokens.Space.s24, end = HeyTokens.Space.s24, top = HeyTokens.Space.s32 + 4.dp, bottom = HeyTokens.Space.s16),
     ) {
-        VStack(HeyGap.G16, modifier = Modifier.grow()) {
-            InkText(kind, colors.fgDefault, size = 22.sp, maxLines = 1)
-            InkText(text, colors.fgDefault, size = 28.sp, maxLines = 3)
+        VStack(HeyGap.G24, modifier = Modifier.grow()) {
+            VStack(HeyGap.G8) {
+                InkText(kind, colors.fgDefault, size = 22.sp, maxLines = 1)
+                InkText(text, colors.fgDefault, size = 28.sp, maxLines = 3)
+            }
             if (date != null) InkText(date, colors.fgMuted, size = 20.sp, maxLines = 1)
         }
         HeyIconButton(HeyIcons.Trash, deleteLabel, onDelete, enabled = enabled, bare = true)

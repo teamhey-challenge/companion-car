@@ -411,7 +411,7 @@ fun PageHeading(
     // Mockup C1/C2/C6/C7: title→subtitle 32 dp and subtitle→content +16 dp; the hero greeting keeps its tight stack.
     VStack(
         if (hero) HeyGap.G8 else HeyGap.G24,
-        modifier = if (hero) modifier else modifier.padding(bottom = HeyTokens.Space.s16),
+        modifier = if (hero) modifier else modifier.padding(bottom = HeyTokens.Space.s8 - 2.dp),
     ) {
         // Design: headings are regular weight (450) with -0.055em tracking (`.welcome h1`, `.page-heading h1`).
         InkText(
@@ -502,7 +502,13 @@ fun ToggleRow(
                 } else it
             }
             .heightIn(min = HeyTokens.Size.touchCarPrimary)
-            .padding(HeyTokens.Space.s24),
+            .padding(
+                start = if (surface == ToggleSurface.Plain) 0.dp else HeyTokens.Space.s24,
+                end = if (surface == ToggleSurface.Plain) 0.dp else HeyTokens.Space.s24,
+                // Mockup C7: the plain row's text sits 72 dp under the chips; card rows keep 24.
+                top = if (surface == ToggleSurface.Plain) HeyTokens.Space.s32 + 4.dp else HeyTokens.Space.s24,
+                bottom = HeyTokens.Space.s24,
+            ),
     ) {
         VStack(HeyGap.G16, modifier = Modifier.grow()) {
             InkText(
