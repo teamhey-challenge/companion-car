@@ -22,10 +22,10 @@ fun interface Connectivity {
  * "다시 연결" button. Times come from [clock] (ms, monotonic) so tests run on a fake one.
  * Logs `link: reconnect trigger=… after … ms` and `link: online after … ms`.
  *
- * A lost network marks the link down, because a socket on the dead network can look open for a long time. The first
- * "network is back" event after a loss stamps [networkBackAt]; an attempt that began before that stamp ran on the
- * dead network and is stale ([TalkLink] drops it). Later events of the same return (available, then validated) only
- * cut a pause short.
+ * A lost network marks the link down at once (a socket on the dead network can look open for a ping interval, PLEOS-145)
+ * and tells [onNetworkGone] so the link drops that socket. While it is gone the pause has no timeout: an attempt now
+ * could only fail, so only the network coming back (or the button) ends it. The first "network is back" event after a
+ * loss stamps [networkBackAt]; an attempt that began before that stamp ran on the dead network and is stale.
  */
 class ReconnectPacer(
     private val clock: () -> Long,
@@ -36,6 +36,10 @@ class ReconnectPacer(
 
     /** Triggers that arrived while the link is down; [TalkLink] also listens while an attempt is in flight. */
     val events: ReceiveChannel<ReconnectTrigger> get() = wake
+
+    /** Called when the default network goes, on the callback thread. */
+    @Volatile var onNetworkGone: (() -> Unit)? = null
+
     private var watching: AutoCloseable? = null
 
     @Volatile private var downSince = clock()
@@ -55,7 +59,7 @@ class ReconnectPacer(
         lost = false
         networkBackAt = Long.MIN_VALUE
         watching?.close()
-        watching = connectivity.watch({ trigger(ReconnectTrigger.Network) }, ::onNetworkLost)
+        watching = connectivity.watch({ trigger(ReconnectTrigger.Network) }, ::onLost)
     }
 
     fun stop() {
@@ -63,10 +67,15 @@ class ReconnectPacer(
         watching = null
     }
 
-    private fun onNetworkLost() {
+    private fun onLost() {
+        HeyLog.i(TAG, "link: network lost")
         lost = true
         markDown()
+        onNetworkGone?.invoke()
     }
+
+    /** True while the default network is gone: nothing can connect. */
+    val networkGone: Boolean get() = lost
 
     /** Asks for an attempt now. Ignored while the link is online and the network never went: there is nothing to cut short. */
     fun trigger(trigger: ReconnectTrigger) {
@@ -94,7 +103,11 @@ class ReconnectPacer(
 
     /** Waits out the backoff for [failures] failed attempts in a row, or until a trigger; returns what ended it. */
     suspend fun pause(failures: Int): ReconnectTrigger {
-        val trigger = withTimeoutOrNull(backoffMillis(failures, backoffSec)) { wake.receive() } ?: ReconnectTrigger.Backoff
+        val trigger = if (lost) {
+            wake.receive()
+        } else {
+            withTimeoutOrNull(backoffMillis(failures, backoffSec)) { wake.receive() } ?: ReconnectTrigger.Backoff
+        }
         HeyLog.i(TAG, "link: reconnect trigger=${trigger.label} after ${clock() - downSince} ms")
         return trigger
     }

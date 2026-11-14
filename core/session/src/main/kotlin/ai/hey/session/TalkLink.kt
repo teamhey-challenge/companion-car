@@ -7,6 +7,7 @@ import ai.hey.model.ClientFrames
 import ai.hey.model.ServerFrame
 import ai.hey.model.parseServerFrame
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -141,8 +142,12 @@ class TalkLink(
     @Volatile private var socket: WebSocket? = null
     private var loop: Job? = null
 
+    /** Fired by the pacer when the default network goes; ends the attempt (or open socket) at once. */
+    private val gone = Channel<Unit>(Channel.CONFLATED)
+
     override fun connect(serverUrl: String) {
         close()
+        pacer.onNetworkGone = { gone.trySend(Unit) }
         pacer.start()
         loop = scope.launch { run(serverUrl) }
     }
@@ -152,11 +157,21 @@ class TalkLink(
     private companion object {
         /** A button press drops an attempt only when it has hung this long (a fresh one is already doing what the button asks). */
         const val BUTTON_DROPS_AFTER_MS = 2_000L
+
+        /** A "network up/validated" event drops an attempt that has hung this long: it was started while the network was not ready. */
+        const val NETWORK_DROPS_AFTER_MS = 1_500L
     }
 
     private suspend fun run(serverUrl: String) {
         var failures = 0
         while (scope.isActive) {
+            if (pacer.networkGone) {
+                // No network: nothing to try. C8 offline now; the pause ends when the network (or the button) is back.
+                listener.onConnection(ConnectionStatus.RegistrationFailed)
+                pacer.pause(failures.coerceAtLeast(1))
+                continue
+            }
+            gone.tryReceive()
             listener.onConnection(if (failures == 0) ConnectionStatus.Connecting else ConnectionStatus.Reconnecting)
             val startedAt = clock()
             val attempt = scope.async { attempt(serverUrl) }
@@ -164,11 +179,17 @@ class TalkLink(
             while (opened == null) {
                 select<Unit> {
                     attempt.onAwait { opened = it }
+                    gone.onReceive {
+                        HeyLog.i(TAG, "link: network lost, attempt dropped after ${clock() - startedAt} ms")
+                        attempt.cancel()
+                        socket?.cancel()
+                        opened = false
+                    }
                     pacer.events.onReceive { trigger ->
                         val now = clock()
                         // Stale: it began before the network came back (it sits on the dead network), or a press found it hung.
                         val stale = when (trigger) {
-                            ReconnectTrigger.Network -> startedAt < pacer.networkBackAt
+                            ReconnectTrigger.Network -> startedAt < pacer.networkBackAt || now - startedAt >= NETWORK_DROPS_AFTER_MS
                             ReconnectTrigger.Button -> now - startedAt >= BUTTON_DROPS_AFTER_MS
                             ReconnectTrigger.Backoff -> false
                         }
@@ -195,10 +216,15 @@ class TalkLink(
         val closed = CompletableDeferred<Unit>()
         var opened = false
         try {
+            // A pooled connection from before the network went would hang until its read timeout: every attempt starts fresh.
+            http.connectionPool.evictAll()
+            val t0 = clock()
             val session = openSession(serverUrl)
+            val ticketMs = clock() - t0
             socket = http.newWebSocket(Request.Builder().url(api.socketUrl(serverUrl, session.wsTicket)).build(), object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     opened = true
+                    HeyLog.i(TAG, "link: ticket ${ticketMs} ms, socket open ${clock() - t0 - ticketMs} ms")
                     webSocket.send(ClientFrames.hello(appVersion))
                     pacer.markOnline()
                     listener.onConnection(ConnectionStatus.Online)

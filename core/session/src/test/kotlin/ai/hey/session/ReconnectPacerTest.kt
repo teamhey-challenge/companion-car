@@ -111,4 +111,20 @@ class ReconnectPacerTest {
         pacer.markOnline()
         assertEquals("link: online after 20000 ms", logs.last())
     }
+
+    @Test fun `while the network is gone the pause has no timeout and ends only when it returns`() = runTest {
+        val net = FakeConnectivity()
+        var gone = 0
+        val pacer = ReconnectPacer({ currentTime }, net).also { it.onNetworkGone = { gone++ }; it.start() }
+        net.networkGoes()
+        assertEquals(1, gone)
+        assertTrue(pacer.networkGone)
+        val result = async { pacer.pause(5) }
+        delay(60_000) // far past the 15 s backoff
+        assertFalse(result.isCompleted)
+        net.networkReturns()
+        assertEquals(ReconnectTrigger.Network, result.await())
+        assertFalse(pacer.networkGone)
+        assertEquals(60_000L, pacer.networkBackAt)
+    }
 }
