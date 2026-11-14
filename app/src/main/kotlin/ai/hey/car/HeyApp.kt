@@ -54,7 +54,7 @@ class AppGraph(private val app: Application) {
 
     /** Pleos SpeechToText (ON_DEVICE, Locale.KOREA); the debug/e2e builds wrap it so adb can inject a sentence (default: real mic). */
     val voice: VoiceInput by lazy { demoVoiceOrNull(app) ?: PleosVoiceInput(app) }
-    val companion: CompanionRepository by lazy { CompanionRepository(scope, HttpCompanionApi(storage, newHttpClient()), storage) }
+    val companion: CompanionRepository by lazy { CompanionRepository(scope, HttpCompanionApi(storage, newHttpClient(), AndroidConnectivity(app)), storage) }
     val repository: TalkRepository by lazy {
         val http = newHttpClient()
         TalkRepository(
