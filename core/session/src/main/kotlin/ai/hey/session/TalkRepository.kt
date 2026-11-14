@@ -440,6 +440,11 @@ class TalkRepository(
         if (granted) listenOnce(TurnSource.Ptt) else _state.update { it.copy(turn = TurnState.Idle, error = TurnError.PermissionDenied) }
     }
 
+    /** C1: the microphone was refused after the consent. C8 (microphone) shows with its "권한 열기" button (planner F1). */
+    fun microphoneDeniedAtOnboarding() {
+        _state.update { it.copy(error = TurnError.PermissionDenied) }
+    }
+
     // ---------------------------------------------------------------- local UI state
 
     private inner class Hands : ParkedCommands() {

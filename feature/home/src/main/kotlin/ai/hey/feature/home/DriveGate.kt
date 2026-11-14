@@ -39,7 +39,8 @@ class FaultAnnouncer(private val speak: (CarFault) -> Unit) {
 
     fun onFault(fault: CarFault?, parked: Boolean) {
         if (fault == null) { last = null; return }
-        if (parked) return // parked: the banner says it, no voice
+        // Parked: the banner says it. Exception: a turn that heard nothing is the character's own line (AC-4.4-06), spoken in any state.
+        if (parked && fault != CarFault.Recognition) return
         if (fault == last) return
         last = fault
         // Connecting is a transient state of a healthy reconnect, not worth interrupting a drive for.

@@ -48,10 +48,15 @@ class MainActivity : ComponentActivity() {
         val repository = graph.repository
         setContent {
             val state by repository.state.collectAsState()
-            // The driver pressed the microphone without RECORD_AUDIO: ask once, the answer goes back to the session.
-            LaunchedEffect(state.turn is TurnState.NeedsPermission) {
-                if (state.turn is TurnState.NeedsPermission) {
+            // The driver pressed the microphone without RECORD_AUDIO: ask once while parked, the answer goes back to the
+            // session. While driving no permission screen opens (PRD 4.5.7): the press ends in the Microphone fault, which
+            // is announced by voice only.
+            val needsMic = state.turn is TurnState.NeedsPermission
+            LaunchedEffect(needsMic, state.isParked) {
+                if (needsMic && state.isParked) {
                     permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+                } else if (needsMic) {
+                    repository.voicePermissionResult(false)
                 }
             }
             val ui = homeUi(state)
@@ -87,7 +92,10 @@ class MainActivity : ComponentActivity() {
                         OnboardingRoute(
                             companion = graph.companion,
                             talk = repository,
-                            onMicDenied = { nav.navigate(Routes.Pair) },
+                            onMicDenied = {
+                                repository.microphoneDeniedAtOnboarding()
+                                nav.navigate(Routes.Home) { popUpTo(nav.graph.id) { inclusive = true } }
+                            },
                             onDone = { nav.navigate(Routes.Pair) },
                             onExit = { finish() },
                         )
