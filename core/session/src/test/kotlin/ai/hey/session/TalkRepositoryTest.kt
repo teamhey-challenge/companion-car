@@ -306,6 +306,36 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
+    @Test fun `PLEOS-79 a repeating voice answers a question once and never loops`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "같은 문장")
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        replyWith(rig, "뭐 할래?")
+        testScheduler.runCurrent()
+        assertEquals(TurnSource.AutoListen, rig.repo.state.value.source)
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        assertEquals(2, voice.listens)
+        replyWith(rig, "또 물어볼까?") // the answer to the auto listen is again a question
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(2, voice.listens) // no third listening
+        cs.cancel()
+    }
+
+    @Test fun `the demo voice hears nothing in the automatic listening`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "같은 문장", silentAfterReply = true)
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        replyWith(rig, "뭐 할래?")
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertNull(rig.repo.state.value.error)
+        assertEquals(1, rig.transport.sent.count { it.contains("turn.start") })
+        cs.cancel()
+    }
+
     @Test fun `no auto listen while navigation is guiding`() = runTest {
         val cs = rigScope(testScheduler)
         val voice = ScriptedVoiceInput(text = "안녕")

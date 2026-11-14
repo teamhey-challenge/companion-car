@@ -32,7 +32,7 @@ internal object DemoVoice {
         } catch (e: Exception) {
             null
         }
-        val input = ScriptedVoiceInput(listenMillis = LISTEN_MS, text = fixture)
+        val input = ScriptedVoiceInput(listenMillis = LISTEN_MS, text = fixture, silentAfterReply = true)
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 val graph = (app as HeyApp).graph

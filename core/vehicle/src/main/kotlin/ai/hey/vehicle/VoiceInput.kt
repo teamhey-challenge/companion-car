@@ -33,6 +33,9 @@ interface VoiceInput {
      */
     fun finishListening() = Unit
 
+    /** The automatic listening that follows a question (F4-F6); real recognizers hear the driver, so it is the same as [listen]. */
+    suspend fun listenAfterReply(): VoiceResult = listen()
+
     fun release()
 }
 
@@ -47,6 +50,8 @@ class ScriptedVoiceInput(
     private val listenMillis: Long = 0,
     /** The sentence to return; null or blank is [VoiceResult.NoSpeech]. */
     @Volatile var text: String? = null,
+    /** The demo voice repeats one fixed sentence; the automatic listening after a question must hear nothing, or it answers itself in a loop. */
+    private val silentAfterReply: Boolean = false,
 ) : VoiceInput {
     @Volatile var listens = 0
         private set
@@ -59,6 +64,14 @@ class ScriptedVoiceInput(
         if (listenMillis > 0) delay(listenMillis)
         val heard = text?.trim().orEmpty()
         return if (heard.isEmpty()) VoiceResult.NoSpeech else VoiceResult.Text(heard)
+    }
+
+    override suspend fun listenAfterReply(): VoiceResult {
+        if (!silentAfterReply) return listen()
+        listens++
+        if (!permission) return VoiceResult.PermissionDenied
+        if (listenMillis > 0) delay(listenMillis)
+        return VoiceResult.NoSpeech
     }
 
     override fun release() = Unit

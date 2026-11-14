@@ -268,6 +268,11 @@ class TalkRepository(
         val s = _state.value
         val question = replyText.toString().trimEnd().let { it.endsWith("?") || it.endsWith("？") }
         if (!question || s.turn != TurnState.Idle) return
+        if (s.source == TurnSource.AutoListen) {
+            // PLEOS-79: at most one automatic listening per driver-started turn, or a repeating voice loops forever.
+            HeyLog.i(TAG, "talk ignored: auto-listen skipped, the turn was itself an auto-listen")
+            return
+        }
         val why = when {
             s.needsOnboarding -> "consent not recorded"
             !s.online -> "offline"
@@ -387,7 +392,7 @@ class TalkRepository(
         }
         voiceJob = scope.launch {
             val result = if (source == TurnSource.AutoListen) {
-                withTimeoutOrNull(autoListenMillis) { voiceInput.listen() } ?: VoiceResult.NoSpeech
+                withTimeoutOrNull(autoListenMillis) { voiceInput.listenAfterReply() } ?: VoiceResult.NoSpeech
             } else {
                 voiceInput.listen()
             }
