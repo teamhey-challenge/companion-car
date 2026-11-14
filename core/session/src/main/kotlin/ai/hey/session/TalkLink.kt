@@ -75,14 +75,16 @@ class HttpTalkApi(private val http: OkHttpClient = newHttpClient()) : TalkApi {
         val body = buildJsonObject { put("installId", installId) }.toString().toRequestBody(json)
         val request = Request.Builder().url(endpoint(serverUrl, "v1/cars/register")).post(body)
             .header("X-Provision-Secret", provisionSecret).build()
-        return HeyJson.parseToJsonElement(call(request)).jsonObject.getValue("carToken").jsonPrimitive.content
+        return decodeBody { HeyJson.parseToJsonElement(call(request)).jsonObject.getValue("carToken").jsonPrimitive.content }
     }
 
     override suspend fun session(serverUrl: String, carToken: String): TalkSession {
         val request = Request.Builder().url(endpoint(serverUrl, "v1/sessions")).post("{}".toRequestBody(json))
             .header("Authorization", "Bearer $carToken").build()
-        val o = HeyJson.parseToJsonElement(call(request)).jsonObject
-        return TalkSession(o.getValue("sessionId").jsonPrimitive.content, o.getValue("wsTicket").jsonPrimitive.content)
+        return decodeBody {
+            val o = HeyJson.parseToJsonElement(call(request)).jsonObject
+            TalkSession(o.getValue("sessionId").jsonPrimitive.content, o.getValue("wsTicket").jsonPrimitive.content)
+        }
     }
 
     override fun socketUrl(serverUrl: String, ticket: String): String =

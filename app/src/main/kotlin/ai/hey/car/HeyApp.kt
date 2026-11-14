@@ -22,6 +22,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import java.io.File
+import ai.hey.model.SpeechPriority
+import ai.hey.vehicle.VehicleEvent
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+
+private const val FAULT_SPEECH_MAX_MILLIS = 15_000L
 
 /**
  * The registration secret is NOT in the APK (it is public). The demo device carries it in a file that only the app can
@@ -67,6 +75,31 @@ class AppGraph(private val app: Application) {
             companion = companion,
             speechFocus = AudioFocusGateAndroid(app),
         ).also { it.start() }
+    }
+
+    private val faultFocus by lazy { AudioFocusGateAndroid(app) }
+
+    /**
+     * PLEOS-133: the driving fault line never talks over another app (D-14). It is spoken only when navigation is not
+     * guiding and the transient audio focus is granted; a refusal or a later loss drops it without a retry.
+     */
+    fun speakFault(text: String, id: String) {
+        if (vehicle.signals.value.naviGuiding) {
+            HeyLog.i("Fault", "fault line skipped: navigation guiding")
+            return
+        }
+        if (!faultFocus.request { vehicle.stopSpeech() }) {
+            HeyLog.i("Fault", "fault line skipped: audio focus refused")
+            faultFocus.abandon()
+            return
+        }
+        scope.launch {
+            val end = async(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) { vehicle.events.first { (it is VehicleEvent.SpeechDone && it.speechId == id) || (it is VehicleEvent.SpeechDropped && it.speechId == id) } }
+            vehicle.speak(text, SpeechPriority.High, id)
+            withTimeoutOrNull(FAULT_SPEECH_MAX_MILLIS) { end.await() }
+            end.cancel()
+            faultFocus.abandon()
+        }
     }
 }
 
