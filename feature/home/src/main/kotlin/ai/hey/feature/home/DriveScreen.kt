@@ -12,10 +12,8 @@ import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.inset
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
-import ai.hey.designsystem.theme.HeyTheme
+import ai.hey.designsystem.component.OceanBackground
 import ai.hey.feature.home.temp.StatusBadge
-import androidx.compose.foundation.background
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,27 +43,29 @@ fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, onEndListening: () -> Unit, modi
             waiting = true
         }
     }
-    VStack(
-        gap = HeyGap.G24,
-        modifier = modifier.fillSize().background(HeyTheme.colors.bgPage).inset(HeyGap.G32),
-        align = HeyAlign.Center,
-        arrange = HeyArrange.Center,
-    ) {
-        CharacterSlot(size = CharacterSize.Driving, live = null, contentDescription = stringResource(R.string.home_character))
-        when {
-            ui.phase == HomePhase.Listening || ui.phase == HomePhase.Speaking ->
-                StatusBadge(phase = ui.phase.toTalk(), driving = true, animated = false)
-            waiting -> HeyText(stringResource(R.string.drive_wait), variant = HeyTextVariant.Heading)
-        }
-        if (ui.phase == HomePhase.Speaking) {
-            StopListeningButton(onClick = onTalk, big = true)
-        } else {
-            TalkButton(
-                phase = ui.phase.toTalk(),
-                onClick = if (ui.phase == HomePhase.Listening) onEndListening else onTalk,
-                big = true,
-                driving = true,
-            )
+    OceanBackground(modifier = modifier.fillSize(), animated = false) {
+        VStack(
+            gap = HeyGap.G24,
+            modifier = Modifier.fillSize().inset(HeyGap.G32),
+            align = HeyAlign.Center,
+            arrange = HeyArrange.Center,
+        ) {
+            CharacterSlot(size = CharacterSize.Driving, live = null, contentDescription = stringResource(R.string.home_character))
+            when {
+                ui.phase == HomePhase.Listening || ui.phase == HomePhase.Speaking ->
+                    StatusBadge(phase = ui.phase.toTalk(), driving = true, animated = false)
+                waiting -> HeyText(stringResource(R.string.drive_wait), variant = HeyTextVariant.Heading)
+            }
+            if (ui.phase == HomePhase.Speaking) {
+                StopListeningButton(onClick = onTalk, big = true)
+            } else {
+                TalkButton(
+                    phase = ui.phase.toTalk(),
+                    onClick = if (ui.phase == HomePhase.Listening) onEndListening else onTalk,
+                    big = true,
+                    driving = true,
+                )
+            }
         }
     }
 }
