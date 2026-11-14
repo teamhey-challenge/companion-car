@@ -7,9 +7,6 @@ import ai.hey.designsystem.token.HeyLightColors
 import ai.hey.designsystem.token.HeyTokens
 import ai.hey.designsystem.token.HeyTypeSpec
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -59,26 +56,12 @@ object HeyTheme {
         @Composable @ReadOnlyComposable get() = LocalHeyDark.current
 }
 
-/**
- * Design canvas of the mockups: 1600x900 CSS px (docs/ui-spec.md "차량 캔버스"; the delivery PNGs are that at 2x).
- * One mockup px is one dp on a 1600dp-wide window. Wider windows (the 2560x1440 @160dpi car/emulator is 2560dp wide)
- * scale dp and sp together by width/1600, so every token keeps its share of the screen; the 1600dp and 1280dp
- * Paparazzi frames stay 1:1. The 720dp floor keeps a short window from scaling content past its height.
- */
-private const val CANVAS_WIDTH_DP = 1600f
-private const val CANVAS_HEIGHT_DP = 720f
-
-/** Car default is dark (night driving, glare); [dark] is the driver's choice from settings. */
+/** Car default is dark (night driving, glare); [dark] is the driver's choice. Canvas scaling (1600dp design width) is done once in MainActivity. */
 @Composable
 fun HeyTheme(dark: Boolean = true, content: @Composable () -> Unit) {
-    val isDark = dark
-    val config = LocalConfiguration.current
-    val base = LocalDensity.current
-    val scale = minOf(config.screenWidthDp / CANVAS_WIDTH_DP, config.screenHeightDp / CANVAS_HEIGHT_DP).coerceAtLeast(1f)
     CompositionLocalProvider(
-        LocalHeyColors provides if (isDark) HeyDarkColors else HeyLightColors,
-        LocalHeyDark provides isDark,
-        LocalDensity provides Density(base.density * scale, base.fontScale),
+        LocalHeyColors provides if (dark) HeyDarkColors else HeyLightColors,
+        LocalHeyDark provides dark,
         content = content,
     )
 }
