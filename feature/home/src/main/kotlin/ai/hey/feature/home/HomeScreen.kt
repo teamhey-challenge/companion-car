@@ -122,35 +122,15 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
 ) {
     val fault = ui.fault
     val talking = ui.phase != HomePhase.Idle
+    val faultShown = !talking && fault != null
     // A running turn is shown first: a fault that appears mid-turn replaces it only once the turn has ended (C4 -> C8 -> C3).
     when {
-        !talking && fault != null -> {
-            ErrorPanel(kind = fault.toKind(), onAction = { onFaultAction(fault) })
-            TalkButton(
-                phase = TalkPhase.Idle,
-                onClick = onTalk,
-                onHoldStart = onTalk,
-                onHoldEnd = onEndListening,
-                enabled = ui.online && fault != CarFault.Microphone,
-            )
-        }
+        faultShown -> ErrorPanel(kind = fault!!.toKind(), onAction = { onFaultAction(fault) })
         talking || ui.inTalk -> {
             VStack(HeyGap.G16) {
                 StatusBadge(phase = ui.phase.toTalk(), connection = HeyConnection.Online)
                 ui.heard?.let { HeyText(it, tone = HeyTone.Muted, variant = HeyTextVariant.Body, maxLines = 2) }
                 if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)
-            }
-            // One button, like the mockup: "그만 듣기" while the character talks (D-24: stops the voice and listens), otherwise the talk pill.
-            if (ui.phase == HomePhase.Speaking) {
-                StopListeningButton(onClick = onTalk)
-            } else {
-                TalkButton(
-                    phase = ui.phase.toTalk(),
-                    onClick = onTalk,
-                    onHoldStart = onTalk,
-                    onHoldEnd = onEndListening,
-                    enabled = ui.phase == HomePhase.Idle || ui.phase == HomePhase.Listening,
-                )
             }
         }
         else -> {
@@ -158,7 +138,24 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
                 PageHeading(title = stringResource(R.string.home_hint), hero = true)
                 if (!ui.online) StatusBadge(phase = TalkPhase.Idle, connection = HeyConnection.Reconnecting)
             }
-            TalkButton(phase = TalkPhase.Idle, onClick = onTalk, onHoldStart = onTalk, onHoldEnd = onEndListening, enabled = ui.online)
         }
+    }
+    // ONE talk button at ONE place in the tree for every state but Speaking: a press-and-hold that starts a turn changes the phase,
+    // and a button that moved to another `when` branch would be disposed under the finger, ending the listen at once.
+    // While the character talks it is "그만 듣기" (D-24: stops the voice and listens); the hold is long over by then.
+    if (ui.phase == HomePhase.Speaking) {
+        StopListeningButton(onClick = onTalk)
+    } else {
+        TalkButton(
+            phase = ui.phase.toTalk(),
+            onClick = onTalk,
+            onHoldStart = onTalk,
+            onHoldEnd = onEndListening,
+            enabled = when {
+                faultShown -> ui.online && fault != CarFault.Microphone
+                talking || ui.inTalk -> ui.phase == HomePhase.Idle || ui.phase == HomePhase.Listening
+                else -> ui.online
+            },
+        )
     }
 }
