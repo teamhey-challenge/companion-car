@@ -261,13 +261,15 @@ object Stories {
                     TalkButton(TalkPhase.Idle, {})
                     TalkButton(TalkPhase.Listening, {})
                     TalkButton(TalkPhase.Thinking, {})
+                }
+                HStack(HeyGap.G16) {
                     TalkButton(TalkPhase.Speaking, {})
+                    TalkButton(TalkPhase.Idle, {}, enabled = false)
+                    StopListeningButton({})
                 }
                 HStack(HeyGap.G16) {
                     TalkButton(TalkPhase.Idle, {}, driving = true)
                     TalkButton(TalkPhase.Listening, {}, driving = true)
-                    TalkButton(TalkPhase.Idle, {}, enabled = false)
-                    StopListeningButton({})
                 }
             }
         })
@@ -308,8 +310,8 @@ object Stories {
         add(part("header-bar") {
             VStack(HeyGap.G24) {
                 HeaderBar("헤이파리", stateLabel = "정차 중", trailing = {
-                    HeyButton("기억", {}, icon = HeyIcons.Book)
-                    HeyButton("설정", {}, icon = HeyIcons.Gear)
+                    HeyButton("기억", {}, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Book)
+                    HeyButton("설정", {}, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Gear)
                 })
                 HeaderBar("헤이파리", onBack = {}, backLabel = "뒤로", stateLabel = "정차 중")
             }
@@ -338,8 +340,8 @@ private fun HomeSheet(phase: TalkPhase) {
     OceanBackground(Modifier.fillMaxSize(), animated = false) {
         VStack(HeyGap.G24, modifier = Modifier.fillMaxSize().padding(horizontal = 80.dp, vertical = 40.dp)) {
             HeaderBar("헤이파리", stateLabel = "정차 중", trailing = {
-                HeyButton("기억", {}, icon = HeyIcons.Book)
-                HeyButton("설정", {}, icon = HeyIcons.Gear)
+                HeyButton("기억", {}, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Book)
+                HeyButton("설정", {}, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Gear)
             })
             HStack(HeyGap.G32, modifier = Modifier.fillMaxWidth().grow(), arrange = HeyArrange.SpaceBetween) {
                 VStack(HeyGap.G24, modifier = Modifier.fillMaxSize().grow(), arrange = HeyArrange.SpaceBetween) {

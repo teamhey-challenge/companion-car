@@ -262,7 +262,7 @@ private fun TalkPill(
         contentAlignment = Alignment.Center,
     ) {
         HStack(HeyGap.G16) {
-            InkIcon(icon, null, ink.content)
+            InkIcon(icon, null, ink.content, Modifier.size(if (big) HeyTokens.Size.iconCar * 2 else HeyTokens.Size.iconCar * 3 / 2))
             InkText(
                 label, ink.content,
                 variant = if (big) HeyTextVariant.Title else HeyTextVariant.Heading,
