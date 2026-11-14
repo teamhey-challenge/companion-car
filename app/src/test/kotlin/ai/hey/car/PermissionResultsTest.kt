@@ -29,11 +29,8 @@ class PermissionResultsTest {
         assertEquals(false, mayAskPermission(parked = false)) // driving or unknown
     }
 
-    @Test fun notificationWaitsForParkAndIsAskedOnce() {
-        assertEquals(false, shouldAskNotification(34, granted = false, parked = false, alreadyAsked = false))
-        assertEquals(true, shouldAskNotification(34, granted = false, parked = true, alreadyAsked = false))
-        assertEquals(false, shouldAskNotification(34, granted = false, parked = true, alreadyAsked = true))
-        assertEquals(false, shouldAskNotification(34, granted = true, parked = true, alreadyAsked = false))
-        assertEquals(false, shouldAskNotification(32, granted = false, parked = true, alreadyAsked = false))
+    @Test fun microphoneIsTheOnlyRuntimePermissionRequested() {
+        assertEquals(setOf(mic), requestedRuntimePermissions)
+        assertEquals(false, notif in requestedRuntimePermissions)
     }
 }
