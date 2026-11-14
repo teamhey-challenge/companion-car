@@ -7,5 +7,5 @@
     <string name="voice_error_microphone">멈춘 뒤에 마이크 권한을 확인해 주세요</string>
     <string name="voice_error_audio">소리를 낼 수 없어요. 멈춘 뒤에 확인해 주세요</string>
     <string name="voice_error_server">지금은 대답하지 못해요. 잠시 뒤에 다시 이야기해요</string>
-    <string name="voice_error_recognition">잘 못 들었어요. 다시 말해 주세요</string>
+    <string name="voice_error_recognition">잘 못 들었어. 다시 말해 줄래?</string>
 </resources>
