@@ -157,7 +157,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
         }
         else -> {
             VStack(HeyGap.G8) {
-                PageHeading(title = stringResource(R.string.home_hint))
+                PageHeading(title = stringResource(R.string.home_hint), hero = true)
                 if (!ui.online) StatusBadge(phase = TalkPhase.Idle, connection = HeyConnection.Reconnecting)
             }
             TalkButton(phase = TalkPhase.Idle, onClick = onTalk, onHoldStart = onTalk, onHoldEnd = onEndListening, enabled = ui.online)

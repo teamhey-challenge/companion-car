@@ -59,9 +59,7 @@ class MainActivity : ComponentActivity() {
 
             // The driving gate (PRD 3.5): the route follows the car, never the other way round. Unknown motion is "driving".
             LaunchedEffect(route, parked, state.needsOnboarding) {
-                // /onboarding is a destination once feature:onboarding is wired in; until then consent is not gated here.
-                val onboardingKnown = nav.graph.findNode(Routes.Onboarding) != null
-                gateRoute(route, parked, needsOnboarding = state.needsOnboarding && onboardingKnown)?.let { target ->
+                gateRoute(route, parked, needsOnboarding = state.needsOnboarding)?.let { target ->
                     nav.navigate(target) { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
                 }
             }
@@ -75,6 +73,24 @@ class MainActivity : ComponentActivity() {
                 NavHost(nav, startDestination = Routes.Drive) {
                     composable(Routes.Drive) {
                         DriveScreen(ui, onTalk = repository::startTalk, onEndListening = repository::endListening)
+                    }
+                    composable(Routes.Onboarding) {
+                        OnboardingRoute(
+                            companion = graph.companion,
+                            talk = repository,
+                            onMicDenied = { nav.navigate(Routes.Pair) },
+                            onDone = { nav.navigate(Routes.Pair) },
+                            onExit = { finish() },
+                        )
+                    }
+                    composable(Routes.Pair) {
+                        PairRoute(
+                            companion = graph.companion,
+                            talk = repository,
+                            onDone = { nav.navigate(Routes.Home) { popUpTo(Routes.Pair) { inclusive = true } } },
+                            onBack = { nav.navigate(Routes.Home) { popUpTo(Routes.Pair) { inclusive = true } } },
+                            onDriving = { nav.navigate(Routes.Drive) { popUpTo(nav.graph.id) { inclusive = true } } },
+                        )
                     }
                     composable(Routes.Home) {
                         HomeScreen(
