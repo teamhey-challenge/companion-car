@@ -45,7 +45,14 @@ sealed interface MemoryListUi {
     data class Empty(val savingOff: Boolean) : MemoryListUi
 
     /** [busyIds] are rows whose delete request is in flight; [allBusy] while "모두 지우기" runs. */
-    data class Items(val rows: List<MemoryRowUi>, val busyIds: Set<String> = emptySet(), val allBusy: Boolean = false) : MemoryListUi
+    data class Items(
+        val rows: List<MemoryRowUi>,
+        val busyIds: Set<String> = emptySet(),
+        val allBusy: Boolean = false,
+        /** The server has more pages: a "더 보기" button follows the rows. */
+        val hasMore: Boolean = false,
+        val loadingMore: Boolean = false,
+    ) : MemoryListUi
 }
 
 /**
@@ -60,6 +67,7 @@ fun MemoryScreen(
     onRetry: () -> Unit,
     onDelete: (String) -> Unit,
     onDeleteAll: () -> Unit,
+    onLoadMore: () -> Unit = {},
     modifier: Modifier = Modifier,
     notice: String? = null,
 ) {
@@ -143,6 +151,14 @@ fun MemoryScreen(
                                 tint = index % 3,
                                 enabled = row.id !in list.busyIds && !list.allBusy,
                                 modifier = Modifier.fillWidth(),
+                            )
+                        }
+                        if (list.hasMore) {
+                            HeyButton(
+                                stringResource(R.string.memory_more),
+                                onLoadMore,
+                                variant = HeyButtonVariant.Secondary,
+                                loading = list.loadingMore,
                             )
                         }
                         HeyButton(

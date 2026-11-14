@@ -28,6 +28,7 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     implementation(project(":core:designsystem"))
     implementation(project(":core:model"))
+    implementation(project(":core:session"))
     implementation(libs.compose.runtime)
     implementation(libs.compose.ui)
     debugImplementation(libs.compose.ui.tooling.preview)

@@ -17,6 +17,7 @@
     <string name="memory_delete_confirm">지우기</string>
     <string name="memory_cancel">취소</string>
     <string name="memory_delete_all">모두 지우기</string>
+    <string name="memory_more">더 보기</string>
     <string name="memory_delete_all_title">기억을 모두 지울까요?</string>
     <string name="memory_delete_all_message">되돌릴 수 없어요.</string>
     <string name="memory_delete_all_confirm">모두 지우기</string>
