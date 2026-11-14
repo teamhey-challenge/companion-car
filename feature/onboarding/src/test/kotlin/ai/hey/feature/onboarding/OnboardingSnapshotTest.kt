@@ -18,11 +18,11 @@ private fun device(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
     orientation = ScreenOrientation.LANDSCAPE,
 )
 
-private val c1: List<Pair<String, OnboardingUi>> = listOf(
-    "c1-default" to OnboardingUi(),
-    "c1-required-missing" to OnboardingUi(voiceRequiredShown = true),
-    "c1-saving" to OnboardingUi(voice = true, memory = true, phase = ConsentPhase.Saving),
-    "c1-error" to OnboardingUi(voice = true, phase = ConsentPhase.NetworkError),
+private val c1: List<Pair<String, ConsentFormUi>> = listOf(
+    "c1-default" to ConsentFormUi(),
+    "c1-required-missing" to ConsentFormUi(voiceRequiredShown = true),
+    "c1-saving" to ConsentFormUi(voice = true, memory = true, saving = true),
+    "c1-error" to ConsentFormUi(voice = true, failed = true),
 )
 
 private val c2: List<Pair<String, PairUi>> = listOf(

@@ -6,7 +6,7 @@ import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
 import ai.hey.designsystem.component.HeyButtonVariant
 import ai.hey.designsystem.component.HeyText
-import ai.hey.designsystem.component.QrPanel
+import ai.hey.designsystem.component.HeyQrCode
 import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.VStack
@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 
 /** The base address a phone opens; the pair code is appended (`/p/<pairCode>`, PRD 4.2, contract.md). */
 const val PAIR_URL_BASE = "https://hey.lastmile.ltd/p/"
@@ -50,6 +51,7 @@ fun PairScreen(
                 title = stringResource(R.string.onboard_title_bar),
                 onBack = onBack,
                 backLabel = stringResource(R.string.pair_header_back),
+                stateLabel = stringResource(R.string.onboard_header),
             )
         },
         driving = false,
@@ -76,24 +78,20 @@ fun PairScreen(
                     else -> null
                 }
                 if (code != null) {
-                    QrPanel(
-                        content = pairUrl(code),
-                        code = stringResource(R.string.pair_code_label, code),
-                        status = statusText(ui),
-                        modifier = if (ui is PairUi.Expired) Modifier.alpha(0.35f) else Modifier,
-                    )
+                    VStack(HeyGap.G8, modifier = if (ui is PairUi.Expired) Modifier.alpha(0.35f) else Modifier) {
+                        HeyQrCode(pairUrl(code), 240.dp)
+                        HeyText(stringResource(R.string.pair_code_label, code), variant = HeyTextVariant.Heading)
+                    }
                 }
-                if (code == null || ui is PairUi.Expired) {
-                    HeyText(
-                        statusText(ui),
-                        variant = HeyTextVariant.Heading,
-                        tone = when (ui) {
-                            PairUi.Failed -> HeyTone.Danger
-                            PairUi.Claimed -> HeyTone.Success
-                            else -> HeyTone.Muted
-                        },
-                    )
-                }
+                HeyText(
+                    statusText(ui),
+                    variant = HeyTextVariant.Heading,
+                    tone = when (ui) {
+                        PairUi.Failed, is PairUi.Expired -> HeyTone.Danger
+                        PairUi.Claimed -> HeyTone.Success
+                        else -> HeyTone.Muted
+                    },
+                )
                 if (ui is PairUi.Pending) HeyText(stringResource(R.string.pair_guide), tone = HeyTone.Muted)
             }
             CharacterStill(

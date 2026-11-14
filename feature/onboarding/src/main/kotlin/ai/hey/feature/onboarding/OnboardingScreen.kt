@@ -20,28 +20,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 
-/** What the server round trip of "동의하고 시작" is doing. */
-enum class ConsentPhase { Idle, Saving, NetworkError }
-
 /**
  * The C1 form. [voice] and [memory] both start off (PRD 4.1: nothing is pre-ticked); the screen owner keeps them so
  * they survive recomposition and a failed save keeps the ticks (PRD 4.1.5 Error).
  */
-data class OnboardingUi(
+data class ConsentFormUi(
     val voice: Boolean = false,
     val memory: Boolean = false,
-    val phase: ConsentPhase = ConsentPhase.Idle,
-    /** The required consent was refused (start pressed unticked, or "동의하지 않기"): the screen stays and says why. */
+    /** The consents are being recorded on the server (`txt-onboard-saving`). */
+    val saving: Boolean = false,
+    /** The last save failed: "연결이 안 돼요. 다시 눌러 주세요". */
+    val failed: Boolean = false,
+    /** Start was pressed without the required consent: the screen stays and says why. */
     val voiceRequiredShown: Boolean = false,
 )
 
 /**
- * C1 first run. Pure UI: every press is a callback. [onStart] is only called with the required consent ticked
- * (otherwise the screen itself shows the required-consent message and nothing is asked or sent).
+ * C1 first run. Pure UI: every press is a callback. Pressing start without the required consent calls
+ * [onStartWithoutVoice] (the owner only shows the message; nothing is asked or sent), otherwise [onStart].
  */
 @Composable
 fun OnboardingScreen(
-    ui: OnboardingUi,
+    ui: ConsentFormUi,
     onVoiceChange: (Boolean) -> Unit,
     onMemoryChange: (Boolean) -> Unit,
     onStart: () -> Unit,
@@ -50,32 +50,32 @@ fun OnboardingScreen(
     onPolicy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val saving = ui.phase == ConsentPhase.Saving
     CarFrame(
         modifier = modifier,
         statusStrip = {
-            HeaderBar(title = stringResource(R.string.onboard_title_bar), backLabel = stringResource(R.string.pair_header_back))
+            HeaderBar(
+                title = stringResource(R.string.onboard_title_bar),
+                stateLabel = stringResource(R.string.onboard_header),
+            )
         },
         driving = false,
         actionRail = {
             VStack(HeyGap.G8, modifier = Modifier.fillWidth()) {
-                if (saving) HeyText(stringResource(R.string.onboard_saving), tone = HeyTone.Muted)
-                if (ui.phase == ConsentPhase.NetworkError) {
-                    HeyText(stringResource(R.string.onboard_error_network), tone = HeyTone.Danger)
-                }
+                if (ui.saving) HeyText(stringResource(R.string.onboard_saving), tone = HeyTone.Muted)
+                if (ui.failed) HeyText(stringResource(R.string.onboard_error_network), tone = HeyTone.Danger)
                 HStack(HeyGap.G16) {
                     HeyButton(
                         stringResource(R.string.onboard_start),
                         if (ui.voice) onStart else onStartWithoutVoice,
                         size = HeyButtonSize.Large,
-                        enabled = !saving,
-                        loading = saving,
+                        enabled = !ui.saving,
+                        loading = ui.saving,
                     )
                     HeyButton(
                         stringResource(R.string.onboard_decline),
                         onDecline,
                         variant = HeyButtonVariant.Ghost,
-                        enabled = !saving,
+                        enabled = !ui.saving,
                     )
                 }
             }
@@ -93,14 +93,14 @@ fun OnboardingScreen(
                     label = stringResource(R.string.onboard_check_voice),
                     checked = ui.voice,
                     onCheckedChange = onVoiceChange,
-                    enabled = !saving,
+                    enabled = !ui.saving,
                     error = if (ui.voiceRequiredShown && !ui.voice) stringResource(R.string.onboard_error_voice_required) else null,
                 )
                 CheckRow(
                     label = stringResource(R.string.onboard_check_memory),
                     checked = ui.memory,
                     onCheckedChange = onMemoryChange,
-                    enabled = !saving,
+                    enabled = !ui.saving,
                 )
                 HeyButton(stringResource(R.string.onboard_policy), onPolicy, variant = HeyButtonVariant.Secondary)
             }
