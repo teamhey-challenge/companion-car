@@ -16,6 +16,26 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.IOException
 
+/** Delays before retry 1 and 2 of an idempotent consent call. */
+private val CONSENT_RETRY_DELAYS_MS = longArrayOf(1_000, 2_000)
+
+/**
+ * Consent POSTs upsert per (install, type) on the server and DELETE re-withdraws the same row, so repeating them is safe.
+ * Retries after an [IOException] or HTTP 5xx; a 4xx is final.
+ */
+private suspend fun <T> withRetry(block: suspend () -> T): T {
+    var attempt = 0
+    while (true) {
+        try {
+            return block()
+        } catch (e: IOException) {
+            val permanent = e is HttpFailure && e.code < 500
+            if (permanent || attempt >= CONSENT_RETRY_DELAYS_MS.size) throw e
+            delay(CONSENT_RETRY_DELAYS_MS[attempt++])
+        }
+    }
+}
+
 private const val TAG = "Companion"
 
 /** C2 phone connection. [Failed] = the code could not be made (AC-4.2-05) or the status could not be read. */
@@ -151,8 +171,8 @@ class CompanionRepository(
         scope.launch {
             try {
                 val required = listOf(ConsentType.Terms, ConsentType.Privacy, ConsentType.Record, ConsentType.ExternalAi)
-                for (t in required) api.postConsent(t, CONSENT_VERSION, true)
-                api.postConsent(ConsentType.Memory, CONSENT_VERSION, memory)
+                for (t in required) withRetry { api.postConsent(t, CONSENT_VERSION, true) }
+                withRetry { api.postConsent(ConsentType.Memory, CONSENT_VERSION, memory) }
                 for (t in required) storage.setConsent(t, true)
                 storage.setConsent(ConsentType.Memory, memory)
                 // AC-4.1-06: "기억 저장" off here is the same value as C7.
@@ -170,7 +190,7 @@ class CompanionRepository(
         _state.update { it.copy(accountFailure = AccountFailure.None) }
         scope.launch {
             try {
-                api.withdrawConsent(ConsentType.Record)
+                withRetry { api.withdrawConsent(ConsentType.Record) }
                 storage.setConsent(ConsentType.Record, false)
                 storage.setConsent(ConsentType.Memory, false)
                 nextCursor = null

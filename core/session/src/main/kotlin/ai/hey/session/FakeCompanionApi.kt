@@ -20,6 +20,11 @@ class FakeCompanionApi(
     memory: List<MemoryItem> = (1..45).map { MemoryItem("m$it", if (it % 5 == 0) MemoryKind.Summary else MemoryKind.Fact, "기억 $it", "2026-11-14T0${it % 10}:00:00Z") },
 ) : CompanionApi {
     @Volatile var failing = false
+
+    /** The next [failNext] calls throw [failWith] (a transient outage), then calls succeed again. */
+    @Volatile var failNext = 0
+    @Volatile var failWith: IOException = IOException("fake blip")
+    var postAttempts = 0
     @Volatile var pairing: PairingStatus = PairingStatus(PairingPhase.None)
     @Volatile var settings: CompanionSettings = CompanionSettings()
     val consentLog = ArrayList<Triple<ConsentType, Boolean, String>>()
@@ -31,12 +36,14 @@ class FakeCompanionApi(
 
     private fun check() {
         if (failing) throw IOException("fake network down")
+        if (failNext > 0) { failNext--; throw failWith }
     }
 
     /** What the fake server has recorded, last write wins per type. */
     val serverConsents = LinkedHashMap<ConsentType, ConsentRecord>()
 
     override suspend fun postConsent(type: ConsentType, version: String, granted: Boolean): List<ConsentRecord> {
+        postAttempts++
         check()
         consentLog += Triple(type, granted, version)
         val rec = ConsentRecord(type, version, granted, "2026-11-15T00:00:00Z")
