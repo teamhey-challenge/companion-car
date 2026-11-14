@@ -33,20 +33,26 @@ class FakeCompanionApi(
         if (failing) throw IOException("fake network down")
     }
 
+    /** What the fake server has recorded, last write wins per type. */
+    val serverConsents = LinkedHashMap<ConsentType, ConsentRecord>()
+
     override suspend fun postConsent(type: ConsentType, version: String, granted: Boolean): List<ConsentRecord> {
         check()
         consentLog += Triple(type, granted, version)
-        return listOf(ConsentRecord(type, version, granted, "2026-11-15T00:00:00Z"))
+        val rec = ConsentRecord(type, version, granted, "2026-11-15T00:00:00Z")
+        serverConsents[type] = rec
+        return listOf(rec)
     }
 
     override suspend fun consents(): List<ConsentRecord> {
         check()
-        return emptyList()
+        return serverConsents.values.toList()
     }
 
     override suspend fun withdrawConsent(type: ConsentType) {
         check()
         consentLog += Triple(type, false, "withdraw")
+        serverConsents[type] = ConsentRecord(type, "withdraw", false, "2026-11-15T00:00:00Z")
         if (type == ConsentType.Record || type == ConsentType.Memory) memoryItems.clear()
     }
 

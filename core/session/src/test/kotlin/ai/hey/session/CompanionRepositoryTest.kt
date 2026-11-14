@@ -143,3 +143,26 @@ class CompanionRepositoryTest {
         cs.cancel()
     }
 }
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class ConsentSyncTest {
+    private fun scope(s: TestCoroutineScheduler) = CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(s))
+
+    @Test fun `after a reinstall the server's consents decide, and a withdrawal on the server removes the local one`() = runTest {
+        val cs = scope(testScheduler)
+        val api = FakeCompanionApi()
+        val storage = InMemoryCarStorage() // fresh install: empty mirror
+        val repo = CompanionRepository(cs, api, storage)
+        api.postConsent(ConsentType.Record, CONSENT_VERSION, true)
+        repo.onOnline()
+        assertTrue(storage.consents.value.recordDone)
+        api.withdrawConsent(ConsentType.Record) // e.g. withdrawn from the phone
+        repo.onOnline()
+        assertFalse(storage.consents.value.recordDone)
+        api.failing = true // no network: the cache stays as it was
+        storage.setConsent(ConsentType.Record, true)
+        repo.onOnline()
+        assertTrue(storage.consents.value.recordDone)
+        cs.cancel()
+    }
+}

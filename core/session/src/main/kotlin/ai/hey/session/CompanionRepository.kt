@@ -114,11 +114,21 @@ class CompanionRepository(
         _state.update { it.copy(settings = settings) }
     }
 
-    /** Socket came online: read what the server knows (settings, pairing), once. */
+    /** Socket came online: read what the server knows (consents, settings, pairing), once. */
     fun onOnline() = refresh()
+
+    /** The server is the source of truth for consents; the local mirror is only a cache for the start-up screen choice. */
+    private suspend fun syncConsents() {
+        val records = runCatching { api.consents() }.onFailure { log("consents", it) }.getOrNull() ?: return
+        val granted = records.filter { it.granted }.map { it.type }.toSet()
+        for (t in ConsentType.entries) {
+            if ((t in granted) != (t in storage.consents.value.granted)) storage.setConsent(t, t in granted)
+        }
+    }
 
     override fun refresh() {
         scope.launch {
+            syncConsents()
             runCatching { api.settings() }.onSuccess { s -> _state.update { it.copy(settings = s) } }.onFailure { log("settings", it) }
             if (poll?.isActive != true) {
                 runCatching { api.currentPairing() }.onSuccess { p ->
