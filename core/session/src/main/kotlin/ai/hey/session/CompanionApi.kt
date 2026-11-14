@@ -58,21 +58,33 @@ interface CompanionApi {
     suspend fun vehicleEvent(atEpochMs: Long, signals: VehicleSignals)
 }
 
+/** Every companion REST call is the driver waiting at C6/C7: the whole call (connect + read) ends within this (PLEOS-148). */
+const val REST_TIMEOUT_MS = 4_000L
+
 class HttpCompanionApi(
     private val storage: CarStorage,
     private val http: OkHttpClient = newHttpClient(),
+    /** A known-dead link fails a call at once, without waiting for the timeout. */
+    private val network: OnlineCheck = OnlineCheck { true },
+    timeoutMs: Long = REST_TIMEOUT_MS,
 ) : CompanionApi {
     private val json = "application/json".toMediaType()
+    private val restHttp = http.newBuilder()
+        .connectTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .readTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .build()
 
     private suspend fun call(method: String, path: String, body: JsonObject? = null, array: JsonArray? = null, query: Map<String, String> = emptyMap()): String? =
         withContext(Dispatchers.IO) {
+            if (!network.isOnline()) throw IOException("offline")
             val server = storage.settings.value.serverUrl
             val token = storage.loadCarToken(server) ?: throw HttpFailure(401)
             val url = server.trimEnd('/').toHttpUrl().newBuilder().addPathSegments(path).apply { query.forEach { (k, v) -> addQueryParameter(k, v) } }.build()
             val payload = (array?.toString() ?: body?.toString())?.toRequestBody(json)
             val request = Request.Builder().url(url).header("Authorization", "Bearer $token")
                 .method(method, payload ?: if (method == "POST" || method == "PATCH") "{}".toRequestBody(json) else null).build()
-            http.newCall(request).execute().use { res ->
+            restHttp.newCall(request).execute().use { res ->
                 val text = res.body?.string().orEmpty()
                 if (!res.isSuccessful) throw HttpFailure(res.code)
                 text.ifBlank { null }
