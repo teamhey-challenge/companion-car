@@ -128,7 +128,9 @@ class TalkRepository(
         }
         // Vehicle context goes to the server on change, debounced; a new connection sends the current values at once.
         scope.launch {
-            vehicle.signals.debounce(ctxDebounceMillis).distinctUntilChanged().collect { sendCtx(it) }
+            // Coarse speed and range (10 steps) keep the traffic to real changes.
+            vehicle.signals.map { it.copy(speedKmh = it.speedKmh?.let { v -> v / 10 * 10 }, rangeKm = it.rangeKm?.let { v -> v / 10 * 10 }) }
+                .debounce(ctxDebounceMillis).distinctUntilChanged().collect { sendCtx(it) }
         }
         scope.launch {
             vehicle.mouth.collect { level ->
