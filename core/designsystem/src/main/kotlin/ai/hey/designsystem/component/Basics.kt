@@ -78,6 +78,8 @@ internal fun InkText(
     weight: androidx.compose.ui.text.font.FontWeight? = null,
     /** Overrides the token tracking, in em. */
     trackingEm: Float? = null,
+    /** Overrides the token size where the mockup measures a value between two tokens (line height follows at 1.4). */
+    size: androidx.compose.ui.unit.TextUnit? = null,
 ) {
     val base = variant.spec.style(color).copy(textAlign = align.toCompose())
     BasicText(
@@ -86,7 +88,7 @@ internal fun InkText(
         style = base.copy(
             fontWeight = weight ?: base.fontWeight,
             letterSpacing = if (trackingEm != null) androidx.compose.ui.unit.TextUnit(trackingEm, androidx.compose.ui.unit.TextUnitType.Em) else base.letterSpacing,
-        ),
+        ).let { if (size != null) it.copy(fontSize = size, lineHeight = size * 1.4f) else it },
         overflow = TextOverflow.Ellipsis,
         maxLines = maxLines,
     )

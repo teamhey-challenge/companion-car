@@ -41,6 +41,9 @@ data class OnboardingUi(
 
 enum class SettingsSave { Idle, Saving, Failed }
 
+/** C7 account actions that failed and are shown again with a retry (PRD 4.7: a privacy action never fails silently). */
+enum class AccountFailure { None, Withdraw, Unpair }
+
 /** C6. [items] arrive page by page; a delete is applied when the server said 204. */
 data class MemoryState(
     val items: List<MemoryItem> = emptyList(),
@@ -62,6 +65,8 @@ data class CompanionState(
     val memory: MemoryState = MemoryState(),
     val settings: CompanionSettings = CompanionSettings(),
     val settingsSave: SettingsSave = SettingsSave.Idle,
+    /** The last "녹음 동의 철회" / "폰 연결 해제" request failed; cleared when the next one starts or succeeds. */
+    val accountFailure: AccountFailure = AccountFailure.None,
 ) {
     val paired: Boolean get() = pairing == PairingUi.Claimed
 }
@@ -162,6 +167,7 @@ class CompanionRepository(
     }
 
     override fun withdrawRecordConsent() {
+        _state.update { it.copy(accountFailure = AccountFailure.None) }
         scope.launch {
             try {
                 api.withdrawConsent(ConsentType.Record)
@@ -171,7 +177,7 @@ class CompanionRepository(
                 _state.update { it.copy(memory = MemoryState(loaded = true), onboarding = OnboardingUi()) }
             } catch (e: IOException) {
                 log("withdraw", e)
-                _state.update { it.copy(onboarding = OnboardingUi(failed = true)) }
+                _state.update { it.copy(accountFailure = AccountFailure.Withdraw) }
             }
         }
     }
@@ -215,12 +221,14 @@ class CompanionRepository(
 
     override fun unpair() {
         poll?.cancel()
+        _state.update { it.copy(accountFailure = AccountFailure.None) }
         scope.launch {
             try {
                 api.deletePairing()
                 _state.update { it.copy(pairing = PairingUi.None) }
             } catch (e: IOException) {
                 log("unpair", e)
+                _state.update { it.copy(accountFailure = AccountFailure.Unpair) }
             }
         }
     }
@@ -293,10 +301,17 @@ class CompanionRepository(
         val before = _state.value.settings
         val after = transform(before)
         if (after == before) return
+        // The server stores and recalls memory only while the memory consent is granted (PLEOS-129): turning it on
+        // after C1 left it off must grant it first.
+        val needsMemoryConsent = after.memoryEnabled && !before.memoryEnabled && ConsentType.Memory !in storage.consents.value.granted
         // The screen shows the new value at once; a failed write puts the old one back and says so.
         _state.update { it.copy(settings = after, settingsSave = SettingsSave.Saving) }
         scope.launch {
             try {
+                if (needsMemoryConsent) {
+                    api.postConsent(ConsentType.Memory, CONSENT_VERSION, true)
+                    storage.setConsent(ConsentType.Memory, true)
+                }
                 val saved = api.patchSettings(before, after)
                 _state.update { it.copy(settings = saved, settingsSave = SettingsSave.Idle) }
             } catch (e: IOException) {

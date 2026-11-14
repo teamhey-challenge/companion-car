@@ -61,6 +61,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.RectangleShape
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -444,7 +448,13 @@ fun HeaderBar(
 
 private val RowShape = RoundedCornerShape(HeyTokens.Radius.md)
 
-/** 96dp switch row with an optional description; while [saving] it shows "저장 중" and takes no input. */
+/** Mockup settings rows: the first two are tinted cards, the last is a plain row with a hairline under it. */
+enum class ToggleSurface { Info, Secondary, Plain }
+
+/**
+ * Switch row with an optional description (mockup `.toggle-row`: 28sp title, 22sp description, 64x36 track, 24dp padding,
+ * 20dp card radius). While [saving] it shows a spinner and takes no input.
+ */
 @Composable
 fun ToggleRow(
     label: String,
@@ -454,15 +464,21 @@ fun ToggleRow(
     description: String? = null,
     enabled: Boolean = true,
     saving: Boolean = false,
+    surface: ToggleSurface = ToggleSurface.Info,
 ) {
     val colors = HeyTheme.colors
     val active = enabled && !saving
+    val shape = if (surface == ToggleSurface.Plain) RectangleShape else RoundedCornerShape(HeyTokens.Space.s24 - 4.dp)
+    val fill = when (surface) {
+        ToggleSurface.Info -> colors.infoContainer
+        ToggleSurface.Secondary -> colors.secondaryContainer
+        ToggleSurface.Plain -> Color.Transparent
+    }
     HStack(
-        gap = HeyGap.G16,
+        gap = HeyGap.G24,
         modifier = modifier
-            .clip(RowShape)
-            .background(colors.bgSurface, RowShape)
-            .border(HeyTokens.Border.hairline, colors.borderDefault, RowShape)
+            .clip(shape)
+            .background(fill, shape)
             .toggleable(
                 value = checked,
                 enabled = active,
@@ -471,35 +487,45 @@ fun ToggleRow(
                 indication = null,
                 onValueChange = onCheckedChange,
             )
+            .let {
+                if (surface == ToggleSurface.Plain) {
+                    it.drawBehind {
+                        val h = HeyTokens.Border.hairline.toPx()
+                        drawRect(colors.borderDefault, Offset(0f, size.height - h), Size(size.width, h))
+                    }
+                } else it
+            }
             .heightIn(min = HeyTokens.Size.touchCarPrimary)
-            .padding(horizontal = HeyTokens.Space.s24, vertical = HeyTokens.Space.s16),
+            .padding(HeyTokens.Space.s24),
     ) {
-        VStack(HeyGap.G4, modifier = Modifier.grow()) {
-            HeyText(label, tone = if (enabled) HeyTone.Default else HeyTone.Disabled, maxLines = 2)
-            if (description != null) HeyText(description, variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 3)
+        VStack(HeyGap.G8, modifier = Modifier.grow()) {
+            InkText(
+                label, if (enabled) colors.fgDefault else colors.fgDisabled,
+                weight = androidx.compose.ui.text.font.FontWeight.Medium, size = 28.sp, maxLines = 2,
+            )
+            if (description != null) InkText(description, colors.fgMuted, size = 22.sp, maxLines = 3)
         }
         if (saving) {
             HeySpinner(colors.fgMuted)
         }
         val track = when {
             !enabled -> colors.bgSunken
-            checked -> colors.primary
-            else -> colors.fgSubtle
+            checked -> colors.accent
+            else -> colors.borderStrong
         }
-        val thumb = if (checked && enabled) colors.fgOnPrimary else colors.bgRaised
         Box(
             Modifier
-                .size(width = HeyTokens.Size.touchCarPrimary, height = HeyTokens.Size.touchCar / 2 + HeyTokens.Space.s16)
+                .size(width = 64.dp, height = 36.dp)
                 .clip(RoundedCornerShape(HeyTokens.Radius.full))
-                .background(track),
+                .background(track)
+                .padding(5.dp),
             contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
         ) {
             Box(
                 Modifier
-                    .padding(HeyTokens.Space.s4)
-                    .size(HeyTokens.Size.touchCar / 2 + HeyTokens.Space.s8)
+                    .size(26.dp)
                     .clip(RoundedCornerShape(HeyTokens.Radius.full))
-                    .background(thumb),
+                    .background(colors.bgPage),
             )
         }
     }

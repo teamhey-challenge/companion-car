@@ -48,14 +48,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
+import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlin.math.sin
 
 // ---------------------------------------------------------------- choice row
 
 /**
- * 3-4 way chip row for a single choice (먼저 말 걸기 적게/보통/자주/끄기, 반말/존댓말). The chosen chip has the accent
- * container and the focus-ring border, so it reads without colour alone. Every chip is at least 76dp high.
+ * 2-4 way pill group for a single choice (먼저 말 걸기 적게/보통/자주, 반말/존댓말), the mockup's `.frequency-options`:
+ * 144dp-wide pills, 76dp high, 16 apart; the chosen pill has the accent container and the focus-ring border, so it reads
+ * without colour alone. The label above is 24sp muted.
  */
 @Composable
 fun <T> ChoiceRow(
@@ -67,23 +69,19 @@ fun <T> ChoiceRow(
     enabled: Boolean = true,
 ) {
     val colors = HeyTheme.colors
-    VStack(HeyGap.G8, modifier = modifier) {
-        if (label != null) HeyText(label, variant = HeyTextVariant.Heading, tone = HeyTone.Muted, maxLines = 1)
-        HStack(HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
+    VStack(HeyGap.G16, modifier = modifier) {
+        if (label != null) HeyText(label, variant = HeyTextVariant.Label, tone = HeyTone.Muted, maxLines = 1)
+        HStack(HeyGap.G16) {
             options.forEach { option ->
                 val isSelected = option.value == selected
                 val shape = RoundedCornerShape(HeyTokens.Radius.full)
                 Box(
                     Modifier
-                        .grow()
+                        .widthIn(min = 144.dp)
                         .heightIn(min = HeyTokens.Size.touchCar)
                         .clip(shape)
-                        .background(if (isSelected) colors.accentContainer else colors.bgSurface, shape)
-                        .border(
-                            if (isSelected) HeyTokens.Border.focus else HeyTokens.Border.hairline,
-                            if (isSelected) colors.focusRing else colors.borderStrong,
-                            shape,
-                        )
+                        .background(if (isSelected) colors.accentContainer else colors.bgRaised, shape)
+                        .border(HeyTokens.Border.strong, if (isSelected) colors.focusRing else Color.Transparent, shape)
                         .semantics { this.selected = isSelected }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -91,7 +89,7 @@ fun <T> ChoiceRow(
                             enabled = enabled,
                             role = Role.RadioButton,
                         ) { onSelect(option.value) }
-                        .padding(horizontal = HeyTokens.Space.s16, vertical = HeyTokens.Space.s8),
+                        .padding(horizontal = 28.dp, vertical = HeyTokens.Space.s16),
                     contentAlignment = Alignment.Center,
                 ) {
                     InkText(
@@ -130,7 +128,7 @@ fun MemoryRow(
         1 -> colors.infoContainer
         else -> colors.sceneSand
     }
-    val shape = RoundedCornerShape(HeyTokens.Radius.lg)
+    val shape = RoundedCornerShape(HeyTokens.Space.s24 - 4.dp)
     HStack(
         gap = HeyGap.G16,
         modifier = modifier
@@ -139,12 +137,12 @@ fun MemoryRow(
             .heightIn(min = HeyTokens.Size.touchCarPrimary)
             .padding(HeyTokens.Space.s24),
     ) {
-        VStack(HeyGap.G4, modifier = Modifier.grow()) {
-            HeyText(kind, variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 1)
-            HeyText(text, variant = HeyTextVariant.Heading, maxLines = 3)
-            if (date != null) HeyText(date, variant = HeyTextVariant.Caption, tone = HeyTone.Subtle, maxLines = 1)
+        VStack(HeyGap.G8, modifier = Modifier.grow()) {
+            InkText(kind, colors.fgDefault, size = 22.sp, maxLines = 1)
+            InkText(text, colors.fgDefault, size = 28.sp, maxLines = 3)
+            if (date != null) InkText(date, colors.fgMuted, size = 20.sp, maxLines = 1)
         }
-        HeyIconButton(HeyIcons.Trash, deleteLabel, onDelete, enabled = enabled)
+        HeyIconButton(HeyIcons.Trash, deleteLabel, onDelete, enabled = enabled, bare = true)
     }
 }
 
