@@ -1,13 +1,12 @@
 package ai.hey.feature.settings
 
-import ai.hey.designsystem.component.HeyConnection
 import ai.hey.designsystem.theme.HeyTheme
-import ai.hey.model.CarSettings
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams.RenderingMode
 import com.android.resources.Density
 import com.android.resources.ScreenOrientation
+import androidx.compose.runtime.Composable
 import org.junit.Rule
 import org.junit.Test
 
@@ -20,33 +19,41 @@ private fun device(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
     orientation = ScreenOrientation.LANDSCAPE,
 )
 
-private class Shot(val settings: CarSettings, val saveFailed: Boolean = false)
+private class Shot(val settings: SettingsUi, val notice: String? = null, val server: ServerAddress? = null)
 
 private val shots: List<Pair<String, Shot>> = listOf(
-    "d8-settings" to Shot(CarSettings()),
-    "d8-settings-changed" to Shot(CarSettings(speechGapSec = 30, serverUrl = "https://example.com/api", dark = false)),
-    "d8-settings-min-gap" to Shot(CarSettings(speechGapSec = 4)),
-    "d8-settings-save-failed" to Shot(CarSettings(speechGapSec = 12), saveFailed = true),
+    "c7-settings" to Shot(SettingsUi(phonePaired = true)),
+    "c7-unpaired" to Shot(SettingsUi()),
+    "c7-proactive-off" to Shot(SettingsUi(proactive = ProactiveUi.Off, memoryEnabled = false, speech = SpeechUi.Jondaetmal)),
+    "c7-saving" to Shot(SettingsUi(phonePaired = true, saving = setOf(SettingField.Memory))),
+    "c7-save-failed" to Shot(SettingsUi(phonePaired = true), notice = "저장하지 못했어요"),
+    "c7-debug-server" to Shot(SettingsUi(), server = ServerAddress("https://hey.lastmile.ltd/api") {}),
 )
 
 private fun Paparazzi.recordAll() {
     shots.forEach { (name, shot) ->
         listOf(true, false).forEach { dark ->
             snapshot("$name-${if (dark) "dark" else "light"}") {
-                HeyTheme(dark) {
-                    SettingsScreen(
-                        settings = shot.settings,
-                        onChange = {},
-                        onClose = {},
-                        connection = HeyConnection.Online,
-                        wordmarkParty = 1,
-                        clock = "오후 11:42",
-                        saveFailed = shot.saveFailed,
-                    )
-                }
+                HeyTheme(dark) { Screen(shot) }
             }
         }
     }
+}
+
+@Composable
+private fun Screen(shot: Shot) {
+    SettingsScreen(
+        settings = shot.settings,
+        onBack = {},
+        onProactive = {},
+        onMemoryEnabled = {},
+        onSpeech = {},
+        onOpenMemory = {},
+        onUnpair = {},
+        onWithdraw = {},
+        notice = shot.notice,
+        server = shot.server,
+    )
 }
 
 class Settings1600SnapshotTest {

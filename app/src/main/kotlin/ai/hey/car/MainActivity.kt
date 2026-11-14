@@ -8,9 +8,10 @@ import ai.hey.feature.home.HomeScreen
 import ai.hey.feature.home.Routes
 import ai.hey.feature.home.gateRoute
 import ai.hey.feature.home.homeUi
-import ai.hey.feature.settings.SettingsScreen
+import ai.hey.feature.memory.MemoryRoute
+import ai.hey.feature.settings.ServerAddress
+import ai.hey.feature.settings.SettingsRoute
 import ai.hey.model.SpeechPriority
-import ai.hey.session.SaveResult
 import ai.hey.session.TurnState
 import android.Manifest
 import android.content.Intent
@@ -25,7 +26,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -106,15 +109,27 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Routes.Settings) {
-                        SettingsScreen(
-                            settings = state.settings,
-                            onChange = repository::updateSettings,
-                            onClose = { nav.popBackStack() },
-                            connection = state.connection.toStrip(),
-                            wordmarkParty = 1,
-                            clock = "",
-                            saveFailed = state.settingsSave is SaveResult.Failed,
+                        // "해제" (PRD 4.7): once the link is gone the driver lands on C2 to pair again.
+                        var wasPaired by remember { mutableStateOf(state.companion.paired) }
+                        LaunchedEffect(state.companion.paired) {
+                            if (wasPaired && !state.companion.paired) nav.navigate(Routes.Pair) { popUpTo(Routes.Home) }
+                            wasPaired = state.companion.paired
+                        }
+                        SettingsRoute(
+                            state = state.companion,
+                            commands = graph.companion,
+                            onBack = { nav.popBackStack() },
+                            onOpenMemory = { nav.navigate(Routes.Memory) },
+                            // The address field exists in debug builds only.
+                            server = if (BuildConfig.DEBUG) {
+                                ServerAddress(state.settings.serverUrl) { url -> repository.updateSettings { it.copy(serverUrl = url) } }
+                            } else {
+                                null
+                            },
                         )
+                    }
+                    composable(Routes.Memory) {
+                        MemoryRoute(state = state.companion, commands = graph.companion, onBack = { nav.popBackStack() })
                     }
                 }
             }

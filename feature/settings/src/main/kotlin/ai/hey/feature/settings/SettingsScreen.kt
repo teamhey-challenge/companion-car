@@ -1,130 +1,193 @@
 package ai.hey.feature.settings
 
 import ai.hey.designsystem.component.CarFrame
+import ai.hey.designsystem.component.ChoiceRow
+import ai.hey.designsystem.component.ConfirmDialog
+import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
-import ai.hey.designsystem.component.HeyStatusPill
-import ai.hey.designsystem.component.HeyStatusTone
-import ai.hey.designsystem.icon.HeyIcons
-import ai.hey.designsystem.component.HeyButtonSize
 import ai.hey.designsystem.component.HeyButtonVariant
-import ai.hey.designsystem.component.HeyConnection
 import ai.hey.designsystem.component.HeyKeyboard
+import ai.hey.designsystem.component.HeyLayered
+import ai.hey.designsystem.component.HeyNotice
 import ai.hey.designsystem.component.HeyScrollColumn
-import ai.hey.designsystem.component.HeySection
 import ai.hey.designsystem.component.HeySegmentOption
-import ai.hey.designsystem.component.HeySegmented
-import ai.hey.designsystem.component.HeyStepperRow
-import ai.hey.designsystem.component.HeyText
+import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyTextField
-import ai.hey.designsystem.component.StatusStrip
+import ai.hey.designsystem.component.PageHeading
+import ai.hey.designsystem.component.ToggleRow
+import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
-import ai.hey.designsystem.layout.HeyArrange
-import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.fillWidth
 import ai.hey.designsystem.theme.HeyGap
-import ai.hey.designsystem.theme.HeyTextVariant
-import ai.hey.designsystem.theme.HeyTone
-import ai.hey.model.CarSettings
-import ai.hey.model.HeyConfig
-import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 
+/** 먼저 말 걸기 단계. Off hides the frequency chips; the minutes are the contract values (20 / 10 / 5). */
+enum class ProactiveUi { Off, Low, Normal, High }
+
+enum class SpeechUi { Banmal, Jondaetmal }
+
+/** The settings fields that can have a save in flight (each saves on its own, PRD 4.7.5 Partial = n/a). */
+enum class SettingField { Proactive, Memory, Speech }
+
+data class SettingsUi(
+    val proactive: ProactiveUi = ProactiveUi.Normal,
+    val memoryEnabled: Boolean = true,
+    val speech: SpeechUi = SpeechUi.Banmal,
+    /** The phone is linked: only then "폰 연결 해제" exists (AC-4.7-09). */
+    val phonePaired: Boolean = false,
+    /** Fields whose save request has been running; the toggle shows work after 2 s, the screen blocks that field. */
+    val saving: Set<SettingField> = emptySet(),
+)
+
+/** The debug-only server address field; null in release builds, which never show it. */
+class ServerAddress(val saved: String, val onApply: (String) -> Unit)
+
+/** The confirmation that is open; the screen owns it, the caller learns only the final answer. */
+private enum class Confirm { None, Unpair, Withdraw }
+
 /**
- * D8. Values are saved the moment they change ([onChange]), except the server address: it is only applied with its own
- * button, because applying it reconnects (and, for an address never used before, registers the car there).
- * [connection], [wordmarkParty] and [clock] only dress the status strip.
+ * C7 (PRD 4.7). Every change goes to [onChange] at once; a failed save is reported by the caller as [notice] and as the
+ * old value coming back in [settings]. Dialogs: unpair (memory stays) and withdraw (memory is deleted at once).
+ * The theme is not a setting: it follows the system.
  */
 @Composable
 fun SettingsScreen(
-    settings: CarSettings,
-    onChange: ((CarSettings) -> CarSettings) -> Unit,
-    onClose: () -> Unit,
-    connection: HeyConnection,
-    wordmarkParty: Int,
-    clock: String,
+    settings: SettingsUi,
+    onBack: () -> Unit,
+    onProactive: (ProactiveUi) -> Unit,
+    onMemoryEnabled: (Boolean) -> Unit,
+    onSpeech: (SpeechUi) -> Unit,
+    onOpenMemory: () -> Unit,
+    onUnpair: () -> Unit,
+    onWithdraw: () -> Unit,
     modifier: Modifier = Modifier,
-    /** The device could not keep the last change: D8 says so and keeps the value on screen. */
-    saveFailed: Boolean = false,
+    notice: String? = null,
+    server: ServerAddress? = null,
 ) {
-    val context = LocalContext.current
-    CarFrame(
-        statusStrip = {
-            StatusStrip(
-                title = null,
-                drivingLabel = null,
-                connection = connection,
-                clock = clock,
-            )
-        },
-        driving = false,
-        modifier = modifier,
-        actionRail = {
-            HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillWidth()) {
-                HeyButton(stringResource(R.string.settings_close), onClose, variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large)
+    var confirm by remember { mutableStateOf(Confirm.None) }
+    if (confirm == Confirm.Unpair && !settings.phonePaired) confirm = Confirm.None
+    HeyLayered(
+        modifier = modifier.fillSize(),
+        overlay = {
+            when (confirm) {
+                Confirm.Unpair -> ConfirmDialog(
+                    title = stringResource(R.string.settings_unpair_title),
+                    message = stringResource(R.string.settings_unpair_message),
+                    confirmText = stringResource(R.string.settings_unpair_confirm),
+                    dismissText = stringResource(R.string.settings_cancel),
+                    onConfirm = { confirm = Confirm.None; onUnpair() },
+                    onDismiss = { confirm = Confirm.None },
+                    modifier = Modifier.fillSize(),
+                )
+                Confirm.Withdraw -> ConfirmDialog(
+                    title = stringResource(R.string.settings_withdraw_title),
+                    message = stringResource(R.string.settings_withdraw_message),
+                    confirmText = stringResource(R.string.settings_withdraw_confirm),
+                    dismissText = stringResource(R.string.settings_cancel),
+                    onConfirm = { confirm = Confirm.None; onWithdraw() },
+                    onDismiss = { confirm = Confirm.None },
+                    modifier = Modifier.fillSize(),
+                    danger = true,
+                )
+                Confirm.None -> Unit
             }
         },
+        notice = notice?.let { text -> { HeyNotice(text, HeyStatusTone.Danger) } },
     ) {
-        // One page at 1280x720: title row, then two columns (what the driver hears and sees | the vehicle).
-        // A failed save shows in the title row (pill + one short line) so it never pushes the page into a scroll.
-        HeyScrollColumn(HeyGap.G24, modifier = Modifier.fillSize()) {
-            HStack(HeyGap.G16, modifier = Modifier.fillWidth()) {
-                HeyText(stringResource(R.string.settings_title), variant = HeyTextVariant.Title, maxLines = 1)
-                if (saveFailed) {
-                    HeyStatusPill(stringResource(R.string.settings_save_failed), HeyStatusTone.Danger, icon = HeyIcons.Error)
-                    HeyText(stringResource(R.string.settings_save_failed_message), Modifier.grow(), variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 2)
+        CarFrame(
+            statusStrip = {
+                HeaderBar(
+                    title = stringResource(R.string.settings_app_name),
+                    onBack = onBack,
+                    backLabel = stringResource(R.string.settings_back),
+                    stateLabel = stringResource(R.string.settings_parked),
+                )
+            },
+            driving = false,
+        ) {
+            HeyScrollColumn(HeyGap.G24, modifier = Modifier.fillSize()) {
+                PageHeading(stringResource(R.string.settings_title), subtitle = stringResource(R.string.settings_subtitle))
+                val proactiveSaving = SettingField.Proactive in settings.saving
+                ToggleRow(
+                    label = stringResource(R.string.settings_proactive),
+                    description = stringResource(R.string.settings_proactive_desc),
+                    checked = settings.proactive != ProactiveUi.Off,
+                    // Turning it back on returns to the usual step, not to a step the driver never picked.
+                    onCheckedChange = { on -> onProactive(if (on) ProactiveUi.Normal else ProactiveUi.Off) },
+                    saving = proactiveSaving,
+                    modifier = Modifier.fillWidth(),
+                )
+                if (settings.proactive != ProactiveUi.Off) {
+                    ChoiceRow(
+                        options = listOf(
+                            HeySegmentOption(ProactiveUi.Low, stringResource(R.string.settings_freq_low)),
+                            HeySegmentOption(ProactiveUi.Normal, stringResource(R.string.settings_freq_normal)),
+                            HeySegmentOption(ProactiveUi.High, stringResource(R.string.settings_freq_high)),
+                        ),
+                        selected = settings.proactive,
+                        onSelect = onProactive,
+                        label = stringResource(R.string.settings_freq),
+                        enabled = !proactiveSaving,
+                        modifier = Modifier.fillWidth(),
+                    )
                 }
-            }
-            HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillWidth()) {
-                VStack(HeyGap.G24, modifier = Modifier.grow()) {
-                    HeySection(stringResource(R.string.settings_speech)) {
-                        HeyStepperRow(
-                            label = stringResource(R.string.settings_gap),
-                            value = settings.speechGapSec,
-                            range = HeyConfig.SPEECH_GAP_MIN_SEC..HeyConfig.SPEECH_GAP_MAX_SEC,
-                            onChange = { value ->
-                                onChange { it.copy(speechGapSec = value.coerceIn(HeyConfig.SPEECH_GAP_MIN_SEC, HeyConfig.SPEECH_GAP_MAX_SEC)) }
-                            },
-                            modifier = Modifier.fillWidth(),
-                            format = { gapText(context, it) },
+                ToggleRow(
+                    label = stringResource(R.string.settings_memory),
+                    description = stringResource(R.string.settings_memory_desc),
+                    checked = settings.memoryEnabled,
+                    onCheckedChange = onMemoryEnabled,
+                    saving = SettingField.Memory in settings.saving,
+                    modifier = Modifier.fillWidth(),
+                )
+                ChoiceRow(
+                    options = listOf(
+                        HeySegmentOption(SpeechUi.Banmal, stringResource(R.string.settings_speech_banmal)),
+                        HeySegmentOption(SpeechUi.Jondaetmal, stringResource(R.string.settings_speech_jondaetmal)),
+                    ),
+                    selected = settings.speech,
+                    onSelect = onSpeech,
+                    label = stringResource(R.string.settings_speech),
+                    enabled = SettingField.Speech !in settings.saving,
+                    modifier = Modifier.fillWidth(),
+                )
+                HStack(HeyGap.G16, align = HeyAlign.Center) {
+                    HeyButton(
+                        stringResource(R.string.settings_open_memory),
+                        onOpenMemory,
+                        variant = HeyButtonVariant.Secondary,
+                        icon = HeyIcons.Book,
+                    )
+                    if (settings.phonePaired) {
+                        HeyButton(
+                            stringResource(R.string.settings_unpair),
+                            { confirm = Confirm.Unpair },
+                            variant = HeyButtonVariant.Secondary,
+                            icon = HeyIcons.Link,
                         )
                     }
-                    HeySection(stringResource(R.string.settings_theme)) {
-                        HeySegmented(
-                            options = listOf(
-                                HeySegmentOption(true, stringResource(R.string.settings_theme_dark)),
-                                HeySegmentOption(false, stringResource(R.string.settings_theme_light)),
-                            ),
-                            selected = settings.dark,
-                            onSelect = { dark -> onChange { it.copy(dark = dark) } },
-                            modifier = Modifier.fillWidth(),
-                        )
-                    }
                 }
-                VStack(HeyGap.G24, modifier = Modifier.grow()) {
-                    HeySection(stringResource(R.string.settings_vehicle)) {
-                        ServerSetting(settings.serverUrl) { value -> onChange { it.copy(serverUrl = value) } }
-                    }
-                }
+                if (server != null) ServerSetting(server.saved, server.onApply)
+                HeyButton(
+                    stringResource(R.string.settings_withdraw),
+                    { confirm = Confirm.Withdraw },
+                    variant = HeyButtonVariant.Danger,
+                    icon = HeyIcons.Trash,
+                )
             }
         }
     }
 }
 
-/** The stepper's formatter is not composable, so it gets a Context resolved by the caller. */
-private fun gapText(context: Context, seconds: Int): String = context.getString(R.string.settings_gap_value, seconds)
-
-
 /** http(s) with a host; anything else is rejected before it can trigger a connection. */
-private fun validServer(value: String): Boolean {
+internal fun validServer(value: String): Boolean {
     val rest = when {
         value.startsWith("http://") -> value.removePrefix("http://")
         value.startsWith("https://") -> value.removePrefix("https://")
@@ -134,12 +197,10 @@ private fun validServer(value: String): Boolean {
     return host.length >= 3 && host.all { it.isLetterOrDigit() || it == '.' || it == '-' }
 }
 
-
 @Composable
 private fun ServerSetting(saved: String, onApply: (String) -> Unit) {
     var draft by remember(saved) { mutableStateOf(saved) }
     val value = draft.trim().trimEnd('/')
-    // The apply button sits beside the field so the vehicle column stays two rows tall.
     HStack(HeyGap.G16, align = HeyAlign.End, modifier = Modifier.fillWidth()) {
         HeyTextField(
             label = stringResource(R.string.settings_server),
