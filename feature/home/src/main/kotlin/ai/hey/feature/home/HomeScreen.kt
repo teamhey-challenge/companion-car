@@ -3,8 +3,8 @@ package ai.hey.feature.home
 import ai.hey.session.CarFault
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
-import ai.hey.feature.home.temp.ErrorKind
-import ai.hey.feature.home.temp.ErrorPanel
+import ai.hey.designsystem.component.ErrorKind
+import ai.hey.designsystem.component.ErrorPanel
 import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
 import ai.hey.designsystem.component.HeyButtonSize
@@ -14,8 +14,8 @@ import ai.hey.designsystem.component.HeyText
 import ai.hey.designsystem.component.HeyTextAlign
 import ai.hey.designsystem.component.OceanBackground
 import ai.hey.designsystem.component.PageHeading
-import ai.hey.feature.home.temp.StatusBadge
-import ai.hey.feature.home.temp.Subtitle
+import ai.hey.designsystem.component.StatusBadge
+import ai.hey.designsystem.component.Subtitle
 import ai.hey.designsystem.component.TalkButton
 import ai.hey.designsystem.component.TalkPhase
 import ai.hey.designsystem.icon.HeyIcons

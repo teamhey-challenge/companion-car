@@ -12,8 +12,9 @@ import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.inset
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
-import ai.hey.designsystem.component.OceanBackground
-import ai.hey.feature.home.temp.StatusBadge
+import ai.hey.designsystem.component.PageBackground
+import ai.hey.designsystem.component.StatusBadge
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +44,7 @@ fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, onEndListening: () -> Unit, modi
             waiting = true
         }
     }
-    OceanBackground(modifier = modifier.fillSize(), animated = false) {
+    PageBackground(modifier = modifier.fillSize()) {
         VStack(
             gap = HeyGap.G24,
             modifier = Modifier.fillSize().inset(HeyGap.G32),
