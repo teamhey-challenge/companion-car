@@ -176,6 +176,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        (application as HeyApp).graph.repository.refreshVoicePermission()
+    }
+
     /** Motion off in the system (animator scale 0) is reduced motion: the still image replaces Rive, bubbles stop. */
     private fun reducedMotion(): Boolean =
         Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f

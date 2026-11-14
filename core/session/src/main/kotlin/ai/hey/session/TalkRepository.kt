@@ -402,6 +402,11 @@ class TalkRepository(
                 HeyLog.i(TAG, "talk ignored: already listening")
                 return
             }
+            // The prompt is still open (or never got answered) but the permission arrived by another road (settings, pm grant).
+            TurnState.NeedsPermission -> if (!voiceInput.hasPermission()) {
+                HeyLog.i(TAG, "talk ignored: waiting for the microphone permission answer")
+                return
+            }
             else -> {
                 HeyLog.i(TAG, "talk ignored: busy (${s.turn})")
                 return
@@ -412,11 +417,13 @@ class TalkRepository(
             _state.update { it.copy(error = TurnError.NotConnected) }
             return
         }
+        // Read on every press, never cached: the driver may have granted it in the settings or by adb since the last answer.
         if (!voiceInput.hasPermission()) {
             HeyLog.i(TAG, "talk: no microphone permission, asking")
             _state.update { it.copy(turn = TurnState.NeedsPermission, error = null) }
             return
         }
+        if (_state.value.error == TurnError.PermissionDenied) HeyLog.i(TAG, "talk: microphone permission granted again, fault cleared")
         listenOnce(TurnSource.Ptt)
     }
 
@@ -476,6 +483,17 @@ class TalkRepository(
     override fun voicePermissionResult(granted: Boolean) {
         if (_state.value.turn != TurnState.NeedsPermission) return
         if (granted) listenOnce(TurnSource.Ptt) else _state.update { it.copy(turn = TurnState.Idle, error = TurnError.PermissionDenied) }
+    }
+
+    /** The screen came back (settings, permission dialog): a microphone permission that is granted now ends the Microphone fault. */
+    override fun refreshVoicePermission() {
+        if (!voiceInput.hasPermission()) return
+        val s = _state.value
+        if (s.turn == TurnState.NeedsPermission) listenOnce(TurnSource.Ptt)
+        else if (s.error == TurnError.PermissionDenied) {
+            HeyLog.i(TAG, "microphone permission granted, fault cleared")
+            _state.update { it.copy(error = null) }
+        }
     }
 
     /** C1: the microphone was refused after the consent. C8 (microphone) shows with its "권한 열기" button (planner F1). */

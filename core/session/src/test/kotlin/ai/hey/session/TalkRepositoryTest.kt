@@ -185,6 +185,51 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
+    @Test fun `microphone granted after a refusal is picked up by the next press and by resume`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "안녕", permission = false)
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        assertEquals(TurnState.NeedsPermission, rig.repo.state.value.turn)
+        // the prompt is denied
+        rig.repo.voicePermissionResult(false)
+        assertEquals(TurnError.PermissionDenied, rig.repo.state.value.error)
+        assertEquals(CarFault.Microphone, rig.repo.state.value.fault)
+        // granted outside the app (pm grant): resume clears the fault with no press
+        voice.permission = true
+        rig.repo.refreshVoicePermission()
+        assertNull(rig.repo.state.value.error)
+        assertNull(rig.repo.state.value.fault)
+        // and a press runs a normal turn
+        rig.repo.startTalk()
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        assertTrue(rig.transport.sent.any { it.contains("안녕") })
+        cs.cancel()
+    }
+
+    @Test fun `a press while the prompt is stuck but the permission is granted listens`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "안녕", permission = false)
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        assertEquals(TurnState.NeedsPermission, rig.repo.state.value.turn)
+        voice.permission = true // pm grant while the turn waits for the prompt answer
+        rig.repo.startTalk()
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        cs.cancel()
+    }
+
+    @Test fun `resume with the prompt waiting and the permission granted starts the turn`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "안녕", permission = false)
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        voice.permission = true
+        rig.repo.refreshVoicePermission()
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        cs.cancel()
+    }
+
     @Test fun `pressing talk while offline sets the offline fault and listens to nothing`() = runTest {
         val cs = rigScope(testScheduler)
         val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
