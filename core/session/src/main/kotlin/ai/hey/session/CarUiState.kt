@@ -39,6 +39,21 @@ enum class Panel { None, Settings }
 /** What went wrong with the last turn, as a type the screen can word. */
 enum class TurnError { NotConnected, NoSpeech, PermissionDenied, SpeechUnavailable, ConnectionLost, Server }
 
+/** Who started the turn that is on screen. */
+enum class TurnSource {
+    /** The driver pressed the button. */
+    Ptt,
+
+    /** The character spoke first (`proactive` frame); the turn is its line. */
+    Proactive,
+
+    /** The microphone opened by itself for 5 s after a line that ended with a question mark (F4-F6). */
+    AutoListen,
+}
+
+/** A persistent problem C8 shows (null = nothing wrong). The screen words it; while driving only a spoken notice is made. */
+enum class CarFault { Offline, Connecting, Microphone, Server, Recognition, Audio }
+
 /**
  * The only thing screens read. A value type: the same content compares equal, so a refresh that changes nothing does
  * not recompose.
@@ -50,6 +65,13 @@ data class CarUiState(
     val settings: CarSettings = CarSettings(),
     /** Outcome of the last settings write; [SaveResult.Failed] makes D8 say so (the value stays on screen). */
     val settingsSave: SaveResult = SaveResult.Saved,
+    /** Consents, phone connection, memory and server settings (C1, C2, C6, C7). */
+    val companion: CompanionState = CompanionState(),
+    /** True until the required consent is recorded: the app shows /onboarding and starts no conversation. */
+    val needsOnboarding: Boolean = true,
+    val source: TurnSource = TurnSource.Ptt,
+    /** The last server or local voice output failed (focus refused, speaker dropped the text); cleared by the next turn. */
+    val audioFailed: Boolean = false,
     val panel: Panel = Panel.None,
     val turn: TurnState = TurnState.Idle,
     /** What the driver said in this turn (the final Pleos STT sentence). */
@@ -68,4 +90,17 @@ data class CarUiState(
 
     /** Hands-on commands, or null unless the car is parked. */
     val parked: ParkedCommands? get() = if (isParked) hands else null
+
+    /** The one thing C8 should say, most urgent first. */
+    val fault: CarFault?
+        get() = when {
+            turn == TurnState.NeedsPermission || error == TurnError.PermissionDenied -> CarFault.Microphone
+            connection == ConnectionStatus.Connecting || connection == ConnectionStatus.Reconnecting -> CarFault.Connecting
+            !online -> CarFault.Offline
+            error == TurnError.Server -> CarFault.Server
+            error == TurnError.ConnectionLost || error == TurnError.NotConnected -> CarFault.Offline
+            error == TurnError.NoSpeech || error == TurnError.SpeechUnavailable -> CarFault.Recognition
+            audioFailed -> CarFault.Audio
+            else -> null
+        }
 }

@@ -1,8 +1,10 @@
 package ai.hey.session
 
 import ai.hey.model.AudioSpec
+import ai.hey.model.VehicleSignals
 import ai.hey.model.CarSettings
 import ai.hey.model.ClientFrames
+import ai.hey.model.Wire
 import ai.hey.model.HeyLog
 import ai.hey.model.ServerFrame
 import ai.hey.model.SpeechPriority
@@ -17,14 +19,17 @@ import ai.hey.vehicle.VehicleGateway
 import ai.hey.vehicle.VoiceInput
 import ai.hey.vehicle.VoiceResult
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
 private const val TAG = "Talk"
@@ -55,6 +60,11 @@ class TalkRepository(
     /** Focus held while the Pleos TTS reads; a loss stops it. Null in tests. */
     private val speechFocus: FocusGate? = null,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000 },
+    /** REST side (consents, pairing, memory, server settings); its state is mirrored into [CarUiState.companion]. Null in tests that do not need it. */
+    val companion: CompanionRepository? = null,
+    /** How long the microphone stays open by itself after a line that ends with a question mark (F4-F6). */
+    private val autoListenMillis: Long = AUTO_LISTEN_MILLIS,
+    private val ctxDebounceMillis: Long = CTX_DEBOUNCE_MILLIS,
 ) : CarCommands {
     private val hands = Hands()
     private val _state = MutableStateFlow(CarUiState(hands = hands))
@@ -77,6 +87,7 @@ class TalkRepository(
     /** Id of the Pleos reading of the reply that is on now (its [VehicleEvent.SpeechDone] ends the turn on screen). */
     @Volatile private var speakingId: String? = null
 
+    @OptIn(FlowPreview::class)
     fun start() {
         if (started) return
         started = true
@@ -110,6 +121,16 @@ class TalkRepository(
             }
         }
         scope.launch {
+            storage.consents.collect { c -> _state.update { it.copy(needsOnboarding = !c.recordDone) } }
+        }
+        companion?.let { c ->
+            scope.launch { c.state.collect { s -> _state.update { it.copy(companion = s) } } }
+        }
+        // Vehicle context goes to the server on change, debounced; a new connection sends the current values at once.
+        scope.launch {
+            vehicle.signals.debounce(ctxDebounceMillis).distinctUntilChanged().collect { sendCtx(it) }
+        }
+        scope.launch {
             vehicle.mouth.collect { level ->
                 pleosMouth = level
                 publishMouth()
@@ -118,12 +139,11 @@ class TalkRepository(
         scope.launch {
             vehicle.events.collect { e ->
                 val mine = speakingId ?: return@collect
-                val id = when (e) {
-                    is VehicleEvent.SpeechDone -> e.speechId
-                    is VehicleEvent.SpeechDropped -> e.speechId
-                    else -> return@collect
+                when (e) {
+                    is VehicleEvent.SpeechDone -> if (e.speechId == mine) finishSpeaking(heard = true)
+                    is VehicleEvent.SpeechDropped -> if (e.speechId == mine) finishSpeaking(heard = false)
+                    else -> Unit
                 }
-                if (id == mine) finishSpeaking()
             }
         }
     }
@@ -143,7 +163,12 @@ class TalkRepository(
     private inner class LinkListener : TalkTransport.Listener {
         override fun onConnection(status: ConnectionStatus) {
             _state.update { it.copy(connection = status) }
-            if (status != ConnectionStatus.Online) onServerGone()
+            if (status == ConnectionStatus.Online) {
+                sendCtx(vehicle.signals.value)
+                companion?.onOnline()
+            } else {
+                onServerGone()
+            }
         }
 
         override fun onFrame(frame: ServerFrame) {
@@ -166,7 +191,8 @@ class TalkRepository(
                         endTurn(TurnError.Server)
                     }
                 }
-                is ServerFrame.Proactive -> HeyLog.i(TAG, "proactive ${frame.reason} (not handled yet)")
+                is ServerFrame.Proactive -> onProactive(frame)
+                is ServerFrame.Settings -> companion?.onServerSettings(frame.settings)
             }
         }
 
@@ -204,24 +230,65 @@ class TalkRepository(
         vehicle.speak(text, SpeechPriority.High, speechId)
     }
 
-    private fun finishSpeaking() {
+    private fun finishSpeaking(heard: Boolean) {
         speakingId = null
         speechFocus?.abandon()
-        endSpeaking()
+        if (heard) afterReply() else failAudio()
     }
 
     private fun endSpeaking() {
         _state.update { if (it.turn == TurnState.Replying) it.copy(turn = TurnState.Idle) else it }
     }
 
+    private fun failAudio() {
+        endSpeaking()
+        _state.update { it.copy(audioFailed = true) }
+    }
+
     private fun onPlaybackEnded(reason: PlaybackEnd) {
         HeyLog.i(TAG, "playback ended: $reason")
-        if (reason == PlaybackEnd.FocusLost) {
-            // D-14: someone else needs the speaker. Stop everything of ours and do not resume.
-            vehicle.stopSpeech()
-            turnId = null
+        when (reason) {
+            PlaybackEnd.Completed -> afterReply()
+            PlaybackEnd.FocusLost -> {
+                // D-14: someone else needs the speaker. Stop everything of ours and do not resume, do not listen.
+                vehicle.stopSpeech()
+                turnId = null
+                endSpeaking()
+            }
+            PlaybackEnd.Failed -> failAudio()
+            PlaybackEnd.Stopped -> Unit
         }
-        if (reason != PlaybackEnd.Stopped) _state.update { if (it.turn == TurnState.Replying) it.copy(turn = TurnState.Idle) else it }
+    }
+
+    /** The reply was read to the end. A question opens the microphone for 5 s (F4-F6), unless navigation is guiding. */
+    private fun afterReply() {
+        endSpeaking()
+        val s = _state.value
+        val question = replyText.toString().trimEnd().let { it.endsWith("?") || it.endsWith("？") }
+        if (!question || s.turn != TurnState.Idle) return
+        if (s.needsOnboarding || !s.online || vehicle.signals.value.naviGuiding || !voiceInput.hasPermission()) return
+        listenOnce(TurnSource.AutoListen)
+    }
+
+    /** `proactive`: the character starts talking by itself; its `reply.*` frames follow with [ServerFrame.Proactive.id] as turn id. */
+    private fun onProactive(frame: ServerFrame.Proactive) {
+        val s = _state.value
+        val blocked = s.needsOnboarding || s.turn != TurnState.Idle || vehicle.signals.value.naviGuiding
+        if (blocked) {
+            HeyLog.i(TAG, "proactive ${frame.reason} blocked (busy, navigation or no consent)")
+            link.send(ClientFrames.turnCancel(frame.id))
+            return
+        }
+        HeyLog.i(TAG, "proactive ${frame.reason}")
+        replyText.setLength(0)
+        replyAudio = AudioSpec.None
+        turnId = frame.id
+        turnEndSentAt = clock()
+        _state.update { it.copy(turn = TurnState.Replying, source = TurnSource.Proactive, heard = null, reply = "", error = null, audioFailed = false) }
+    }
+
+    private fun sendCtx(signals: VehicleSignals) {
+        link.send(ClientFrames.ctx(signals))
     }
 
     /** The connection went. A reply that was playing is read by the Pleos TTS instead (D-12), a turn that was waiting fails. */
@@ -259,6 +326,7 @@ class TalkRepository(
 
     override fun startTalk() {
         val s = _state.value
+        if (s.needsOnboarding) return
         when (s.turn) {
             TurnState.Idle -> Unit
             // D-24: the character is talking and the driver presses: stop the voice at once and listen.
@@ -266,33 +334,45 @@ class TalkRepository(
                 silence()
                 endTurn(null)
             }
+            // The automatic 5 s listening is on: the press makes it a normal turn without the timeout.
+            TurnState.Listening -> if (s.source == TurnSource.AutoListen) Unit else return
             else -> return
         }
         if (!voiceInput.hasPermission()) {
             _state.update { it.copy(turn = TurnState.NeedsPermission, error = null) }
             return
         }
-        listenOnce()
+        listenOnce(TurnSource.Ptt)
     }
 
-    private fun listenOnce() {
+    private fun listenOnce(source: TurnSource) {
         voiceJob?.cancel()
         replyText.setLength(0)
-        _state.update { it.copy(turn = TurnState.Listening, heard = null, reply = "", error = null) }
+        _state.update {
+            if (source == TurnSource.AutoListen) it.copy(turn = TurnState.Listening, source = source, error = null)
+            else it.copy(turn = TurnState.Listening, source = source, heard = null, reply = "", error = null, audioFailed = false)
+        }
         voiceJob = scope.launch {
-            when (val result = voiceInput.listen()) {
-                is VoiceResult.Text -> sendTurn(result.text)
-                VoiceResult.NoSpeech -> endTurn(TurnError.NoSpeech)
+            val result = if (source == TurnSource.AutoListen) {
+                withTimeoutOrNull(autoListenMillis) { voiceInput.listen() } ?: VoiceResult.NoSpeech
+            } else {
+                voiceInput.listen()
+            }
+            when (result) {
+                is VoiceResult.Text -> sendTurn(result.text, source)
+                // Nothing said in the automatic listening: end quietly, no prompt, no error (F4-F6).
+                VoiceResult.NoSpeech -> endTurn(if (source == TurnSource.AutoListen) null else TurnError.NoSpeech)
                 VoiceResult.PermissionDenied -> endTurn(TurnError.PermissionDenied)
-                is VoiceResult.Unavailable -> endTurn(TurnError.SpeechUnavailable)
+                is VoiceResult.Unavailable -> endTurn(if (source == TurnSource.AutoListen) null else TurnError.SpeechUnavailable)
             }
         }
     }
 
-    private fun sendTurn(text: String) {
+    private fun sendTurn(text: String, source: TurnSource) {
         val id = newTurnId()
         replyAudio = AudioSpec.None
-        val ok = link.send(ClientFrames.turnStart(id)) &&
+        val trigger = if (source == TurnSource.AutoListen) Wire.TRIGGER_AFTER_PROACTIVE else Wire.TRIGGER_PTT
+        val ok = link.send(ClientFrames.turnStart(id, trigger)) &&
             link.send(ClientFrames.text(id, text)) &&
             link.send(ClientFrames.turnEnd(id))
         if (!ok) {
@@ -303,7 +383,7 @@ class TalkRepository(
         turnEndSentAt = clock()
         turnId = id
         HeyLog.i(TAG, "turn sent chars=${text.length} text=$text")
-        _state.update { it.copy(turn = TurnState.Thinking, heard = text) }
+        _state.update { it.copy(turn = TurnState.Thinking, heard = text, reply = "") }
     }
 
     override fun cancelTalk() {
@@ -315,7 +395,7 @@ class TalkRepository(
 
     override fun voicePermissionResult(granted: Boolean) {
         if (_state.value.turn != TurnState.NeedsPermission) return
-        if (granted) listenOnce() else _state.update { it.copy(turn = TurnState.Idle, error = TurnError.PermissionDenied) }
+        if (granted) listenOnce(TurnSource.Ptt) else _state.update { it.copy(turn = TurnState.Idle, error = TurnError.PermissionDenied) }
     }
 
     // ---------------------------------------------------------------- local UI state
@@ -336,3 +416,6 @@ class TalkRepository(
         }
     }
 }
+
+const val AUTO_LISTEN_MILLIS = 5_000L
+const val CTX_DEBOUNCE_MILLIS = 1_000L

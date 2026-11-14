@@ -1,6 +1,7 @@
 package ai.hey.vehicle
 
 import ai.hey.model.HeyConfig
+import ai.hey.model.VehicleSignals
 import ai.hey.model.HeyLog
 import ai.hey.model.Place
 import ai.hey.model.SpeechPriority
@@ -8,6 +9,7 @@ import ai.pleos.playground.navi.constants.NaviErrorCode
 import ai.pleos.playground.navi.data.DestinationArrivedInfo
 import ai.pleos.playground.navi.data.TripInfo as PleosTripInfo
 import ai.pleos.playground.navi.data.TripRequest
+import ai.pleos.playground.navi.constants.NavigationStatus
 import ai.pleos.playground.navi.helper.NaviHelper
 import ai.pleos.playground.navi.helper.listener.NaviHelperEventListener
 import ai.pleos.playground.tts.TextToSpeech
@@ -17,6 +19,13 @@ import ai.pleos.playground.tts.listener.EventListener
 import ai.pleos.playground.tts.listener.OnInitializeListener
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.area.DoorArea
+import ai.pleos.playground.vehicle.api.model.area.WindowArea
+import ai.pleos.playground.vehicle.constant.area.WindowValue
+import ai.pleos.playground.vehicle.constant.control.LightState
+import ai.pleos.playground.vehicle.constant.control.WiperState
+import ai.pleos.playground.vehicle.listener.LightStateListener
+import ai.pleos.playground.vehicle.listener.RangeRemainingListener
+import ai.pleos.playground.vehicle.listener.WiperStateListener
 import ai.pleos.playground.vehicle.constant.area.DoorValue
 import ai.pleos.playground.vehicle.constant.control.VehicleGear as PleosGear
 import ai.pleos.playground.vehicle.listener.DoorPositionListener
@@ -33,6 +42,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
@@ -66,6 +76,7 @@ class PleosVehicleGateway(
     private val _driving = MutableStateFlow<DrivingStatus>(DrivingStatus.Unknown)
     private val _gear = MutableStateFlow(VehicleGear.Unknown)
     private val _doors = MutableStateFlow<Set<VehicleDoor>>(emptySet())
+    private val _signals = MutableStateFlow(VehicleSignals())
     private val _events = MutableSharedFlow<VehicleEvent>(extraBufferCapacity = 64)
     private val _mouth = MutableStateFlow(0)
 
@@ -74,6 +85,9 @@ class PleosVehicleGateway(
     override val drivingState: StateFlow<DrivingStatus> = _driving.asStateFlow()
     override val gear: StateFlow<VehicleGear> = _gear.asStateFlow()
     override val doors: StateFlow<Set<VehicleDoor>> = _doors.asStateFlow()
+    override val signals: StateFlow<VehicleSignals> = _signals.asStateFlow()
+
+    private fun signal(change: (VehicleSignals) -> VehicleSignals) = _signals.update(change)
     override val events: SharedFlow<VehicleEvent> = _events.asSharedFlow()
     override val mouth: StateFlow<Int> = _mouth.asStateFlow()
 
@@ -109,8 +123,17 @@ class PleosVehicleGateway(
         }
 
         override fun onDestinationArrived(destinationArrivedInfo: DestinationArrivedInfo) {
+            signal { it.copy(naviGuiding = false) }
             _events.tryEmit(VehicleEvent.Arrived)
         }
+
+        override fun onRouteStarted(info: ai.pleos.playground.navi.data.RouteStartInfo) = signal { it.copy(naviGuiding = true) }
+
+        override fun onRouteEnded() = signal { it.copy(naviGuiding = false) }
+
+        override fun onRouteCancelled() = signal { it.copy(naviGuiding = false) }
+
+        override fun onNavigationStatus(status: NavigationStatus) = signal { it.copy(naviGuiding = status == NavigationStatus.ROUTE_DRIVE) }
     }
 
     private var vehicle: Vehicle? = null
@@ -122,10 +145,23 @@ class PleosVehicleGateway(
                 main,
                 onDriving = { _driving.value = if (it) DrivingStatus.Driving else DrivingStatus.Parked },
                 onLost = { _driving.value = DrivingStatus.Unknown },
+                onReady = { guard("car properties") { watchCarProperties() } },
             )
         }
         guard("navigation") { connectNavi() }
         guard("vehicle signals") { connectVehicle() }
+    }
+
+    private fun watchCarProperties() {
+        CarUx.watchProperties(
+            onFuelType = { v -> signal { it.copy(fuelType = fuelName(v)) } },
+            onSpeedMps = { v -> signal { it.copy(speedKmh = Math.round(v * 3.6f).coerceAtLeast(0)) } },
+        )
+    }
+
+    /** AAOS FuelType: 10 electric, 8 LPG, 3/4 diesel, 9 hydrogen, anything else gasoline. */
+    private fun fuelName(values: IntArray): String? = values.firstOrNull()?.let {
+        when (it) { 10 -> "electric"; 8 -> "lpg"; 3, 4 -> "diesel"; 9 -> "hydrogen"; else -> "gasoline" }
     }
 
     private inline fun guard(what: String, block: () -> Unit) {
@@ -165,6 +201,7 @@ class PleosVehicleGateway(
                         PleosGear.GEAR_NEUTRAL -> VehicleGear.Neutral
                         else -> VehicleGear.Unknown
                     }
+                    signal { s -> s.copy(gear = when (_gear.value) { VehicleGear.Park -> "P"; VehicleGear.Reverse -> "R"; VehicleGear.Neutral -> "N"; VehicleGear.Drive -> "D"; VehicleGear.Unknown -> null }) }
                 }
 
                 override fun onFailed(e: Exception) = HeyLog.d(TAG, "gear listener failed: ${e.message}")
@@ -183,12 +220,43 @@ class PleosVehicleGateway(
                     object : DoorPositionListener {
                         override fun onPositionUpdated(position: Int?) {
                             _doors.value = if ((position ?: 0) > 0) _doors.value + door else _doors.value - door
+                            signal { it.copy(doorOpen = _doors.value.isNotEmpty()) }
                         }
 
                         override fun onFailed(e: Exception) = HeyLog.d(TAG, "door listener failed: ${e.message}")
                     },
                 )
             }
+        }
+        guard("wiper") {
+            v.getWiper().registerWiperState(
+                WindowArea(WindowValue.FRONT_WINDSHIELD),
+                object : WiperStateListener {
+                    // The state API only knows OFF/ON/SERVICE: ON is sent as "low" (the speed is not readable).
+                    override fun onWiperStateUpdated(state: WiperState?) = signal { it.copy(wiper = if (state == WiperState.ON) "low" else "off") }
+
+                    override fun onFailed(e: Exception) = HeyLog.d(TAG, "wiper listener failed: ${e.message}")
+                },
+            )
+        }
+        guard("headlight") {
+            v.getLight().registerLowBeamLightState(
+                object : LightStateListener {
+                    override fun onLightStateUpdated(state: LightState?) = signal { it.copy(headlight = state == LightState.ON) }
+
+                    override fun onFailed(e: Exception) = HeyLog.d(TAG, "headlight listener failed: ${e.message}")
+                },
+            )
+        }
+        guard("range") {
+            @Suppress("DEPRECATION")
+            v.getOdometer().registerRangeRemainingListener(
+                object : RangeRemainingListener {
+                    override fun onRangeRemainingChanged(rangeRemaining: Float?) = signal { it.copy(rangeKm = rangeRemaining?.let { m -> (m / 1000f).toInt() }) }
+
+                    override fun onFailed(e: Exception) = HeyLog.d(TAG, "range listener failed: ${e.message}")
+                },
+            )
         }
     }
 

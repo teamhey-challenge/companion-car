@@ -1,6 +1,7 @@
 package ai.hey.session
 
 import ai.hey.model.CarSettings
+import ai.hey.model.ConsentType
 import android.content.Context
 import android.content.SharedPreferences
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +20,16 @@ class PrefsCarStorage(context: Context, private val defaultServerUrl: String = C
     private val prefs: SharedPreferences = context.applicationContext.getSharedPreferences("hey_car", Context.MODE_PRIVATE)
     private val _settings = MutableStateFlow(read())
     override val settings: StateFlow<CarSettings> = _settings.asStateFlow()
+
+    private val _consents = MutableStateFlow(ConsentMirror(ConsentType.entries.filter { prefs.getBoolean(consentKey(it), false) }.toSet()))
+    override val consents: StateFlow<ConsentMirror> = _consents.asStateFlow()
+
+    private fun consentKey(type: ConsentType) = "consent:${type.wire}"
+
+    override suspend fun setConsent(type: ConsentType, granted: Boolean) {
+        withContext(Dispatchers.IO) { prefs.edit().putBoolean(consentKey(type), granted).commit() }
+        _consents.value = ConsentMirror(if (granted) _consents.value.granted + type else _consents.value.granted - type)
+    }
 
     private fun read(): CarSettings {
         val d = CarSettings()
