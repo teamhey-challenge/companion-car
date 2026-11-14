@@ -78,9 +78,11 @@ dependencies {
     implementation(project(":core:vehicle"))
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:home"))
     implementation(libs.compose.runtime)
     implementation(libs.compose.ui)
     implementation(libs.activity.compose)
+    implementation(libs.navigation.compose)
     testImplementation(libs.junit)
 }
 

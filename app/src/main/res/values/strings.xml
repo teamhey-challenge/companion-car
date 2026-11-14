@@ -3,17 +3,9 @@
     <string name="service_channel_name">헤이파리 연결</string>
     <string name="service_notification_title">헤이파리가 듣고 있어요</string>
     <string name="service_notification_text">눌러서 화면을 열 수 있어요</string>
-    <string name="home_title">헤이파리와 이야기해요</string>
-    <string name="home_settings">설정</string>
-    <string name="home_talk">말하기</string>
-    <string name="home_stop">그만</string>
-    <string name="home_listening">듣고 있어요</string>
-    <string name="home_thinking">생각하고 있어요</string>
-    <string name="home_error_title">말씀을 전하지 못했어요</string>
-    <string name="home_error_not_connected">서버에 연결되지 않았어요</string>
-    <string name="home_error_no_speech">잘 듣지 못했어요</string>
-    <string name="home_error_permission">마이크 권한이 필요해요</string>
-    <string name="home_error_stt">음성 인식을 쓸 수 없어요</string>
-    <string name="home_error_lost">연결이 끊어졌어요</string>
-    <string name="home_error_server">서버가 답하지 못했어요</string>
+    <string name="voice_error_offline">연결이 끊겼어요. 잠시 뒤에 다시 이야기해요</string>
+    <string name="voice_error_microphone">멈춘 뒤에 마이크 권한을 확인해 주세요</string>
+    <string name="voice_error_audio">소리를 낼 수 없어요. 멈춘 뒤에 확인해 주세요</string>
+    <string name="voice_error_server">지금은 대답하지 못해요. 잠시 뒤에 다시 이야기해요</string>
+    <string name="voice_error_recognition">잘 못 들었어요. 다시 말해 주세요</string>
 </resources>

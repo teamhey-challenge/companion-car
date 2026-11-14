@@ -13,6 +13,8 @@ pleosVehicle = "2.3.2"
 pleosNaviHelper = "3.0.5"
 pleosTts = "3.3.1"
 pleosStt = "3.3.1"
+rive = "11.16.3"
+navigationCompose = "2.9.6"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -23,6 +25,8 @@ compose-foundation = { module = "androidx.compose.foundation:foundation" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+rive-android = { module = "app.rive:rive-android", version.ref = "rive" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
