@@ -12,7 +12,7 @@
     <string name="memory_off">기억 저장이 꺼져 있어요</string>
     <string name="memory_kind_fact">사실</string>
     <string name="memory_kind_summary">대화 요약</string>
-    <string name="memory_delete_label">이 기억 지우기, %1$s</string>
+    <string name="memory_delete_label">이 기억 지우기</string>
     <string name="memory_delete_title">이 기억을 지울까요?</string>
     <string name="memory_delete_confirm">지우기</string>
     <string name="memory_cancel">취소</string>

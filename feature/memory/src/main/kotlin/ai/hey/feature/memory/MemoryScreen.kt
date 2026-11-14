@@ -139,7 +139,7 @@ fun MemoryScreen(
                                 text = row.text,
                                 date = row.date,
                                 onDelete = { pendingId = row.id },
-                                deleteLabel = stringResource(R.string.memory_delete_label, kind),
+                                deleteLabel = stringResource(R.string.memory_delete_label),
                                 tint = index % 3,
                                 enabled = row.id !in list.busyIds && !list.allBusy,
                                 modifier = Modifier.fillWidth(),
