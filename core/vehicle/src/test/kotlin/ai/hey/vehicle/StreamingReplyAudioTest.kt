@@ -54,12 +54,17 @@ class MouthLevelTest {
     }
 }
 
-/** A sink whose play position follows a clock we control and whose write blocks like a real one when asked. */
+/**
+ * A sink whose write blocks like a real one when asked. The play position is the number of frames written, unless a test
+ * takes it over with [manualHead]: then it moves only when the test says so, which makes the mouth level independent of
+ * thread timing.
+ */
 private class FakeSink : PcmSink {
     val frames = AtomicLong(0)
     val stopped = AtomicBoolean(false)
     val stoppedAtNanos = AtomicLong(0)
     var started = CountDownLatch(1)
+    @Volatile var manualHead: Long? = null
     override fun start(sampleRate: Int) { started.countDown() }
     override fun write(buf: ByteArray, offset: Int, length: Int): Int {
         if (stopped.get()) return -1
@@ -67,9 +72,19 @@ private class FakeSink : PcmSink {
         frames.addAndGet((length / 2).toLong())
         return length
     }
-    override fun playedFrames(): Long = frames.get()
+    override fun playedFrames(): Long = manualHead ?: frames.get()
     override fun stopNow() { stoppedAtNanos.compareAndSet(0, System.nanoTime()); stopped.set(true) }
     override fun release() = Unit
+}
+
+/** Waits (up to 5 s) for [condition]; true as soon as it holds. Waiting for a fact, not sampling a moving value. */
+private fun awaitTrue(condition: () -> Boolean): Boolean {
+    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+    while (System.nanoTime() < deadline) {
+        if (condition()) return true
+        Thread.sleep(1)
+    }
+    return condition()
 }
 
 private class FakeFocus(val grant: Boolean = true) : FocusGate {
@@ -101,18 +116,28 @@ class StreamingReplyAudioTest {
 
     @Test fun `plays everything then completes and the mouth follows the loudness`() {
         val (audio, sink, rec) = rig()
+        sink.manualHead = 0 // the speaker "plays" only when the test moves the head
         audio.begin(pcm)
         audio.write(tone(300, 0.5) + tone(300, 0.05) + tone(300, 0.0))
         audio.finish()
+        val window = 720L // 30 ms at 24 kHz
+        assertTrue("all frames handed to the sink", awaitTrue { sink.frames.get() == 24_000L * 900 / 1000 })
+        // loud window under the head -> 3
+        sink.manualHead = 1
+        assertTrue("saw loud: ${rec.mouth}", awaitTrue { 3 in rec.mouth })
+        // the head moves into the soft part (windows 10..19) -> 1
+        sink.manualHead = window * 10 + 1
+        assertTrue("saw soft: ${rec.mouth}", awaitTrue { 1 in rec.mouth })
+        // then into the silent part (windows 20..29) -> 0
+        sink.manualHead = window * 20 + 1
+        assertTrue("shut again: ${rec.mouth}", awaitTrue { rec.mouth.lastOrNull() == 0 })
+        // everything heard -> completes
+        sink.manualHead = 24_000L * 900 / 1000
         assertTrue(rec.endedLatch.await(5, TimeUnit.SECONDS))
         assertEquals(listOf(PlaybackEnd.Completed), rec.ended.toList())
-        assertEquals(24_000L * 900 / 1000, sink.frames.get())
-        // loud (3) came first, then soft (1), then shut (0), and it ends shut
         val m = rec.mouth.toList()
-        assertTrue("saw loud: $m", 3 in m)
-        assertTrue("saw soft: $m", 1 in m)
-        assertEquals(0, m.last())
-        assertTrue(m.indexOf(3) < m.indexOf(1))
+        assertEquals("ends shut: $m", 0, m.last())
+        assertTrue("loud (3) came before soft (1): $m", m.indexOf(3) in 0 until m.indexOf(1))
     }
 
     @Test fun `focus loss stops the output within half a second and never resumes`() {
