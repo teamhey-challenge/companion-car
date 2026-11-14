@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 private const val PRIVACY_URL = "https://hey.lastmile.ltd/privacy"
 private const val CAR_SPEED = "android.car.permission.CAR_SPEED"
@@ -62,6 +63,8 @@ fun OnboardingRoute(
     val flow = remember {
         OnboardingFlow(
             requestPermission = { permission ->
+                // A permission dialog open when gear D arrives gets covered by the system's driving block: wait for Park.
+                talk.state.first { mayAskPermission(it.isParked) }
                 val answer = CompletableDeferred<Boolean>()
                 pending = answer
                 launcher.launch(permission)
