@@ -2,7 +2,6 @@ package ai.hey.feature.home
 
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
-import ai.hey.designsystem.component.HeyText
 import ai.hey.designsystem.component.StopListeningButton
 import ai.hey.designsystem.component.TalkButton
 import ai.hey.designsystem.layout.HeyAlign
@@ -11,7 +10,6 @@ import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.inset
 import ai.hey.designsystem.theme.HeyGap
-import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.component.PageBackground
 import ai.hey.designsystem.component.StatusBadge
 import androidx.compose.runtime.Composable
@@ -53,9 +51,8 @@ fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, onEndListening: () -> Unit, modi
         ) {
             CharacterSlot(size = CharacterSize.Driving, live = null, contentDescription = stringResource(R.string.home_character))
             when {
-                ui.phase == HomePhase.Listening || ui.phase == HomePhase.Speaking ->
+                ui.phase == HomePhase.Listening || ui.phase == HomePhase.Speaking || (waiting && ui.phase == HomePhase.Thinking) ->
                     StatusBadge(phase = ui.phase.toTalk(), driving = true, animated = false)
-                waiting -> HeyText(stringResource(R.string.drive_wait), variant = HeyTextVariant.Heading)
             }
             if (ui.phase == HomePhase.Speaking) {
                 StopListeningButton(onClick = onTalk, big = true)

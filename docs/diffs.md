@@ -4,6 +4,7 @@
 
 | 날짜 | 스냅숏 | 이유 |
 |---|---|---|
+| 2026-11-14 | `feature/home` `c5-listening-*`, `c5-speaking-*` (1600, 라이트·다크), `core/designsystem` `parts_status-badge-*` | PLEOS-162. C5(주행 중) 상태 줄을 시안 C5-listening/C5-thinking에 맞춤: 주행 중에는 파형 없이 글자만(듣는 중·말하는 중), "잠깐만요"는 점+글자로 상태 배지가 그린다(이전엔 점 없는 큰 제목). 글자색은 시안처럼 주행 중 잉크색. |
 | 2026-11-14 | `feature/settings` `d8-settings*` (1280·1600, 라이트·다크), `core/designsystem` `parts_text-field-*` | DV-07 단계 1. 설정에서 "차량 번호 뒤 4자리"와 "중계 서버 주소"를 지우고 "연결" 구역에 "서버 주소" 한 칸(+"이 주소로 연결")만 남겼다. 기준 값은 기본 서버 주소로 바뀌었다. `text-field` 이야기의 자리표시 문구에서 내부 IP를 뺐다("https://서버주소/api"). 다른 부품은 그대로다. |
 | 2026-11-13 | 새로 만든 `feature/trip` `d6-voice-translate-failed-*` (1280·1600, 라이트·다크) | 리뷰 M2. 음성 답장 번역이 실패하면(`TRANSLATE_FAILED`) 확인창이 열린 채로 카드 안에 "번역하지 못했어요. 승객 언어로 바꿔야 전달할 수 있어요. 다시 보내 주세요"를 보인다(`VoiceConfirmDialog.notice`, 경고 배너). 같은 문장이 막 뒤 위험 배너로 한 번 더 그려지던 것을 확인창이 열려 있고 실패 사유가 있으면 그리지 않도록 고쳐 네 장을 다시 기록했다(`RequestsScreen`). 한국어 원문 그대로 보내기는 없다. 다른 스냅숏은 그대로다. |
 | 2026-11-13 | 지움: `core/designsystem` `parts_passenger-pin*`(짧은·긴, 라이트·다크), `feature/trip` `d4-dropoff-pin*`(기본·offline·replying)·`d6-requests-pin*` (1280·1600, 라이트·다크) | 승객 핀 기능이 protocol 3.0.0에서 없어졌고 이 기준 이미지를 그리던 시험도 이미 없어서 고아 파일이었다. 지우기만 했고 다른 화면의 이미지는 바뀌지 않았다. |

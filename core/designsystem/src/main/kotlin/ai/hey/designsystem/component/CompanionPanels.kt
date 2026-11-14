@@ -291,6 +291,7 @@ fun StatusBadge(
     if (label == null) return
     val online = connection == HeyConnection.Online
     val color = when {
+        driving && online -> colors.fgDefault // C5: still dot + label in the ink colour (mock: .car[data-driving=true] .status)
         !online -> if (connection == HeyConnection.Offline) colors.danger else colors.warning
         phase == TalkPhase.Listening -> colors.info
         phase == TalkPhase.Thinking -> colors.warning
@@ -301,12 +302,15 @@ fun StatusBadge(
         gap = HeyGap.G16,
         modifier = modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) {
-        if (online && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)) {
+        if (online && !driving && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)) {
             Waveform(color, moving, speaking = phase == TalkPhase.Speaking)
             // The waveform stands for the label on screen; TalkBack still reads it.
             Box(Modifier.size(1.dp).semantics { contentDescription = label })
         } else {
-            Box(Modifier.size(HeyTokens.Space.s12).clip(RoundedCornerShape(HeyTokens.Radius.full)).background(color))
+            // C5 mock: the listening/speaking label stands alone (its waveform is hidden while driving); thinking keeps its dot.
+            if (!(driving && online && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking))) {
+                Box(Modifier.size(HeyTokens.Space.s12).clip(RoundedCornerShape(HeyTokens.Radius.full)).background(color))
+            }
             InkText(label, colors.fgDefault, variant = HeyTextVariant.Heading, maxLines = 1)
         }
     }
