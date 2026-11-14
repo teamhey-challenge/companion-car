@@ -42,6 +42,7 @@ git clone --recurse-submodules git@github.com:darren-pleos-challenge/companion-c
   - PR에 `record-snapshots` 라벨을 붙이거나(같은 저장소의 브랜치만), `gh workflow run record-snapshots.yml -f branch=<브랜치>`로 실행한다.
   - 모든 모듈에 `recordPaparazziDebug`를 돌려 바뀐 `*/src/test/snapshots` PNG를 그 브랜치에 커밋 하나(`snapshots: record on CI`)로 푸시하고, 이어서 `ci`를 그 브랜치에 다시 돌린다. 끝나면 라벨은 자동으로 지워진다.
   - 푸시된 뒤에는 `git pull --rebase`로 받아 이어서 작업한다. 바뀐 PNG는 PR diff에서 눈으로 확인한다.
+  - 레코더는 PR 브랜치에서만 돈다. `main`(기본 브랜치)이나 빈 브랜치로 실행하면 첫 단계에서 바로 실패한다.
 
 
 ## 링크·라이선스
