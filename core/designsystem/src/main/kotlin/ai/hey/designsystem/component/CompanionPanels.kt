@@ -22,6 +22,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -138,14 +139,19 @@ fun MemoryRow(
             // Mockup C6: card top to label top 39 dp (was 27), card pitch 198 dp (was 194).
             .padding(start = HeyTokens.Space.s24, end = HeyTokens.Space.s24, top = HeyTokens.Space.s32 + 4.dp, bottom = HeyTokens.Space.s16),
     ) {
-        VStack(HeyGap.G24, modifier = Modifier.grow()) {
-            VStack(HeyGap.G8) {
+        // Mockup C6: kind→body 8 dp further apart (body y 427), body→date 8 dp closer (date y 476 unchanged),
+        // delete glyph 6 dp higher and 9 dp further right.
+        VStack(HeyGap.G16, modifier = Modifier.grow()) {
+            VStack(HeyGap.G16) {
                 InkText(kind, colors.fgDefault, size = 22.sp, maxLines = 1)
                 InkText(text, colors.fgDefault, size = 28.sp, maxLines = 3)
             }
             if (date != null) InkText(date, colors.fgMuted, size = 20.sp, maxLines = 1)
         }
-        HeyIconButton(HeyIcons.Trash, deleteLabel, onDelete, enabled = enabled, bare = true)
+        HeyIconButton(
+            HeyIcons.Trash, deleteLabel, onDelete, enabled = enabled, bare = true,
+            modifier = Modifier.offset(x = 9.dp, y = (-6).dp),
+        )
     }
 }
 
