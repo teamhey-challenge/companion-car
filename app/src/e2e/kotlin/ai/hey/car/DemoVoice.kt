@@ -32,22 +32,41 @@ internal object DemoVoice {
         } catch (e: Exception) {
             null
         }
-        val input = ScriptedVoiceInput(listenMillis = LISTEN_MS, text = fixture, silentAfterReply = true)
+        val scripted = ScriptedVoiceInput(listenMillis = LISTEN_MS, text = fixture, silentAfterReply = true)
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 val graph = (app as HeyApp).graph
                 when (intent.action) {
                     ACTION_TALK -> graph.repository.startTalk()
                     ACTION_SPEAK -> graph.vehicle.speak(intent.getStringExtra("text").orEmpty(), ai.hey.model.SpeechPriority.High, null)
-                    else -> input.text = intent.getStringExtra("text")
+                    else -> scripted.text = intent.getStringExtra("text")
                 }
             }
         }
         val filter = IntentFilter(ACTION).apply { addAction(ACTION_TALK); addAction(ACTION_SPEAK) }
         // Debug/e2e builds only; the broadcast comes from adb, so the receiver is exported (minSdk 28 has no flag overload before 33).
         if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED) else @Suppress("UnspecifiedRegisterReceiverFlag") app.registerReceiver(receiver, filter)
-        return input
+        return RealPermissionVoice(app, scripted)
     }
+}
+
+/**
+ * The scripted recognizer with the device's real RECORD_AUDIO state: revoking the permission (`pm revoke`) must show the same
+ * "ask for the microphone" path as the shipped build, otherwise the C8 microphone state cannot be tried on a debug APK.
+ */
+private class RealPermissionVoice(private val app: Application, private val scripted: ScriptedVoiceInput) : VoiceInput {
+    override fun hasPermission(): Boolean =
+        app.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    override suspend fun listen(): ai.hey.vehicle.VoiceResult =
+        if (hasPermission()) scripted.listen() else ai.hey.vehicle.VoiceResult.PermissionDenied
+
+    override fun finishListening() = scripted.finishListening()
+
+    override suspend fun listenAfterReply(): ai.hey.vehicle.VoiceResult =
+        if (hasPermission()) scripted.listenAfterReply() else ai.hey.vehicle.VoiceResult.PermissionDenied
+
+    override fun release() = scripted.release()
 }
 
 /** The one hook [AppGraph] calls: the demo recognizer in these builds. */
