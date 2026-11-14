@@ -1,6 +1,36 @@
 # companion-car
 
-Pleos 차량용 캐릭터 AI 컴패니언 "헤이파리"(임시 이름 `companion-*`)의 차량 앱 저장소다. HEY 시절 `hey-car@8b8de8c`의 기록을 이어받았고, 택시 운행 화면·경로 시작 상태 기계·HEY 중계 서버 연결(`RelayLink`, `TripRepository`)은 지웠다. 지금 화면은 자리표시 홈(`CompanionHome`)과 설정(D8)뿐이다.
+> 공모전 제출용 저장소다. 앱 이름·팀명은 아직 정해지지 않아 임시 이름 `companion-*`을 쓴다(정해지면 아래 `apk/` 이름만 바뀐다).
+
+## 앱 소개
+
+차 안에 사는 캐릭터 AI 컴패니언 "헤이파리"의 **차량 앱**이다. Pleos(Android Automotive) 차 화면에서 동작하며, 음성으로 대화하고 차량 상태(주행 상태·기어·문·내비 목적지 거리 등)를 읽어 먼저 말을 걸고, 사용자를 기억한다(기억은 폰 앱에서 보고 지울 수 있다). 주행 중에는 음성만 쓰고, 화면은 큰 글자·큰 버튼으로 단순하게 둔다.
+
+- 음성 인식(STT)과 차량 정보는 Pleos 내장 SDK, 답변 생성과 캐릭터 목소리(TTS)는 서버가 맡는다.
+- 패키지 `ai.hey.car`, minSdk 28 / targetSdk 34, 버전 0.1.0.
+
+## APK 위치
+
+- 제출용 APK: `apk/<팀명>_<앱이름>_release.apk`. 팀명·앱 이름이 정해진 뒤 `scripts/stage-apk.sh <팀명> <앱이름>` 한 줄로 만든다(배포 서버의 최신 APK를 받아 SHA-256을 목록과 대조하고 이름을 붙인다). 릴리스 키로 직접 빌드한 파일을 쓰려면 `./gradlew :app:assembleRelease` 뒤 `APK_FILE=dist/apk/<파일> scripts/stage-apk.sh <팀명> <앱이름>`. 파일이 크면 GitHub Releases에 올리고 여기에 링크를 적는다.
+- 항상 최신 빌드: `https://hey.lastmile.ltd/download/latest.apk` (파일 목록과 SHA-256은 `https://hey.lastmile.ltd/download/`).
+
+## 테스트 환경
+
+- Pleos Playground 에뮬레이터(Android Automotive)에서 시험했다. 실차 시험 결과는 이 저장소에 없다.
+- 서버는 팀이 운영하는 `https://hey.lastmile.ltd/api`(기본값). 처음 연결할 때 기기가 등록 비밀(아래 "등록 비밀")로 서버에 등록해야 해서, 비밀 없이 APK만 설치하면 대화는 되지 않는다. 심사용 시연은 시연 영상과 팀이 준비한 기기로 한다.
+- 마이크가 없는 환경에서는 디버그 빌드의 텍스트 주입(`DemoVoice`)으로 음성 입력을 대신한다.
+
+## 저장소 구성
+
+| 저장소 | 내용 |
+|---|---|
+| [companion-car](https://github.com/darren-pleos-challenge/companion-car) | 차량 앱(이 저장소) |
+| [companion-phone](https://github.com/darren-pleos-challenge/companion-phone) | 폰 앱(QR 연결·동의·기억 관리) |
+| [companion-server](https://github.com/darren-pleos-challenge/companion-server) | 대화·기억·TTS 서버 |
+| [companion-web](https://github.com/darren-pleos-challenge/companion-web) | 폰 웹(폰 앱의 백업)·디자인 시스템 Storybook |
+| [companion-shared](https://github.com/darren-pleos-challenge/companion-shared) | 디자인 토큰·프로토콜(서브모듈 `shared/`) |
+
+HEY 시절 `hey-car@8b8de8c`의 기록을 이어받은 저장소다(택시 운행 화면·경로 시작 상태 기계·HEY 중계 서버 연결은 지웠다). 모듈 구성은 아래와 같다.
 
 ## 재사용 중인 부분
 
@@ -32,7 +62,6 @@ git clone --recurse-submodules git@github.com:darren-pleos-challenge/companion-c
 - JDK 17, Android SDK(compileSdk 36)가 필요하다. `shared/`는 `companion-shared` v0.3.0에 고정한 서브모듈이다.
 - 에뮬레이터·실차 시험에는 Pleos 에뮬레이터(Android Automotive)가 필요하다. 마이크가 없는 환경에서는 디버그 빌드의 텍스트 주입(`DemoVoice`)으로 음성 입력을 대신한다.
 - 패키지 이름 `ai.hey.*`는 앱 이름이 확정될 때까지 바꾸지 않는다.
-<<<<<<< HEAD
 - `docs/`에는 HEY 시절 문서가 남아 있다. 컴패니언 기준은 기획 저장소의 PRD가 정본이다.
 
 ## CI와 스냅숏 기록
