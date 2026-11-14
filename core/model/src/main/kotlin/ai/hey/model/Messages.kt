@@ -76,6 +76,9 @@ sealed interface ServerFrame {
     data class ReplyEnd(val turnId: String, val text: String, val firstTokenMs: Long?, val totalMs: Long) : ServerFrame
     data class Proactive(val id: String, val reason: String) : ServerFrame
     data class Settings(val settings: CompanionSettings) : ServerFrame
+
+    /** The pairing status changed on the server (a phone or the car ended it: [phase] None). */
+    data class Pairing(val phase: PairingPhase) : ServerFrame
     data class Error(val code: String, val turnId: String?, val message: String?) : ServerFrame
 }
 
@@ -113,6 +116,15 @@ private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
         )
         "proactive" -> ServerFrame.Proactive(s("id") ?: return null, s("reason").orEmpty())
         "settings" -> ServerFrame.Settings(parseCompanionSettings(o["settings"]?.jsonObject ?: return null) ?: return null)
+        "pairing" -> ServerFrame.Pairing(
+            when (s("status")) {
+                "none" -> PairingPhase.None
+                "pending" -> PairingPhase.Pending
+                "claimed" -> PairingPhase.Claimed
+                "expired" -> PairingPhase.Expired
+                else -> return null
+            },
+        )
         "error" -> ServerFrame.Error(s("code") ?: return null, s("turnId"), s("message"))
         else -> null
     }
