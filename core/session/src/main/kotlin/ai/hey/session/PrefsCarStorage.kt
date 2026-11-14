@@ -35,7 +35,7 @@ class PrefsCarStorage(context: Context, private val defaultServerUrl: String = C
         val d = CarSettings()
         return CarSettings(
             speechGapSec = prefs.getInt(KEY_GAP, d.speechGapSec),
-            dark = if (prefs.contains(KEY_DARK)) prefs.getBoolean(KEY_DARK, false) else d.dark,
+            dark = prefs.getBoolean(KEY_DARK, d.dark),
             serverUrl = prefs.getString(KEY_SERVER, null) ?: defaultServerUrl,
         )
     }
@@ -45,9 +45,9 @@ class PrefsCarStorage(context: Context, private val defaultServerUrl: String = C
         // The session uses the new value either way; the result tells whether it also survives a restart.
         _settings.value = next
         try {
-            val edit = prefs.edit().putInt(KEY_GAP, next.speechGapSec)
-            next.dark?.let { edit.putBoolean(KEY_DARK, it) } ?: edit.remove(KEY_DARK)
-            val kept = edit
+            val kept = prefs.edit()
+                .putInt(KEY_GAP, next.speechGapSec)
+                .putBoolean(KEY_DARK, next.dark)
                 .putString(KEY_SERVER, next.serverUrl)
                 .commit()
             if (kept) SaveResult.Saved else SaveResult.Failed(SaveFailure.WriteRejected)

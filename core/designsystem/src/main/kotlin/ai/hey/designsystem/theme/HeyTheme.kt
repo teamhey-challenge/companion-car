@@ -6,7 +6,6 @@ import ai.hey.designsystem.token.HeyDarkColors
 import ai.hey.designsystem.token.HeyLightColors
 import ai.hey.designsystem.token.HeyTokens
 import ai.hey.designsystem.token.HeyTypeSpec
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -69,10 +68,10 @@ object HeyTheme {
 private const val CANVAS_WIDTH_DP = 1600f
 private const val CANVAS_HEIGHT_DP = 720f
 
-/** Car theme: [dark] null follows the system setting (D-26). */
+/** Car default is dark (night driving, glare); [dark] is the driver's choice from settings. */
 @Composable
-fun HeyTheme(dark: Boolean? = null, content: @Composable () -> Unit) {
-    val isDark = dark ?: isSystemInDarkTheme()
+fun HeyTheme(dark: Boolean = true, content: @Composable () -> Unit) {
+    val isDark = dark
     val config = LocalConfiguration.current
     val base = LocalDensity.current
     val scale = minOf(config.screenWidthDp / CANVAS_WIDTH_DP, config.screenHeightDp / CANVAS_HEIGHT_DP).coerceAtLeast(1f)

@@ -24,7 +24,8 @@ import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.layout.fillSize
-import ai.hey.designsystem.layout.inset
+import ai.hey.designsystem.layout.carMargin
+import ai.hey.designsystem.layout.heroWidth
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTheme
@@ -90,13 +91,13 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     OceanBackground(modifier = modifier.fillSize(), animated = !reducedMotion) {
-        VStack(HeyGap.G24, modifier = Modifier.fillSize().inset(HeyGap.G32)) {
+        VStack(HeyGap.G24, modifier = Modifier.fillSize().carMargin()) {
             HeaderBar(
                 title = stringResource(R.string.home_title),
                 stateLabel = stringResource(R.string.home_parked),
                 trailing = {
-                    HeyButton(stringResource(R.string.home_memory), onMemory, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Book)
-                    HeyButton(stringResource(R.string.home_settings), onSettings, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Gear)
+                    HeyButton(stringResource(R.string.home_memory), onMemory, variant = HeyButtonVariant.Soft, icon = HeyIcons.Book)
+                    HeyButton(stringResource(R.string.home_settings), onSettings, variant = HeyButtonVariant.Soft, icon = HeyIcons.Gear)
                 },
             )
             HStack(HeyGap.G32, modifier = Modifier.fillSize()) {
@@ -157,7 +158,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
         }
         else -> {
             VStack(HeyGap.G8) {
-                PageHeading(title = stringResource(R.string.home_hint), hero = true)
+                PageHeading(title = stringResource(R.string.home_hint), hero = true, modifier = Modifier.heroWidth())
                 if (!ui.online) StatusBadge(phase = TalkPhase.Idle, connection = HeyConnection.Reconnecting)
             }
             TalkButton(phase = TalkPhase.Idle, onClick = onTalk, onHoldStart = onTalk, onHoldEnd = onEndListening, enabled = ui.online)
