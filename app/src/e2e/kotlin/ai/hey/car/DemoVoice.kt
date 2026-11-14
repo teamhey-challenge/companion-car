@@ -45,7 +45,7 @@ internal object DemoVoice {
         val filter = IntentFilter(ACTION).apply { addAction(ACTION_REAL); addAction(ACTION_TALK); addAction(ACTION_SPEAK) }
         // Debug/e2e builds only. The sender must hold android.permission.DUMP (signature|privileged|development): the adb shell has it,
         // an installed third-party app cannot get it, so only `adb shell am broadcast` reaches the receiver (PLEOS-138). Same adb commands as before.
-        if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(receiver, filter, SENDER_PERMISSION, null, Context.RECEIVER_EXPORTED) else app.registerReceiver(receiver, filter, SENDER_PERMISSION, null)
+        if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(receiver, filter, SENDER_PERMISSION, null, Context.RECEIVER_EXPORTED) else @Suppress("UnspecifiedRegisterReceiverFlag") app.registerReceiver(receiver, filter, SENDER_PERMISSION, null)
         return input
     }
 }
