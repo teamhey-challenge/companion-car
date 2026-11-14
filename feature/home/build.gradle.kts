@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.paparazzi)
 }
 
 android {
@@ -18,10 +19,14 @@ android {
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 
+// Snapshot samples are test-only; Paparazzi renders the debug variant only.
+androidComponents { beforeVariants(selector().withBuildType("release")) { it.enableUnitTest = false } }
+
 // Structure, not convention: no material3 / foundation here, so raw Text/Button/Column cannot be imported.
-// The one exception is the Rive view (a classic Android View), which is the character renderer and lives in RiveCharacter.kt.
+// The one exception is the Rive view (a classic Android View), the character renderer in RiveCharacter.kt.
 dependencies {
     implementation(platform(libs.compose.bom))
+    testImplementation(platform(libs.compose.bom))
     implementation(project(":core:designsystem"))
     implementation(project(":core:model"))
     implementation(project(":core:session"))
