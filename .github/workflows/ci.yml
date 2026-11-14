@@ -36,6 +36,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      # One team debug key so every published APK has the same signature (installable over the previous one).
+      - name: Install team debug keystore
+        env:
+          DEBUG_KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          mkdir -p "$HOME/.android"
+          (umask 077; printf '%s' "$DEBUG_KEYSTORE_B64" | base64 -d > "$HOME/.android/debug.keystore")
+          test -s "$HOME/.android/debug.keystore"
       - uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
