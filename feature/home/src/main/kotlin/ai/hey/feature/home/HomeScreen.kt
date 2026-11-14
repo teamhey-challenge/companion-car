@@ -27,6 +27,7 @@ import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.inset
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
+import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.designsystem.theme.HeyTone
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,7 +55,8 @@ internal fun CarFault.toKind(): ErrorKind = when (this) {
 
 /** The character on C3/C4: the live Rive rig, or the still image while it loads, fails, or motion is reduced. */
 @Composable
-internal fun HomeCharacter(ui: HomeUi, dark: Boolean, reducedMotion: Boolean, size: CharacterSize, description: String, modifier: Modifier = Modifier) {
+internal fun HomeCharacter(ui: HomeUi, reducedMotion: Boolean, size: CharacterSize, description: String, modifier: Modifier = Modifier) {
+    val dark = HeyTheme.dark
     var riveFailed by remember { mutableStateOf(false) }
     val live: (@Composable () -> Unit)? = if (reducedMotion || riveFailed) null else {
         {
@@ -78,7 +80,6 @@ internal fun HomeCharacter(ui: HomeUi, dark: Boolean, reducedMotion: Boolean, si
 @Composable
 fun HomeScreen(
     ui: HomeUi,
-    dark: Boolean,
     reducedMotion: Boolean,
     onTalk: () -> Unit,
     onStop: () -> Unit,
@@ -104,7 +105,6 @@ fun HomeScreen(
                 }
                 HomeCharacter(
                     ui = ui,
-                    dark = dark,
                     reducedMotion = reducedMotion,
                     size = CharacterSize.Stage,
                     description = stringResource(if (ui.inTalk) R.string.home_character else R.string.home_character_idle),
