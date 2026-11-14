@@ -268,16 +268,31 @@ class TalkRepository(
         val s = _state.value
         val question = replyText.toString().trimEnd().let { it.endsWith("?") || it.endsWith("？") }
         if (!question || s.turn != TurnState.Idle) return
-        if (s.needsOnboarding || !s.online || vehicle.signals.value.naviGuiding || !voiceInput.hasPermission()) return
+        val why = when {
+            s.needsOnboarding -> "consent not recorded"
+            !s.online -> "offline"
+            vehicle.signals.value.naviGuiding -> "navigation guiding"
+            !voiceInput.hasPermission() -> "no microphone permission"
+            else -> null
+        }
+        if (why != null) {
+            HeyLog.i(TAG, "talk ignored: auto-listen skipped, $why")
+            return
+        }
         listenOnce(TurnSource.AutoListen)
     }
 
     /** `proactive`: the character starts talking by itself; its `reply.*` frames follow with [ServerFrame.Proactive.id] as turn id. */
     private fun onProactive(frame: ServerFrame.Proactive) {
         val s = _state.value
-        val blocked = s.needsOnboarding || s.turn != TurnState.Idle || vehicle.signals.value.naviGuiding
-        if (blocked) {
-            HeyLog.i(TAG, "proactive ${frame.reason} blocked (busy, navigation or no consent)")
+        val why = when {
+            s.needsOnboarding -> "consent not recorded"
+            s.turn != TurnState.Idle -> "busy (${s.turn})"
+            vehicle.signals.value.naviGuiding -> "navigation guiding"
+            else -> null
+        }
+        if (why != null) {
+            HeyLog.i(TAG, "talk ignored: proactive ${frame.reason} blocked, $why")
             link.send(ClientFrames.turnCancel(frame.id))
             return
         }
@@ -328,7 +343,11 @@ class TalkRepository(
 
     override fun startTalk() {
         val s = _state.value
-        if (s.needsOnboarding) return
+        if (s.needsOnboarding) {
+            HeyLog.i(TAG, "talk ignored: consent not recorded, showing onboarding")
+            _state.update { it.copy(onboardingRequests = it.onboardingRequests + 1) }
+            return
+        }
         when (s.turn) {
             TurnState.Idle -> Unit
             // D-24: the character is talking and the driver presses: stop the voice at once and listen.
@@ -337,10 +356,22 @@ class TalkRepository(
                 endTurn(null)
             }
             // The automatic 5 s listening is on: the press makes it a normal turn without the timeout.
-            TurnState.Listening -> if (s.source == TurnSource.AutoListen) Unit else return
-            else -> return
+            TurnState.Listening -> if (s.source == TurnSource.AutoListen) Unit else {
+                HeyLog.i(TAG, "talk ignored: already listening")
+                return
+            }
+            else -> {
+                HeyLog.i(TAG, "talk ignored: busy (${s.turn})")
+                return
+            }
+        }
+        if (!s.online) {
+            HeyLog.i(TAG, "talk ignored: offline (${s.connection})")
+            _state.update { it.copy(error = TurnError.NotConnected) }
+            return
         }
         if (!voiceInput.hasPermission()) {
+            HeyLog.i(TAG, "talk: no microphone permission, asking")
             _state.update { it.copy(turn = TurnState.NeedsPermission, error = null) }
             return
         }

@@ -135,6 +135,30 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
+    @Test fun `pressing talk without consent is never silent and asks for onboarding`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"), consented = false)
+        assertEquals(0, rig.repo.state.value.onboardingRequests)
+        rig.repo.startTalk()
+        assertEquals(1, rig.repo.state.value.onboardingRequests)
+        rig.repo.startTalk()
+        assertEquals(2, rig.repo.state.value.onboardingRequests)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertTrue(rig.transport.sent.none { it.contains("turn.start") })
+        cs.cancel()
+    }
+
+    @Test fun `pressing talk while offline sets the offline fault and listens to nothing`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
+        rig.transport.listener.onConnection(ConnectionStatus.RegistrationFailed)
+        rig.repo.startTalk()
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(TurnError.NotConnected, rig.repo.state.value.error)
+        assertEquals(CarFault.Offline, rig.repo.state.value.fault)
+        cs.cancel()
+    }
+
     @Test fun `audio focus loss stops the voice and a late reply end does not resume it`() = runTest {
         val cs = rigScope(testScheduler)
         val audio = FakeReplyAudio()

@@ -66,6 +66,12 @@ class MainActivity : ComponentActivity() {
                     nav.navigate(target) { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
                 }
             }
+            // A press of 말하기 without consent is never swallowed: parked, it lands on C1 (driving keeps the gate's C5).
+            LaunchedEffect(state.onboardingRequests) {
+                if (state.onboardingRequests > 0 && parked && route != Routes.Onboarding) {
+                    nav.navigate(Routes.Onboarding) { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
+                }
+            }
             // Errors while driving are voice only, once per cause (PRD 4.8): no banner, the screen stays C5.
             val announcer = remember {
                 FaultAnnouncer { fault -> graph.vehicle.speak(voiceText(fault), SpeechPriority.High, "fault-${fault.name}") }

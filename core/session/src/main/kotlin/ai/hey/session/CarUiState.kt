@@ -69,6 +69,8 @@ data class CarUiState(
     val companion: CompanionState = CompanionState(),
     /** True until the required consent is recorded: the app shows /onboarding and starts no conversation. */
     val needsOnboarding: Boolean = true,
+    /** Counts presses of the talk button refused for missing consent; the shell answers each with C1. */
+    val onboardingRequests: Int = 0,
     val source: TurnSource = TurnSource.Ptt,
     /** The last server or local voice output failed (focus refused, speaker dropped the text); cleared by the next turn. */
     val audioFailed: Boolean = false,
