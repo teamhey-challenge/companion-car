@@ -76,6 +76,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:session"))
     implementation(project(":core:vehicle"))
+    implementation(project(":feature:onboarding"))
     implementation(project(":feature:settings"))
     implementation(libs.compose.runtime)
     implementation(libs.compose.ui)

@@ -29,4 +29,5 @@ include(
     ":core:session",
     ":core:vehicle",
     ":feature:settings",
+    ":feature:onboarding",
 )
