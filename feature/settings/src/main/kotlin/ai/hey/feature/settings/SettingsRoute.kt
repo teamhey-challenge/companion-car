@@ -50,6 +50,7 @@ fun SettingsRoute(
     commands: CompanionCommands,
     onBack: () -> Unit,
     onOpenMemory: () -> Unit,
+    onOpenPair: () -> Unit,
     modifier: Modifier = Modifier,
     /** Debug builds only; release passes null and the field does not exist. */
     server: ServerAddress? = null,
@@ -66,6 +67,7 @@ fun SettingsRoute(
             commands.updateSettings { it.copy(speech = if (style == SpeechUi.Jondaetmal) SpeechStyle.Jondaetmal else SpeechStyle.Banmal) }
         },
         onOpenMemory = onOpenMemory,
+        onOpenPair = onOpenPair,
         onUnpair = commands::unpair,
         onWithdraw = commands::withdrawRecordConsent,
         modifier = modifier,

@@ -42,6 +42,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // The notification permission is asked from the screen while parked (see below), never at launch: a permission
+        // dialog is not distraction-optimized, so one open when the gear goes to D would be covered by the system block.
         SessionService.start(this)
         val graph = (application as HeyApp).graph
         val repository = graph.repository
@@ -134,6 +136,7 @@ class MainActivity : ComponentActivity() {
                             commands = graph.companion,
                             onBack = { nav.popBackStack() },
                             onOpenMemory = { nav.navigate(Routes.Memory) },
+                            onOpenPair = { nav.navigate(Routes.Pair) },
                             // The address field exists in debug builds only.
                             server = if (BuildConfig.DEBUG) {
                                 ServerAddress(state.settings.serverUrl) { url -> repository.updateSettings { it.copy(serverUrl = url) } }
