@@ -53,7 +53,9 @@ jobs:
         run: nice -n 19 ./gradlew --max-workers=2 recordPaparazziDebug
       - name: Commit and push changed snapshots
         run: |
-          git add -A -- '*/src/test/snapshots'
+          # Stage everything, then unstage whatever is not a snapshot (a pathspec fails when no snapshot is tracked yet).
+          git add -A
+          git diff --cached --name-only -z | { grep -zv '/src/test/snapshots/' || true; } | xargs -0 -r git reset -q --
           if git diff --cached --quiet; then echo "no snapshot changes"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
