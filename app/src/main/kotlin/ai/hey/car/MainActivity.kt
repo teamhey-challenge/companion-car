@@ -1,9 +1,10 @@
 package ai.hey.car
 
 import ai.hey.designsystem.theme.HeyTheme
-import ai.hey.feature.settings.SettingsScreen
+import ai.hey.feature.memory.MemoryRoute
+import ai.hey.feature.settings.ServerAddress
+import ai.hey.feature.settings.SettingsRoute
 import ai.hey.session.Panel
-import ai.hey.session.SaveResult
 import ai.hey.session.TurnState
 import android.Manifest
 import android.content.pm.PackageManager
@@ -16,6 +17,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 class MainActivity : ComponentActivity() {
     // One launcher for both runtime permissions; only an answer that contains the microphone goes back to the session.
@@ -36,20 +40,30 @@ class MainActivity : ComponentActivity() {
                     permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                 }
             }
+            val companion = (application as HeyApp).graph.companion
+            var memoryOpen by remember { mutableStateOf(false) }
             HeyTheme(dark = state.settings.dark) {
-                // Settings only while parked. The C1-C8 companion screens replace this placeholder.
+                // Interim wiring until CarHome's navigation lands: C7 opens from the placeholder home, C6 from C7.
                 if (state.panel == Panel.Settings && state.isParked) {
-                    BackHandler(onBack = repository::closeSettings)
-                    SettingsScreen(
-                        settings = state.settings,
-                        onChange = repository::updateSettings,
-                        onClose = repository::closeSettings,
-                        connection = state.connection.toStrip(),
-                        wordmarkParty = 1,
-                        clock = "",
-                        saveFailed = state.settingsSave is SaveResult.Failed,
-                    )
+                    if (memoryOpen) {
+                        BackHandler { memoryOpen = false }
+                        MemoryRoute(state.companion, companion, onBack = { memoryOpen = false })
+                    } else {
+                        BackHandler(onBack = repository::closeSettings)
+                        SettingsRoute(
+                            state.companion,
+                            companion,
+                            onBack = repository::closeSettings,
+                            onOpenMemory = { memoryOpen = true },
+                            server = if (BuildConfig.DEBUG) {
+                                ServerAddress(state.settings.serverUrl) { url -> repository.updateSettings { it.copy(serverUrl = url) } }
+                            } else {
+                                null
+                            },
+                        )
+                    }
                 } else {
+                    memoryOpen = false
                     CompanionHome(state, repository::startTalk, repository::cancelTalk, onSettings = state.parked?.let { p -> p::openSettings })
                 }
             }
