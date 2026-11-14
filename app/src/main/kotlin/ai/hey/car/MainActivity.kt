@@ -15,10 +15,8 @@ import ai.hey.model.SpeechPriority
 import ai.hey.session.TurnState
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -50,8 +48,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // The notification permission is asked from the screen while parked (see below), never at launch: a permission
-        // dialog is not distraction-optimized, so one open when the gear goes to D would be covered by the system block.
+        // No permission dialog at launch: the only runtime permission is the microphone, asked on a press while parked.
         SessionService.start(this)
         val graph = (application as HeyApp).graph
         val repository = graph.repository
@@ -61,7 +58,7 @@ class MainActivity : ComponentActivity() {
             // session. While driving no permission screen opens (PRD 4.5.7): the press ends in the Microphone fault, which
             // is announced by voice only.
             val needsMic = state.turn is TurnState.NeedsPermission
-            LaunchedEffect(state.isParked) { askNotificationPermission(state.isParked) }
+            // (no notification request, see below)
             LaunchedEffect(needsMic, state.isParked) {
                 if (needsMic && mayAskPermission(state.isParked)) {
                     permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
@@ -206,16 +203,6 @@ class MainActivity : ComponentActivity() {
         },
     )
 
-    /**
-     * The foreground-service notification is the driver's way back to the screen (a service cannot start an activity),
-     * and on API 33+ it only shows once this runtime permission is granted. A denial changes nothing else.
-     */
-    private var notificationAsked = false
-
-    private fun askNotificationPermission(parked: Boolean) {
-        val granted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        if (!shouldAskNotification(Build.VERSION.SDK_INT, granted, parked, notificationAsked)) return
-        notificationAsked = true
-        permissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
-    }
+    // POST_NOTIFICATIONS is never requested (PLEOS-90): the foreground service runs without it, the system dialog opened over C1 on
+    // first launch and could still be open when the gear went to D. Microphone is the only runtime permission, asked while parked.
 }
