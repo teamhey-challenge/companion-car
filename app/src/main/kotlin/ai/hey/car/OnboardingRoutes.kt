@@ -122,7 +122,6 @@ fun PairRoute(
     val state by companion.state.collectAsState()
     val talkState by talk.state.collectAsState()
     var lastCode by remember { mutableStateOf("") }
-    var notYet by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         companion.openPairing()
@@ -144,14 +143,13 @@ fun PairRoute(
     PairScreen(
         ui = when (pairing) {
             PairingUi.None, PairingUi.Creating -> PairUi.Loading
-            is PairingUi.Pending -> PairUi.Pending(pairing.pairCode, notYet = notYet)
+            is PairingUi.Pending -> PairUi.Pending(pairing.pairCode)
             PairingUi.Claimed -> PairUi.Claimed
             PairingUi.Expired -> PairUi.Expired(lastCode)
             PairingUi.Failed -> PairUi.Failed
         },
         onBack = onBack,
         onLater = onDone,
-        onShowStatus = { if (pairing is PairingUi.Claimed) onDone() else notYet = true },
         onRetry = companion::openPairing,
     )
 }

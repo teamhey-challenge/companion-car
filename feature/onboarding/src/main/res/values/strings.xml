@@ -31,7 +31,6 @@
     <string name="pair_title">내 폰에서도 함께해요.</string>
     <string name="pair_subtitle">기억을 확인하고 관리할 수 있도록 폰을 연결해 주세요.</string>
     <string name="pair_guide">폰 카메라로 QR을 찍어 주세요</string>
-    <string name="pair_status_not_yet">아직 폰이 연결되지 않았어요</string>
     <string name="pair_qr_description">폰 연결 QR 코드</string>
     <string name="pair_status_waiting">기다리는 중…</string>
     <string name="pair_status_partial">폰에서 동의를 기다리는 중…</string>
@@ -40,6 +39,5 @@
     <string name="pair_status_failed">QR을 만들지 못했어요</string>
     <string name="pair_code_label">연결 코드 %1$s</string>
     <string name="pair_retry">새 QR 만들기</string>
-    <string name="pair_later">지금은 건너뛰기</string>
-    <string name="pair_done">연결 완료 상태 보기</string>
+    <string name="pair_later">나중에</string>
 </resources>

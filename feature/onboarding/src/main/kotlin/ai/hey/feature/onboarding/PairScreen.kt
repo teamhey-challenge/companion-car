@@ -30,8 +30,7 @@ fun pairUrl(pairCode: String): String = PAIR_URL_BASE + pairCode
 sealed interface PairUi {
     /** The code is being issued: the QR place stays empty. */
     data object Loading : PairUi
-    /** [notYet]: "연결 완료 상태 보기" was pressed before the phone claimed the code. */
-    data class Pending(val code: String, val phoneEntered: Boolean = false, val notYet: Boolean = false) : PairUi
+    data class Pending(val code: String, val phoneEntered: Boolean = false) : PairUi
     data object Claimed : PairUi
     data class Expired(val code: String) : PairUi
     data object Failed : PairUi
@@ -43,7 +42,6 @@ fun PairScreen(
     ui: PairUi,
     onBack: () -> Unit,
     onLater: () -> Unit,
-    onShowStatus: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -62,10 +60,10 @@ fun PairScreen(
             HStack(HeyGap.G16) {
                 if (ui is PairUi.Expired || ui is PairUi.Failed) {
                     GlassButton(stringResource(R.string.pair_retry), onRetry)
+                    HeyButton(stringResource(R.string.pair_later), onLater, variant = HeyButtonVariant.Ghost)
                 } else {
-                    GlassButton(stringResource(R.string.pair_done), onShowStatus)
+                    GlassButton(stringResource(R.string.pair_later), onLater)
                 }
-                HeyButton(stringResource(R.string.pair_later), onLater, variant = HeyButtonVariant.Ghost)
             }
         },
     ) {
@@ -108,7 +106,7 @@ fun PairScreen(
 private fun statusText(ui: PairUi): String = stringResource(
     when (ui) {
         PairUi.Loading -> R.string.pair_status_waiting
-        is PairUi.Pending -> if (ui.notYet) R.string.pair_status_not_yet else if (ui.phoneEntered) R.string.pair_status_partial else R.string.pair_status_waiting
+        is PairUi.Pending -> if (ui.phoneEntered) R.string.pair_status_partial else R.string.pair_status_waiting
         PairUi.Claimed -> R.string.pair_status_claimed
         is PairUi.Expired -> R.string.pair_status_expired
         PairUi.Failed -> R.string.pair_status_failed
