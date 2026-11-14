@@ -7,6 +7,7 @@ import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
 import ai.hey.designsystem.component.HeyButtonVariant
 import ai.hey.designsystem.component.HeyText
+import ai.hey.designsystem.component.PageHeading
 import ai.hey.designsystem.component.QrPanel
 import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
@@ -18,6 +19,7 @@ import ai.hey.designsystem.theme.HeyTone
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 
 
@@ -68,9 +70,11 @@ fun PairScreen(
         },
     ) {
         HStack(HeyGap.G32, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
-            VStack(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
-                HeyText(stringResource(R.string.pair_title), variant = HeyTextVariant.Title)
-                HeyText(stringResource(R.string.pair_subtitle), tone = HeyTone.Muted)
+            VStack(HeyGap.G16, modifier = Modifier.grow(1.07f)) {
+                PageHeading(
+                    title = stringResource(R.string.pair_title),
+                    subtitle = stringResource(R.string.pair_subtitle),
+                )
                 val code = when (ui) {
                     is PairUi.Pending -> ui.code
                     is PairUi.Expired -> ui.code
@@ -97,6 +101,7 @@ fun PairScreen(
                 description = stringResource(R.string.onboard_character),
                 caption = stringResource(R.string.onboard_caption),
                 modifier = Modifier.grow(1f),
+                topOffset = 100.dp,
             )
         }
     }

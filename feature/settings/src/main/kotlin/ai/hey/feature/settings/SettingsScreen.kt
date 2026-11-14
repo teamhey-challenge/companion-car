@@ -119,7 +119,7 @@ fun SettingsScreen(
             },
             driving = false,
         ) {
-            HeyScrollColumn(HeyGap.G24, modifier = Modifier.fillSize()) {
+            HeyScrollColumn(HeyGap.G32, modifier = Modifier.fillSize()) {
                 PageHeading(stringResource(R.string.settings_title), subtitle = stringResource(R.string.settings_subtitle))
                 // The save-failure line sits in the page flow: the header and the back button stay visible.
                 if (notice != null) HeyNotice(notice, HeyStatusTone.Danger, persistent = true)

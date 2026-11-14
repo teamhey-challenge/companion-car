@@ -195,8 +195,10 @@ fun CharacterStill(
     modifier: Modifier = Modifier,
     size: CharacterSize = CharacterSize.Hero,
     caption: String? = null,
+    /** C1/C2 mockups seat the stage 100 dp below the content top (character centre sits at y≈545 of 900). */
+    topOffset: Dp = 0.dp,
 ) {
-    VStack(HeyGap.G16, modifier = modifier, align = HeyAlign.Center) {
+    VStack(HeyGap.G16, modifier = modifier.padding(top = topOffset), align = HeyAlign.Center) {
         CharacterSlot(size, contentDescription = description)
         if (caption != null) HeyText(caption, tone = HeyTone.Muted, maxLines = 2, align = HeyTextAlign.Center)
     }
@@ -406,7 +408,11 @@ fun PageHeading(
     subtitle: String? = null,
     hero: Boolean = false,
 ) {
-    VStack(HeyGap.G8, modifier = modifier) {
+    // Mockup C1/C2/C6/C7: title→subtitle 32 dp and subtitle→content +16 dp; the hero greeting keeps its tight stack.
+    VStack(
+        if (hero) HeyGap.G8 else HeyGap.G24,
+        modifier = if (hero) modifier else modifier.padding(bottom = HeyTokens.Space.s16),
+    ) {
         // Design: headings are regular weight (450) with -0.055em tracking (`.welcome h1`, `.page-heading h1`).
         InkText(
             title, HeyTheme.colors.fgDefault,
@@ -498,7 +504,7 @@ fun ToggleRow(
             .heightIn(min = HeyTokens.Size.touchCarPrimary)
             .padding(HeyTokens.Space.s24),
     ) {
-        VStack(HeyGap.G8, modifier = Modifier.grow()) {
+        VStack(HeyGap.G16, modifier = Modifier.grow()) {
             InkText(
                 label, if (enabled) colors.fgDefault else colors.fgDisabled,
                 weight = androidx.compose.ui.text.font.FontWeight.Medium, size = 28.sp, maxLines = 2,

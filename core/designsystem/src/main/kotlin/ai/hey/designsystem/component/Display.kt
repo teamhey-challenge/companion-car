@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -236,13 +237,21 @@ fun CarFrame(
         modifier = modifier
             .fillMaxSize()
             .background(HeyTheme.colors.bgPage)
-            .padding(HeyTokens.Space.s32),
+            .padding(start = CarPageX, end = CarPageX, top = CarPageTop, bottom = CarPageBottom),
     ) {
         statusStrip()
-        Box(Modifier.grow().fillMaxWidth()) { content() }
+        Box(Modifier.grow().fillMaxWidth().padding(top = CarContentGap)) { content() }
         if (!driving && actionRail != null) actionRail()
     }
 }
+
+/** Mockup car shell (ui-spec "차량 외곽": 80 left/right, 64 top). */
+private val CarPageX = 80.dp
+private val CarPageTop = 64.dp
+private val CarPageBottom = 64.dp
+
+/** Header bottom (148) to title top (~205) in the mockups is ~56 dp; the frame's G24 supplies 24 of it. */
+private val CarContentGap = 32.dp
 
 // ---------------------------------------------------------------- QR + greeting
 
