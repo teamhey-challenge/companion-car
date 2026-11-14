@@ -53,10 +53,10 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-    // The injectable demo recognizer (src/e2e) is compiled into debug and releaseE2e only; release gets the no-op twin in src/release.
+    // The injectable demo override (src/e2e) is compiled into debug and releaseE2e only; release gets the no-op twin in src/release.
     sourceSets {
-        getByName("debug") { java.srcDir("src/e2e/kotlin"); assets.srcDir("src/e2e/assets") }
-        getByName("releaseE2e") { java.srcDir("src/e2e/kotlin"); assets.srcDir("src/e2e/assets") }
+        getByName("debug") { java.srcDir("src/e2e/kotlin") }
+        getByName("releaseE2e") { java.srcDir("src/e2e/kotlin") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

@@ -42,7 +42,7 @@ class AppGraph(private val app: Application) {
     val storage: CarStorage by lazy { PrefsCarStorage(app, BuildConfig.SERVER_URL) }
     val vehicle: VehicleGateway by lazy { PleosVehicleGateway(app, scope) }
 
-    /** Pleos SpeechToText (ON_DEVICE, Locale.KOREA); the debug/e2e builds swap in the injectable demo source. */
+    /** Pleos SpeechToText (ON_DEVICE, Locale.KOREA); the debug/e2e builds wrap it so adb can inject a sentence (default: real mic). */
     val voice: VoiceInput by lazy { demoVoiceOrNull(app) ?: PleosVoiceInput(app) }
     val companion: CompanionRepository by lazy { CompanionRepository(scope, HttpCompanionApi(storage, newHttpClient()), storage) }
     val repository: TalkRepository by lazy {

@@ -1,6 +1,7 @@
 package ai.hey.car
 
-import ai.hey.vehicle.ScriptedVoiceInput
+import ai.hey.vehicle.InjectableVoiceInput
+import ai.hey.vehicle.PleosVoiceInput
 import ai.hey.vehicle.VoiceInput
 import android.app.Application
 import android.content.BroadcastReceiver
@@ -10,45 +11,42 @@ import android.content.IntentFilter
 import android.os.Build
 
 /**
- * Debug and releaseE2e builds only (sourceSet `e2e`; the real release has the no-op twin in src/release). The emulator's
- * microphone is silent, so the driver's sentence comes from this injectable source instead of Pleos SpeechToText:
+ * Debug and releaseE2e builds only (sourceSet `e2e`; the real release has the no-op twin in src/release). By default these
+ * builds listen with the real Pleos SpeechToText (the emulator's host microphone), exactly like release. A sentence is
+ * injected only on request, by adb broadcast:
  *
- *  - default sentence: the bundled fixture `assets/voice-fixture.txt` (Korean), returned after a short "listening" pause;
- *  - override at run time: `adb shell am broadcast -a ai.hey.car.DEBUG_VOICE -p ai.hey.car --es text "<한국어 문장>"`
- *    (`--es text ""` makes the next listen hear nothing, which shows the "잘 듣지 못했어요" state);
+ *  - next listen only: `adb shell am broadcast -a ai.hey.car.DEBUG_VOICE -p ai.hey.car --es text "<한국어 문장>"`
+ *    (`--es text ""` = the next listen hears nothing, which shows the "잘 듣지 못했어요" state); afterwards the real mic is back;
+ *  - every listen (E2E suites that repeat a turn): add `--ez sticky true`;
+ *  - back to the real microphone: `adb shell am broadcast -a ai.hey.car.DEBUG_VOICE_REAL -p ai.hey.car`;
  *  - start a turn without touching the screen: `adb shell am broadcast -a ai.hey.car.DEBUG_TALK -p ai.hey.car`;
  *  - read a text with the Pleos voice (mouth from `onUpdatedRms`): `... -a ai.hey.car.DEBUG_SPEAK --es text "<문장>"`.
  */
 internal object DemoVoice {
     const val ACTION = "ai.hey.car.DEBUG_VOICE"
+    const val ACTION_REAL = "ai.hey.car.DEBUG_VOICE_REAL"
     const val ACTION_TALK = "ai.hey.car.DEBUG_TALK"
     const val ACTION_SPEAK = "ai.hey.car.DEBUG_SPEAK"
-    private const val FIXTURE = "voice-fixture.txt"
-    private const val LISTEN_MS = 800L
 
     fun create(app: Application): VoiceInput {
-        val fixture = try {
-            app.assets.open(FIXTURE).bufferedReader().use { it.readText().trim() }
-        } catch (e: Exception) {
-            null
-        }
-        val input = ScriptedVoiceInput(listenMillis = LISTEN_MS, text = fixture, silentAfterReply = true)
+        val input = InjectableVoiceInput(PleosVoiceInput(app))
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 val graph = (app as HeyApp).graph
                 when (intent.action) {
                     ACTION_TALK -> graph.repository.startTalk()
                     ACTION_SPEAK -> graph.vehicle.speak(intent.getStringExtra("text").orEmpty(), ai.hey.model.SpeechPriority.High, null)
-                    else -> input.text = intent.getStringExtra("text")
+                    ACTION_REAL -> input.useReal()
+                    else -> input.inject(intent.getStringExtra("text").orEmpty(), sticky = intent.getBooleanExtra("sticky", false))
                 }
             }
         }
-        val filter = IntentFilter(ACTION).apply { addAction(ACTION_TALK); addAction(ACTION_SPEAK) }
+        val filter = IntentFilter(ACTION).apply { addAction(ACTION_REAL); addAction(ACTION_TALK); addAction(ACTION_SPEAK) }
         // Debug/e2e builds only; the broadcast comes from adb, so the receiver is exported (minSdk 28 has no flag overload before 33).
         if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED) else @Suppress("UnspecifiedRegisterReceiverFlag") app.registerReceiver(receiver, filter)
         return input
     }
 }
 
-/** The one hook [AppGraph] calls: the demo recognizer in these builds. */
+/** The one hook [AppGraph] calls: the real recognizer with the adb-injectable override in these builds. */
 internal fun demoVoiceOrNull(app: Application): VoiceInput? = DemoVoice.create(app)
