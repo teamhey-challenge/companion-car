@@ -25,7 +25,7 @@
 
 ## 4. 디자인 시스템 규칙 (예외 없음) — 차량
 
-근거: 스킬 `product-foundations` 2절, darren-secretary D123·D124·D128, 사용자 지시 "디자인 시스템을 구축하고 그 컴포넌트만 사용해서 개발, 예외 없음"(2026-11-12). 웹 쪽 규칙(CSS 변수 이름, `className` 금지, CSS 리터럴, Storybook 이야기, 시트 등)은 `hey-passenger-web/docs/architecture.md` §4가 소유한다. 번호는 분리 전과 같게 두었고, 이 저장소에 해당이 없는 번호는 비워 뒀다.
+근거: 스킬 `product-foundations` 2절, 사용자 지시 "디자인 시스템을 구축하고 그 컴포넌트만 사용해서 개발, 예외 없음"(2026-11-12). 웹 쪽 규칙(CSS 변수 이름, `className` 금지, CSS 리터럴, Storybook 이야기, 시트 등)은 `hey-passenger-web/docs/architecture.md` §4가 소유한다. 번호는 분리 전과 같게 두었고, 이 저장소에 해당이 없는 번호는 비워 뒀다.
 
 1. 토큰 정본은 `shared/packages/tokens/hey.tokens.json`(hey-shared) 하나다. 차량 앱은 `HeyTokens.kt`를 복사하지 않고 `includeBuild("shared/android")`로 `ai.hey:tokens-compose`에 의존한다. 생성(`bun run tokens`)은 `hey-shared` README가 소유한다. 생성 파일은 손으로 고치지 않는다.
 3. 간격은 4·8·16·24·32만 쓴다(`HeyGap.G4…G32`). 부품은 바깥 여백·폭·위치를 갖지 않는다. 간격은 부모 컨테이너 `VStack`/`HStack`이 `gap`으로 정한다.
@@ -79,6 +79,6 @@ hey-car/
 
 ## 7. 실행과 검증
 
-- 차량 앱: 이 저장소 루트에서 `./check.sh`(= `nice -n 19 ./gradlew --max-workers=4 :app:assembleDebug check :feature:trip:verifyPaparazziDebug :feature:settings:verifyPaparazziDebug :core:designsystem:verifyPaparazziDebug`). 스냅숏 기록은 `./gradlew recordPaparazziDebug`. 클론은 `git clone --recurse-submodules`(또는 `git submodule update --init`). 중계 서버 통합 시험은 환경 변수 `HEY_RELAY_DIR`(기본 `../hey-relay`)의 relay를 `bun`으로 띄우며, 없으면 건너뛰고 이유를 출력한다. darren-vm 부하를 줄이기 위해 `org.gradle.workers.max=4`.
-- 에뮬레이터는 맥북 `darren-mbp-14`에서만 띄운다(`~/pleos/emu-start.sh`, adb `emulator-5600`). 종단 시험은 `hey-e2e`.
+- 차량 앱: 이 저장소 루트에서 `./check.sh`(= `nice -n 19 ./gradlew --max-workers=4 :app:assembleDebug check :feature:trip:verifyPaparazziDebug :feature:settings:verifyPaparazziDebug :core:designsystem:verifyPaparazziDebug`). 스냅숏 기록은 `./gradlew recordPaparazziDebug`. 클론은 `git clone --recurse-submodules`(또는 `git submodule update --init`). 중계 서버 통합 시험은 환경 변수 `HEY_RELAY_DIR`(기본 `../hey-relay`)의 relay를 `bun`으로 띄우며, 없으면 건너뛰고 이유를 출력한다. 빌드 머신 부하를 줄이기 위해 `org.gradle.workers.max=4`.
+- 에뮬레이터는 개발 맥북에서 직접 띄운다(`~/pleos/emu-start.sh`, adb `emulator-5600`). 종단 시험은 `hey-e2e`.
 - 서버·승객 웹 실행과 비밀값 규칙은 각각 `hey-relay`, `hey-passenger-web`의 문서를 따른다(비밀값은 저장소에 넣지 않는다).
