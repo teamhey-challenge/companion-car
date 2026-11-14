@@ -92,6 +92,17 @@ class MainActivity : ComponentActivity() {
                 FaultAnnouncer { fault -> graph.vehicle.speak(voiceText(fault), SpeechPriority.High, "fault-${fault.name}") }
             }
             LaunchedEffect(ui.fault, parked) { announcer.onFault(ui.fault, parked) }
+            // A permission dialog (system, not distraction-optimized) that was open when the gear left P would keep covering C5 under
+            // the system's driving block (AC-3.5-05, PLEOS-73 evidence): bring this activity back above it. OnboardingRoute treats the
+            // request as denied, so nothing waits for the hidden dialog.
+            LaunchedEffect(parked) {
+                if (!parked) {
+                    startActivity(
+                        Intent(this@MainActivity, MainActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                    )
+                }
+            }
 
             // Design reference (hey-companion-ui, ui-spec): every car screen is laid out at 1600x900 dp. A 2560x1440 or 1280x720
             // window is scaled to that so type, buttons and the character keep the mockup proportions (DesignParity #1).
