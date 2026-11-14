@@ -35,10 +35,16 @@ import java.util.concurrent.TimeUnit
 
 private const val TAG = "TalkLink"
 
+/**
+ * The WebSocket heartbeat: OkHttp pings every [WS_PING_SEC] s and fails the socket when the pong has not come by the next
+ * ping, so a half-open socket (server restarted, network still up) is noticed within 2 x [WS_PING_SEC] s = 10 s at most.
+ */
+const val WS_PING_SEC = 5L
+
 fun newHttpClient(): OkHttpClient = OkHttpClient.Builder()
     .connectTimeout(10, TimeUnit.SECONDS)
     .readTimeout(15, TimeUnit.SECONDS)
-    .pingInterval(20, TimeUnit.SECONDS)
+    .pingInterval(WS_PING_SEC, TimeUnit.SECONDS)
     .build()
 
 /** An HTTP answer that was not a success. The body is never kept: it may echo what was sent. */
@@ -235,6 +241,11 @@ class TalkLink(
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) = listener.onAudio(bytes.toByteArray())
+
+                /** The server says goodbye (deploy restart): answer at once, or the socket stays half-closed until a ping fails. */
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    webSocket.close(code, null)
+                }
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                     closed.complete(Unit)
