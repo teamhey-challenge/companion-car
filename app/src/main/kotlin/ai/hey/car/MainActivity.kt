@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
             }
             // Errors while driving are voice only, once per cause (PRD 4.8): no banner, the screen stays C5.
             val announcer = remember {
-                FaultAnnouncer { fault -> graph.vehicle.speak(voiceText(fault), SpeechPriority.High, "fault-${fault.name}") }
+                FaultAnnouncer { fault -> graph.speakFault(voiceText(fault), "fault-${fault.name}") }
             }
             LaunchedEffect(ui.fault, parked) { announcer.onFault(ui.fault, parked) }
             // A permission dialog (system, not distraction-optimized) that was open when the gear left P would keep covering C5 under

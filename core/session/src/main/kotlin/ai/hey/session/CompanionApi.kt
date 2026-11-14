@@ -19,6 +19,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -90,7 +91,7 @@ class HttpCompanionApi(
         )
     }
 
-    override suspend fun postConsent(type: ConsentType, version: String, granted: Boolean): List<ConsentRecord> =
+    override suspend fun postConsent(type: ConsentType, version: String, granted: Boolean): List<ConsentRecord> = decodeBody {
         consentList(
             parse(
                 call(
@@ -99,21 +100,22 @@ class HttpCompanionApi(
                 ),
             ).jsonObject,
         )
+    }
 
-    override suspend fun consents(): List<ConsentRecord> = consentList(parse(call("GET", "v1/consents")).jsonObject)
+    override suspend fun consents(): List<ConsentRecord> = decodeBody { consentList(parse(call("GET", "v1/consents")).jsonObject) }
 
     override suspend fun withdrawConsent(type: ConsentType) {
         call("DELETE", "v1/consents/${type.wire}")
     }
 
-    override suspend fun createPairing(): PairingInfo {
+    override suspend fun createPairing(): PairingInfo = decodeBody {
         val o = parse(call("POST", "v1/pairings")).jsonObject
-        return PairingInfo(o.getValue("pairCode").jsonPrimitive.content, o.getValue("expiresAt").jsonPrimitive.content)
+        PairingInfo(o.getValue("pairCode").jsonPrimitive.content, o.getValue("expiresAt").jsonPrimitive.content)
     }
 
     override suspend fun currentPairing(): PairingStatus {
-        val o = parse(call("GET", "v1/pairings/current")).jsonObject
-        fun s(k: String) = o[k]?.jsonPrimitive?.contentOrNull
+        val o = decodeBody { parse(call("GET", "v1/pairings/current")).jsonObject }
+        fun s(k: String) = decodeBody { o[k]?.jsonPrimitive?.contentOrNull }
         val phase = when (s("status")) {
             "pending" -> PairingPhase.Pending
             "claimed" -> PairingPhase.Claimed
@@ -129,9 +131,9 @@ class HttpCompanionApi(
 
     override suspend fun memory(cursor: String?, limit: Int): MemoryPage {
         val q = buildMap { put("limit", limit.toString()); cursor?.let { put("cursor", it) } }
-        val o = parse(call("GET", "v1/memory", query = q)).jsonObject
-        val items = o.getValue("items").jsonArray.mapNotNull {
-            val m = it.jsonObject
+        val o = decodeBody { parse(call("GET", "v1/memory", query = q)).jsonObject }
+        val items = decodeBody { o.getValue("items").jsonArray }.mapNotNull {
+            val m = decodeBody { it.jsonObject }
             MemoryItem(
                 id = m["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
                 kind = if (m["kind"]?.jsonPrimitive?.contentOrNull == "summary") MemoryKind.Summary else MemoryKind.Fact,
@@ -152,13 +154,29 @@ class HttpCompanionApi(
 
     private fun settingsOf(text: String?): CompanionSettings = parseCompanionSettings(parse(text).jsonObject) ?: throw IOException("unreadable settings")
 
-    override suspend fun settings(): CompanionSettings = settingsOf(call("GET", "v1/settings"))
+    override suspend fun settings(): CompanionSettings = decodeBody { settingsOf(call("GET", "v1/settings")) }
 
     override suspend fun patchSettings(from: CompanionSettings, to: CompanionSettings): CompanionSettings =
-        settingsOf(call("PATCH", "v1/settings", settingsPatch(from, to)))
+        decodeBody { settingsOf(call("PATCH", "v1/settings", settingsPatch(from, to))) }
 
     override suspend fun vehicleEvent(atEpochMs: Long, signals: VehicleSignals) {
         val ctx = HeyJson.parseToJsonElement(ai.hey.model.ClientFrames.ctx(signals)).jsonObject.getValue("ctx").jsonObject
         call("POST", "v1/vehicle-events", array = buildJsonArray { add(buildJsonObject { put("at", Instant.ofEpochMilli(atEpochMs).toString()); put("ctx", ctx) }) })
     }
 }
+
+/** PLEOS-141: a 200 body that is not the expected JSON (proxy page, wrong deploy) is a failed call, never an uncaught crash. */
+internal inline fun <T> decodeBody(block: () -> T): T =
+    try {
+        block()
+    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+        throw e // IllegalStateException subtype: cancellation must pass through
+    } catch (e: SerializationException) {
+        throw IOException("bad body", e)
+    } catch (e: IllegalArgumentException) {
+        throw IOException("bad body", e)
+    } catch (e: IllegalStateException) {
+        throw IOException("bad body", e)
+    } catch (e: NoSuchElementException) {
+        throw IOException("bad body", e)
+    }

@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
@@ -86,6 +87,7 @@ class TalkRepository(
 
     /** Id of the Pleos reading of the reply that is on now (its [VehicleEvent.SpeechDone] ends the turn on screen). */
     @Volatile private var speakingId: String? = null
+    private var watchdog: Job? = null
 
     @OptIn(FlowPreview::class)
     fun start() {
@@ -179,9 +181,11 @@ class TalkRepository(
                     replyAudio = frame.audio
                     HeyLog.i(TAG, "reply.start audio=${frame.audio} ${clock() - turnEndSentAt} ms after turn.end")
                     audio?.begin(frame.audio)
+                    armWatchdog(frame.turnId, REPLY_END_TIMEOUT_MILLIS)
                     _state.update { it.copy(turn = TurnState.Replying) }
                 }
                 is ServerFrame.ReplyDelta -> if (frame.turnId == turnId) {
+                    armWatchdog(frame.turnId, REPLY_END_TIMEOUT_MILLIS)
                     replyText.append(frame.text)
                     _state.update { it.copy(reply = replyText.toString()) }
                 }
@@ -205,6 +209,7 @@ class TalkRepository(
 
     private fun onReplyEnd(frame: ServerFrame.ReplyEnd) {
         HeyLog.i(TAG, "reply.end chars=${frame.text.length} firstTokenMs=${frame.firstTokenMs} totalMs=${frame.totalMs} text=${frame.text}")
+        watchdog?.cancel()
         replyText.setLength(0)
         replyText.append(frame.text)
         val id = turnId
@@ -224,7 +229,16 @@ class TalkRepository(
         val speechId = "reply-${id ?: "x"}"
         speakingId = speechId
         _state.update { it.copy(turn = TurnState.Replying) }
-        if (speechFocus?.request { vehicle.stopSpeech() } == false) {
+        val focusOk = speechFocus?.request {
+            // D-14: someone else took the speaker. Stop and do not resume; this is not an audio fault.
+            if (speakingId == speechId) {
+                speakingId = null
+                vehicle.stopSpeech()
+                speechFocus.abandon()
+                endSpeaking()
+            }
+        }
+        if (focusOk == false) {
             HeyLog.w(TAG, "audio focus refused, not reading")
             speakingId = null
             return endSpeaking()
@@ -307,6 +321,7 @@ class TalkRepository(
         turnId = frame.id
         turnEndSentAt = clock()
         _state.update { it.copy(turn = TurnState.Replying, source = TurnSource.Proactive, heard = null, reply = "", error = null, audioFailed = false) }
+        armWatchdog(frame.id, REPLY_START_TIMEOUT_MILLIS)
     }
 
     private fun sendCtx(signals: VehicleSignals) {
@@ -330,6 +345,7 @@ class TalkRepository(
 
     /** Every voice of ours off, now. */
     private fun silence() {
+        watchdog?.cancel()
         audio?.stop()
         vehicle.stopSpeech()
         speakingId = null
@@ -340,8 +356,22 @@ class TalkRepository(
     }
 
     private fun endTurn(error: TurnError?) {
+        watchdog?.cancel()
         turnId = null
         _state.update { it.copy(turn = TurnState.Idle, error = error) }
+    }
+
+    /** PLEOS-134: the turn [id] must show a sign of life within [millis], else it ends with the server fault and the talk button is free again. */
+    private fun armWatchdog(id: String, millis: Long) {
+        watchdog?.cancel()
+        watchdog = scope.launch {
+            delay(millis)
+            if (turnId != id) return@launch
+            HeyLog.w(TAG, "turn timed out after $millis ms without a reply frame")
+            link.send(ClientFrames.turnCancel(id))
+            silence()
+            endTurn(TurnError.Server)
+        }
     }
 
     // ---------------------------------------------------------------- talking
@@ -422,6 +452,7 @@ class TalkRepository(
         turnId = id
         HeyLog.i(TAG, "turn sent chars=${text.length} text=$text")
         _state.update { it.copy(turn = TurnState.Thinking, heard = text, reply = "") }
+        armWatchdog(id, REPLY_START_TIMEOUT_MILLIS)
     }
 
     override fun endListening() {
@@ -466,3 +497,9 @@ class TalkRepository(
 
 const val AUTO_LISTEN_MILLIS = 5_000L
 const val CTX_DEBOUNCE_MILLIS = 1_000L
+
+/** A sent turn with no `reply.start` for this long ends with the server fault (PLEOS-134). */
+const val REPLY_START_TIMEOUT_MILLIS = 12_000L
+
+/** A reply that goes quiet (no frame, no `reply.end`) for this long ends the turn (PLEOS-134). */
+const val REPLY_END_TIMEOUT_MILLIS = 30_000L
