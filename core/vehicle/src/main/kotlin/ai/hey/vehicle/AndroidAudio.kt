@@ -99,25 +99,28 @@ class AudioFocusGateAndroid(context: Context) : FocusGate {
 }
 
 /**
- * [OtherAudioProbe] on [AudioManager]: music is active, or any active playback of a usage the driver must hear (media,
- * navigation guidance, call, accessibility). Asked only while the character is silent, so its own audio is not counted.
+ * [OtherAudioProbe] on the active playback configurations. Decided by usage, never by [AudioManager.isMusicActive]:
+ * that flag is true for any STREAM_MUSIC playback, and the legacy mapping puts our own USAGE_ASSISTANT voice (Breeze PCM,
+ * Pleos TTS) on STREAM_MUSIC, so it would block a line right after our own reply.
  */
 class AndroidOtherAudioProbe(context: Context) : OtherAudioProbe {
     private val audio = context.applicationContext.getSystemService(AudioManager::class.java)
 
-    override fun otherAppPlaying(): Boolean {
-        if (audio.isMusicActive) return true
-        return audio.activePlaybackConfigurations.any { it.audioAttributes.usage in HELD_USAGES }
-    }
+    override fun otherAppPlaying(): Boolean =
+        HeldAudio.blocks(audio.activePlaybackConfigurations.map { it.audioAttributes.usage })
+}
 
-    private companion object {
-        val HELD_USAGES = setOf(
-            AudioAttributes.USAGE_MEDIA,
-            AudioAttributes.USAGE_GAME,
-            AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE,
-            AudioAttributes.USAGE_VOICE_COMMUNICATION,
-            AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING,
-            AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY,
-        )
-    }
+/** Which active playback usages stop the character from starting a line (PLEOS-171). USAGE_ASSISTANT, our own voice, never does. */
+object HeldAudio {
+    private val HELD_USAGES = setOf(
+        AudioAttributes.USAGE_UNKNOWN,
+        AudioAttributes.USAGE_MEDIA,
+        AudioAttributes.USAGE_GAME,
+        AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE,
+        AudioAttributes.USAGE_VOICE_COMMUNICATION,
+        AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING,
+        AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY,
+    )
+
+    fun blocks(activeUsages: Collection<Int>): Boolean = activeUsages.any { it in HELD_USAGES }
 }
