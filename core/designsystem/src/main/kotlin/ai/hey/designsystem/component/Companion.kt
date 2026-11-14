@@ -209,7 +209,6 @@ fun CharacterStill(
 enum class TalkPhase { Idle, Listening, Thinking, Speaking }
 
 private val TalkMinWidth = 320.dp
-private val TalkBigMinWidth = 360.dp
 
 private class GlassInk(val container: Brush, val content: Color, val border: Color, val shadow: Color)
 
@@ -249,14 +248,13 @@ private fun glassInk(phase: TalkPhase, pressed: Boolean, blocked: Boolean): Glas
     }
 }
 
-/** One pill used by [TalkButton] and [StopListeningButton]: 96dp (112dp when [big]), icon + label, tap or press-and-hold. */
+/** One pill used by [TalkButton] and [StopListeningButton]: 96dp x 320dp minimum, icon + label, tap or press-and-hold. */
 @Composable
 private fun TalkPill(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector?,
     phase: TalkPhase,
     blocked: Boolean,
-    big: Boolean,
     onClick: () -> Unit,
     modifier: Modifier,
     onHoldStart: (() -> Unit)? = null,
@@ -293,7 +291,7 @@ private fun TalkPill(
     Box(
         modifier
             .heightIn(min = HeyTokens.Size.touchCarPrimary)
-            .widthIn(min = if (big) TalkBigMinWidth else TalkMinWidth)
+            .widthIn(min = TalkMinWidth)
             .shadow(if (ink.shadow == Color.Transparent) 0.dp else 6.dp, shape, ambientColor = ink.shadow, spotColor = ink.shadow)
             .clip(shape)
             .background(ink.container, shape)
@@ -304,22 +302,24 @@ private fun TalkPill(
                 contentDescription = label
                 if (blocked) disabled() else this.onClick(label) { onClick(); true }
             }
-            .padding(horizontal = HeyTokens.Space.s32, vertical = HeyTokens.Space.s8),
+            // Mockup `.talk-button`: padding 20 48, 28 label, 32 icon, 20 between them.
+            .padding(horizontal = 48.dp, vertical = 20.dp),
         contentAlignment = Alignment.Center,
     ) {
         HStack(HeyGap.G16) {
             if (icon != null) InkIcon(icon, null, ink.content, Modifier.size(HeyTokens.Size.iconCar * 4 / 3))
             InkText(
                 label, ink.content,
-                variant = HeyTextVariant.Heading,
+                modifier = if (icon != null) Modifier.padding(start = 4.dp) else Modifier,
                 maxLines = 2, align = HeyTextAlign.Center,
+                weight = androidx.compose.ui.text.font.FontWeight.SemiBold, size = 28.sp, lineHeight = 40.sp,
             )
         }
     }
 }
 
 /**
- * The primary action. 96dp high (112dp when [big], the C5 driving variant). Idle/Listening can be pressed; Thinking and
+ * The primary action. 96dp high, 320dp wide at least. Idle/Listening can be pressed; Thinking and
  * Speaking (and [enabled] = false) draw the blocked look and take no input.
  *
  * Parked: pass [onHoldStart]/[onHoldEnd] for press-and-hold ("누르고 말하기"); [onClick] is then only the accessibility
@@ -330,7 +330,6 @@ fun TalkButton(
     phase: TalkPhase,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    big: Boolean = false,
     driving: Boolean = false,
     enabled: Boolean = true,
     label: String? = null,
@@ -351,7 +350,6 @@ fun TalkButton(
         icon = if (phase == TalkPhase.Listening) HeyIcons.Pause else HeyIcons.Mic,
         phase = phase,
         blocked = blocked,
-        big = big,
         onClick = onClick,
         modifier = modifier,
         onHoldStart = if (driving) null else onHoldStart,
@@ -361,13 +359,12 @@ fun TalkButton(
 
 /** "그만 듣기": stops the assistant's speech and listens (D-24). Same size and look as the talk button, always pressable. */
 @Composable
-fun StopListeningButton(onClick: () -> Unit, modifier: Modifier = Modifier, big: Boolean = false) {
+fun StopListeningButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     TalkPill(
         label = stringResource(R.string.hey_stop_listening),
         icon = HeyIcons.Pause,
         phase = TalkPhase.Idle,
         blocked = false,
-        big = big,
         onClick = onClick,
         modifier = modifier,
     )
@@ -391,7 +388,6 @@ fun GlassButton(
         icon = icon,
         phase = TalkPhase.Idle,
         blocked = !enabled,
-        big = false,
         onClick = onClick,
         modifier = modifier,
         dimmed = dimmed,
@@ -420,6 +416,8 @@ fun PageHeading(
             maxLines = if (hero) 3 else 2,
             weight = androidx.compose.ui.text.font.FontWeight.Normal,
             trackingEm = -0.055f,
+            // Mockup `.car[data-layout=parked] .welcome h1`: 72px at line-height 1.35 (the token's 84 is too tight).
+            lineHeight = if (hero) 97.sp else null,
         )
         if (subtitle != null) HeyText(subtitle, tone = HeyTone.Muted, maxLines = 3)
     }
@@ -440,12 +438,19 @@ fun HeaderBar(
         arrange = HeyArrange.SpaceBetween,
         modifier = modifier.fillMaxWidth().heightIn(min = HeaderTouch),
     ) {
-        HStack(HeyGap.G16) {
+        // Mockup `.app-header .identity`: 42px/600 title, 24 gap, 12 margin + hairline + 36 padding, 33px mode tag.
+        HStack(HeyGap.G24) {
             if (onBack != null) HeyBackButton(backLabel, onBack)
-            HeyText(title, variant = HeyTextVariant.Title, maxLines = 1)
+            InkText(
+                title, HeyTheme.colors.fgDefault, variant = HeyTextVariant.Title, maxLines = 1,
+                weight = androidx.compose.ui.text.font.FontWeight.SemiBold, size = 42.sp, lineHeight = 63.sp,
+            )
             if (stateLabel != null) {
-                Box(Modifier.size(HeyTokens.Border.hairline, HeyTokens.Space.s32).background(HeyTheme.colors.borderStrong))
-                HeyText(stateLabel, variant = HeyTextVariant.Heading, tone = HeyTone.Muted, maxLines = 1)
+                Box(Modifier.padding(start = 12.dp).size(HeyTokens.Border.hairline, 50.dp).background(HeyTheme.colors.borderDefault))
+                InkText(
+                    stateLabel, HeyTheme.colors.fgMuted, Modifier.padding(start = 12.dp), maxLines = 1,
+                    weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 33.sp, lineHeight = 50.sp,
+                )
             }
         }
         if (trailing != null) HStack(HeyGap.G16, content = trailing)

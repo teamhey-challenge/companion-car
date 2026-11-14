@@ -4,6 +4,7 @@ import ai.hey.designsystem.R
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
+import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
@@ -303,17 +304,24 @@ fun StatusBadge(
         phase == TalkPhase.Speaking -> colors.accent
         else -> colors.fgMuted
     }
+    // Mockup `.status`: 24 label, 9 dot, 12 apart, the phase colour. On the driving screen (C5) the label is default ink at 24
+    // while thinking and a 20 muted word while listening/speaking: no waveform there (`.car[data-driving=true] .status-motion{display:none}`).
     HStack(
-        gap = HeyGap.G16,
+        gap = HeyGap.G8,
         modifier = modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) {
-        if (online && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)) {
+        if (online && !driving && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)) {
             Waveform(color, moving, speaking = phase == TalkPhase.Speaking)
             // The waveform stands for the label on screen; TalkBack still reads it.
             Box(Modifier.size(1.dp).semantics { contentDescription = label })
+        } else if (driving && online && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)) {
+            InkText(label, if (phase == TalkPhase.Listening) colors.fgDefault else colors.fgMuted, size = 20.sp, lineHeight = 30.sp, maxLines = 1)
         } else {
-            Box(Modifier.size(HeyTokens.Space.s12).clip(RoundedCornerShape(HeyTokens.Radius.full)).background(color))
-            InkText(label, colors.fgDefault, variant = HeyTextVariant.Heading, maxLines = 1)
+            Box(Modifier.size(9.dp).clip(RoundedCornerShape(HeyTokens.Radius.full)).background(if (driving) colors.fgDefault else color))
+            InkText(
+                label, if (driving) colors.fgDefault else color, Modifier.padding(start = 4.dp),
+                weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 24.sp, lineHeight = 36.sp, maxLines = 1,
+            )
         }
     }
 }
@@ -334,8 +342,10 @@ private fun ErrorKind.copy() = when (this) {
 }
 
 /**
- * C8 text column: title, message and the recovery action, with default copy per [kind]. [onAction] null or kind =
+ * Error text column: title, message and the recovery action, with default copy per [kind]. [onAction] null or kind =
  * Connecting draws the action disabled ("연결 중"). The caller places the sorry character beside it.
+ * [parked] is the C8 look of the mockup (48 title, 24 message, glass action pinned to the column bottom); without it the
+ * panel is the compact inline one (C6 load failure).
  */
 @Composable
 fun ErrorPanel(
@@ -345,9 +355,34 @@ fun ErrorPanel(
     actionLabel: String? = null,
     title: String? = null,
     message: String? = null,
+    parked: Boolean = false,
 ) {
     val copy = kind.copy()
     val alertMode = if (kind == ErrorKind.Connecting) LiveRegionMode.Polite else LiveRegionMode.Assertive
+    if (parked) {
+        // Mockup parked C8: title 48/450 (-0.05em, line 1.4), message 24 under it (+24, line 1.6), the one button bottom-aligned.
+        VStack(HeyGap.G24, modifier = modifier, arrange = HeyArrange.SpaceBetween) {
+            VStack(HeyGap.G24, modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = alertMode }) {
+                InkText(
+                    title ?: stringResource(copy.title), HeyTheme.colors.fgDefault, maxLines = 3,
+                    weight = androidx.compose.ui.text.font.FontWeight.Normal, trackingEm = -0.055f, size = 48.sp, lineHeight = 67.sp,
+                )
+                InkText(
+                    message ?: stringResource(copy.message), HeyTheme.colors.fgMuted, maxLines = 4,
+                    weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 24.sp, lineHeight = 38.sp,
+                )
+            }
+            if (onAction != null || kind == ErrorKind.Connecting) {
+                GlassButton(
+                    actionLabel ?: stringResource(copy.action),
+                    onAction ?: {},
+                    icon = if (kind == ErrorKind.Microphone) HeyIcons.Mic else HeyIcons.Link,
+                    enabled = onAction != null && kind != ErrorKind.Connecting,
+                )
+            }
+        }
+        return
+    }
     VStack(HeyGap.G24, modifier = modifier) {
         VStack(HeyGap.G16, modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = alertMode }) {
             HeyText(title ?: stringResource(copy.title), variant = HeyTextVariant.Title, maxLines = 3)
@@ -368,20 +403,20 @@ fun ErrorPanel(
 
 // ---------------------------------------------------------------- subtitle
 
-/** Caption of what is being said/heard: at most 3 lines, ellipsis; composes nothing while [driving] (no captions on the road). */
+/**
+ * Caption of what is being said/heard: at most 3 lines, ellipsis; composes nothing while [driving] (no captions on the road).
+ * Mockup `.caption`: 32 regular, line height 1.5, default ink.
+ */
 @Composable
 fun Subtitle(
     text: String,
     modifier: Modifier = Modifier,
     driving: Boolean = false,
-    large: Boolean = true,
 ) {
     if (driving) return
-    HeyText(
-        text,
-        modifier,
-        variant = if (large) HeyTextVariant.Heading else HeyTextVariant.Body,
-        maxLines = 3,
+    InkText(
+        text, HeyTheme.colors.fgDefault, modifier, maxLines = 3,
+        weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 32.sp, lineHeight = 48.sp,
     )
 }
 

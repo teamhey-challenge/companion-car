@@ -284,8 +284,8 @@ object Stories {
         })
         add(part("talk-button-big") {
             VStack(HeyGap.G16) {
-                TalkButton(TalkPhase.Idle, {}, big = true, driving = true)
-                TalkButton(TalkPhase.Listening, {}, big = true, driving = true)
+                TalkButton(TalkPhase.Idle, {}, driving = true)
+                TalkButton(TalkPhase.Listening, {}, driving = true)
             }
         })
         add(part("talk-button-long") {
@@ -434,7 +434,7 @@ private fun DrivingSheet() {
     CarFrame(statusStrip = {}, driving = true) {
         VStack(HeyGap.G32, modifier = Modifier.fillMaxSize(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
             CharacterSlot(ai.hey.designsystem.component.CharacterSize.Driving)
-            TalkButton(TalkPhase.Idle, {}, big = true, driving = true)
+            TalkButton(TalkPhase.Idle, {}, driving = true)
         }
     }
 }

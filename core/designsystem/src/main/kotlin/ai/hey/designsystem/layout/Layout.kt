@@ -15,7 +15,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -109,8 +111,23 @@ fun Modifier.inset(gap: HeyGap): Modifier = padding(gap.value)
 fun Modifier.insetHorizontal(gap: HeyGap): Modifier = padding(horizontal = gap.value)
 fun Modifier.insetTop(gap: HeyGap): Modifier = padding(top = gap.value)
 
-/** Mockup car outer margin (ui-spec "차량 외곽": 80 left/right, 40 top/bottom). */
-fun Modifier.carMargin(): Modifier = padding(horizontal = 80.dp, vertical = 40.dp)
+/** Mockup car outer margin (ui-spec "차량 외곽", styles.css `--ui-shell-pad:80px;--ui-edge-y:64px`): 80 left/right, 64 top/bottom at 1600x900. */
+fun Modifier.carMargin(): Modifier = padding(horizontal = 80.dp, vertical = 64.dp)
+
+/** Mockup `.conversation` padding-top: the C3/C4/C8 body starts 48 below the 24 row gap under the header (header block 172 + 48 = 220 from the top). */
+fun Modifier.carBodyTop(): Modifier = padding(top = 48.dp)
+
+/** Mockup parked grid: columns 1.05fr / 1fr with a 48 gutter. [HeyGap] stops at 32, so the left column adds the missing 16 here. */
+fun Modifier.carGutter(): Modifier = padding(end = 16.dp)
+
+/** Mockup parked grid right column: (1440 - 48) / 2.05 = 679 wide; the character stage is centred in it. */
+fun Modifier.carSideColumn(): Modifier = width(679.dp)
 
 /** The home greeting wraps in a 460 px column (mockup C3 breaks "오늘은 어떤 / 하루였어요?"). */
 fun Modifier.heroWidth(): Modifier = widthIn(max = 460.dp)
+
+/** Mockup C5: the stage's top edge is at 178 whatever the phase (character ink 224 on C5, measured on C5, -listening, -thinking, -speaking). */
+fun Modifier.driveTop(): Modifier = padding(top = 178.dp)
+
+/** Mockup C5: the status line has a fixed 87 dp slot (label top 33 into it, 4 gap each side in the stack) so the button stays at 573. */
+fun Modifier.driveStatusSlot(): Modifier = height(87.dp).padding(top = 33.dp)

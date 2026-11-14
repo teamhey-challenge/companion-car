@@ -11,8 +11,8 @@
 | `CharacterSlot` | `size: CharacterSize`, `still = characterStill()`, `live?`, `contentDescription?` | `Stage` 580×620(C3/C4/C8), `Hero` 500×440(C1/C2), `Driving` 280×300(C5), `Small` 150×160. `live`에 Rive 뷰를 넘기면 정지 이미지 대신 그린다. 크기는 항상 고정 |
 | `characterStill()` | — | 테마별 정지 이미지(라이트 아쿠아, 다크 살구). `res/drawable-nodpi/hey_character_still*.webp` |
 | `CharacterStill` | `description`, `size`, `caption?` | 정지 + 아래 설명 한 줄(C1/C2) |
-| `TalkButton` | `phase: TalkPhase`, `onClick`, `big`, `driving`, `enabled`, `label?`, `onHoldStart?`, `onHoldEnd?` | 96dp(`big` 112dp). Thinking·Speaking은 막힌 모양, 입력 없음. 정차: 길게 누르기 콜백, 주행: 탭 `onClick` |
-| `StopListeningButton` | `onClick`, `big` | "그만 듣기"(D-24), 항상 누를 수 있음 |
+| `TalkButton` | `phase: TalkPhase`, `onClick`, `driving`, `enabled`, `label?`, `onHoldStart?`, `onHoldEnd?` | 96dp×320dp 이상, 28sp 라벨·32dp 아이콘(시안 `.talk-button`). Thinking·Speaking은 막힌 모양, 입력 없음. 정차: 길게 누르기 콜백, 주행: 탭 `onClick` |
+| `StopListeningButton` | `onClick` | "그만 듣기"(D-24), 항상 누를 수 있음 |
 | `PageHeading` | `title`, `subtitle?`, `hero` | 홈 인사 72sp(`hero`) 또는 제목 |
 | `HeaderBar` | `title`, `onBack?`, `backLabel`, `stateLabel?`, `trailing?` | 뒤로 원형 76dp, 제목, "정차 중", 오른쪽 기억·설정 |
 | `StatusBadge` | `phase`, `driving`, `connection`, `animated` | 듣는 중·말하는 중은 12막대 파형(글자는 접근성만), 생각 중, 연결 중, 오프라인. 주행 중 대기는 그리지 않음 |
