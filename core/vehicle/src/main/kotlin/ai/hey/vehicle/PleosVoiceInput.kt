@@ -66,6 +66,11 @@ class PleosVoiceInput(private val context: Context) : VoiceInput {
         override fun onUpdatedRms(rms: Double) = Unit
     }
 
+    override fun finishListening() {
+        val partial = lastPartial.trim()
+        current.get()?.complete(if (partial.isEmpty()) VoiceResult.NoSpeech else VoiceResult.Text(partial))
+    }
+
     override fun hasPermission(): Boolean =
         app.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 

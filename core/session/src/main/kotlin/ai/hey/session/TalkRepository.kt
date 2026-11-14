@@ -388,6 +388,10 @@ class TalkRepository(
         _state.update { it.copy(turn = TurnState.Thinking, heard = text, reply = "") }
     }
 
+    override fun endListening() {
+        if (_state.value.turn == TurnState.Listening) voiceInput.finishListening()
+    }
+
     override fun cancelTalk() {
         voiceJob?.cancel()
         turnId?.let { link.send(ClientFrames.turnCancel(it)) }
