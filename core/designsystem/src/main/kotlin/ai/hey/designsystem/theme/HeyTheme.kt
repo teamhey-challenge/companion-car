@@ -56,7 +56,7 @@ object HeyTheme {
         @Composable @ReadOnlyComposable get() = LocalHeyDark.current
 }
 
-/** Car default is dark (night driving, glare). */
+/** Car default is dark (night driving, glare); [dark] is the driver's choice. Canvas scaling (1600dp design width) is done once in MainActivity. */
 @Composable
 fun HeyTheme(dark: Boolean = true, content: @Composable () -> Unit) {
     CompositionLocalProvider(

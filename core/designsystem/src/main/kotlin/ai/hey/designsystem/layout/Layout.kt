@@ -15,7 +15,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 /** Cross-axis alignment for [VStack] (horizontal) and [HStack] (vertical). */
 enum class HeyAlign { Start, Center, End }
@@ -105,3 +107,9 @@ fun Modifier.fillSize(): Modifier = fillMaxSize()
 /** Padding is the parent's decision; it can only pick a step. */
 fun Modifier.inset(gap: HeyGap): Modifier = padding(gap.value)
 fun Modifier.insetHorizontal(gap: HeyGap): Modifier = padding(horizontal = gap.value)
+
+/** Mockup car outer margin (ui-spec "차량 외곽": 80 left/right, 40 top/bottom). */
+fun Modifier.carMargin(): Modifier = padding(horizontal = 80.dp, vertical = 40.dp)
+
+/** The home greeting wraps in a 460 px column (mockup C3 breaks "오늘은 어떤 / 하루였어요?"). */
+fun Modifier.heroWidth(): Modifier = widthIn(max = 460.dp)

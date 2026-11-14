@@ -24,9 +24,11 @@ import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.layout.fillSize
-import ai.hey.designsystem.layout.inset
+import ai.hey.designsystem.layout.carMargin
+import ai.hey.designsystem.layout.heroWidth
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
+import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.designsystem.theme.HeyTone
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,7 +56,8 @@ internal fun CarFault.toKind(): ErrorKind = when (this) {
 
 /** The character on C3/C4: the live Rive rig, or the still image while it loads, fails, or motion is reduced. */
 @Composable
-internal fun HomeCharacter(ui: HomeUi, dark: Boolean, reducedMotion: Boolean, size: CharacterSize, description: String, modifier: Modifier = Modifier) {
+internal fun HomeCharacter(ui: HomeUi, reducedMotion: Boolean, size: CharacterSize, description: String, modifier: Modifier = Modifier) {
+    val dark = HeyTheme.dark
     var riveFailed by remember { mutableStateOf(false) }
     val live: (@Composable () -> Unit)? = if (reducedMotion || riveFailed) null else {
         {
@@ -78,7 +81,6 @@ internal fun HomeCharacter(ui: HomeUi, dark: Boolean, reducedMotion: Boolean, si
 @Composable
 fun HomeScreen(
     ui: HomeUi,
-    dark: Boolean,
     reducedMotion: Boolean,
     onTalk: () -> Unit,
     onEndListening: () -> Unit,
@@ -88,7 +90,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     OceanBackground(modifier = modifier.fillSize(), animated = !reducedMotion) {
-        VStack(HeyGap.G24, modifier = Modifier.fillSize().inset(HeyGap.G32)) {
+        VStack(HeyGap.G24, modifier = Modifier.fillSize().carMargin()) {
             HeaderBar(
                 title = stringResource(R.string.home_title),
                 stateLabel = stringResource(R.string.home_parked),
@@ -103,7 +105,6 @@ fun HomeScreen(
                 }
                 HomeCharacter(
                     ui = ui,
-                    dark = dark,
                     reducedMotion = reducedMotion,
                     size = CharacterSize.Stage,
                     description = stringResource(if (ui.inTalk) R.string.home_character else R.string.home_character_idle),
@@ -135,7 +136,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
         }
         else -> {
             VStack(HeyGap.G8) {
-                PageHeading(title = stringResource(R.string.home_hint), hero = true)
+                PageHeading(title = stringResource(R.string.home_hint), hero = true, modifier = Modifier.heroWidth())
                 if (!ui.online) StatusBadge(phase = TalkPhase.Idle, connection = HeyConnection.Reconnecting)
             }
         }

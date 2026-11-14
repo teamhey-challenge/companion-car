@@ -143,7 +143,6 @@ class MainActivity : ComponentActivity() {
                     composable(Routes.Home) {
                         HomeScreen(
                             ui = ui,
-                            dark = dark,
                             reducedMotion = reducedMotion(),
                             onTalk = repository::startTalk,
                             onEndListening = repository::endListening,

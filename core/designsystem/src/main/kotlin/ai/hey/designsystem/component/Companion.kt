@@ -94,7 +94,7 @@ fun OceanBackground(
     val colors = HeyTheme.colors
     val dark = HeyTheme.dark
     val moving = animated && !rememberReducedMotion()
-    val brush = remember(colors) { Brush.verticalGradient(listOf(colors.bgPage, colors.sceneSky)) }
+    // Mockup C3: one flat sky colour (bgPage), no vertical gradient.
     // Soft filled bubbles (design `.ocean-bubbles i`): radial highlight at 32%/28%, faint rim.
     val rimColor = if (dark) Color(0xFF83CEDE).copy(alpha = 0.12f) else Color.White.copy(alpha = 0.32f)
     val hi = if (dark) Color(0xFF91D6E5).copy(alpha = 0.12f) else Color.White.copy(alpha = 0.38f)
@@ -112,7 +112,7 @@ fun OceanBackground(
     } else {
         0f
     }
-    Box(modifier.background(brush)) {
+    Box(modifier.background(colors.bgPage)) {
         Canvas(Modifier.fillMaxSize()) {
             val t = if (moving) clock else 0f
             Bubbles.forEach { b ->
@@ -401,10 +401,10 @@ fun HeaderBar(
     HStack(
         gap = HeyGap.G24,
         arrange = HeyArrange.SpaceBetween,
-        modifier = modifier.fillMaxWidth().heightIn(min = HeyTokens.Size.touchCar + HeyTokens.Space.s8),
+        modifier = modifier.fillMaxWidth().heightIn(min = HeaderTouch),
     ) {
         HStack(HeyGap.G16) {
-            if (onBack != null) HeyIconButton(HeyIcons.ArrowLeft, backLabel, onBack)
+            if (onBack != null) HeyBackButton(backLabel, onBack)
             HeyText(title, variant = HeyTextVariant.Title, maxLines = 1)
             if (stateLabel != null) {
                 Box(Modifier.size(HeyTokens.Border.hairline, HeyTokens.Space.s32).background(HeyTheme.colors.borderStrong))
