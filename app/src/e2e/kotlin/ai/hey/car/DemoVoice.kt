@@ -27,6 +27,7 @@ internal object DemoVoice {
     const val ACTION_REAL = "ai.hey.car.DEBUG_VOICE_REAL"
     const val ACTION_TALK = "ai.hey.car.DEBUG_TALK"
     const val ACTION_SPEAK = "ai.hey.car.DEBUG_SPEAK"
+    const val SENDER_PERMISSION = android.Manifest.permission.DUMP
 
     fun create(app: Application): VoiceInput {
         val input = InjectableVoiceInput(PleosVoiceInput(app))
@@ -42,8 +43,9 @@ internal object DemoVoice {
             }
         }
         val filter = IntentFilter(ACTION).apply { addAction(ACTION_REAL); addAction(ACTION_TALK); addAction(ACTION_SPEAK) }
-        // Debug/e2e builds only; the broadcast comes from adb, so the receiver is exported (minSdk 28 has no flag overload before 33).
-        if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED) else @Suppress("UnspecifiedRegisterReceiverFlag") app.registerReceiver(receiver, filter)
+        // Debug/e2e builds only. The sender must hold android.permission.DUMP (signature|privileged|development): the adb shell has it,
+        // an installed third-party app cannot get it, so only `adb shell am broadcast` reaches the receiver (PLEOS-138). Same adb commands as before.
+        if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(receiver, filter, SENDER_PERMISSION, null, Context.RECEIVER_EXPORTED) else @Suppress("UnspecifiedRegisterReceiverFlag") app.registerReceiver(receiver, filter, SENDER_PERMISSION, null)
         return input
     }
 }

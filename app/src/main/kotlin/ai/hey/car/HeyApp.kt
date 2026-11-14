@@ -109,6 +109,7 @@ class HeyApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        HeyLog.contentEnabled = BuildConfig.DEBUG
         HeyLog.sink = { level, tag, message ->
             when (level) {
                 'W' -> Log.w(tag, message)
