@@ -5,6 +5,7 @@ import ai.hey.model.ProactiveLevel
 import ai.hey.model.SpeechStyle
 import ai.hey.session.CompanionState
 import ai.hey.session.PairingUi
+import ai.hey.session.SettingsAction
 import ai.hey.session.SettingsSave
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,5 +42,11 @@ class SettingsUiTest {
         assertEquals(AccountFailureUi.Withdraw, settingsUi(CompanionState(accountFailure = ai.hey.session.AccountFailure.Withdraw), null).accountFailure)
         assertEquals(AccountFailureUi.Unpair, settingsUi(CompanionState(accountFailure = ai.hey.session.AccountFailure.Unpair), null).accountFailure)
         assertEquals(AccountFailureUi.None, settingsUi(CompanionState(), null).accountFailure)
+    }
+
+    @Test fun `a running unpair or withdraw reaches the screen as pending`() {
+        assertEquals(SettingsPending.None, settingsUi(CompanionState(), null).pending)
+        assertEquals(SettingsPending.Unpair, settingsUi(CompanionState(settingsAction = SettingsAction.Unpairing), null).pending)
+        assertEquals(SettingsPending.Withdraw, settingsUi(CompanionState(settingsAction = SettingsAction.Withdrawing), null).pending)
     }
 }

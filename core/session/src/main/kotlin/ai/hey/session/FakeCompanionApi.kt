@@ -11,6 +11,7 @@ import ai.hey.model.PairingPhase
 import ai.hey.model.PairingStatus
 import ai.hey.model.VehicleSignals
 import java.io.IOException
+import kotlinx.coroutines.delay
 
 /**
  * In-memory server for screen previews and tests (production never uses it). Set [failing] to make every call throw an
@@ -25,6 +26,9 @@ class FakeCompanionApi(
     @Volatile var failNext = 0
     @Volatile var failWith: IOException = IOException("fake blip")
     var postAttempts = 0
+
+    /** Makes withdraw and unpair take this long (tests of the "request is running" state). */
+    @Volatile var slowMillis = 0L
     @Volatile var pairing: PairingStatus = PairingStatus(PairingPhase.None)
     @Volatile var settings: CompanionSettings = CompanionSettings()
     val consentLog = ArrayList<Triple<ConsentType, Boolean, String>>()
@@ -57,6 +61,7 @@ class FakeCompanionApi(
     }
 
     override suspend fun withdrawConsent(type: ConsentType) {
+        if (slowMillis > 0) delay(slowMillis)
         check()
         consentLog += Triple(type, false, "withdraw")
         serverConsents[type] = ConsentRecord(type, "withdraw", false, "2026-11-15T00:00:00Z")
@@ -77,6 +82,7 @@ class FakeCompanionApi(
     }
 
     override suspend fun deletePairing() {
+        if (slowMillis > 0) delay(slowMillis)
         check()
         unpaired++
         pairing = PairingStatus(PairingPhase.None)

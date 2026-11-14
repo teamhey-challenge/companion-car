@@ -3,6 +3,7 @@ package ai.hey.feature.settings
 import ai.hey.model.ProactiveLevel
 import ai.hey.model.SpeechStyle
 import ai.hey.session.CompanionCommands
+import ai.hey.session.SettingsAction
 import ai.hey.session.AccountFailure
 import ai.hey.session.CompanionState
 import ai.hey.session.SettingsSave
@@ -43,6 +44,11 @@ fun settingsUi(state: CompanionState, lastField: SettingField?): SettingsUi = Se
         AccountFailure.None -> AccountFailureUi.None
         AccountFailure.Withdraw -> AccountFailureUi.Withdraw
         AccountFailure.Unpair -> AccountFailureUi.Unpair
+    },
+    pending = when (state.settingsAction) {
+        SettingsAction.None -> SettingsPending.None
+        SettingsAction.Unpairing -> SettingsPending.Unpair
+        SettingsAction.Withdrawing -> SettingsPending.Withdraw
     },
 )
 
