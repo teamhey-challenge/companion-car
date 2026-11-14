@@ -304,7 +304,7 @@ internal class PleosSpeechEngine(
             tts = engine
             engine.initialize(object : OnInitializeListener {
                 override fun onSuccess() {
-                    // The listener must be added after initialize succeeded (measured).
+                    // The listener must be added after initialize succeeded.
                     try {
                         engine.addEventListener(events)
                         engine.setLocale(Locale.KOREA)
