@@ -137,7 +137,7 @@ fun MemoryRow(
             .heightIn(min = HeyTokens.Size.touchCarPrimary)
             .padding(HeyTokens.Space.s24),
     ) {
-        VStack(HeyGap.G8, modifier = Modifier.grow()) {
+        VStack(HeyGap.G16, modifier = Modifier.grow()) {
             InkText(kind, colors.fgDefault, size = 22.sp, maxLines = 1)
             InkText(text, colors.fgDefault, size = 28.sp, maxLines = 3)
             if (date != null) InkText(date, colors.fgMuted, size = 20.sp, maxLines = 1)

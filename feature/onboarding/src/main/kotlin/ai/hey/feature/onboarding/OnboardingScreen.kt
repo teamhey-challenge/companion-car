@@ -87,7 +87,7 @@ fun OnboardingScreen(
         },
     ) {
         HStack(HeyGap.G32, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
-            HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
+            HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(1.07f)) {
                 PageHeading(
                     title = stringResource(R.string.onboard_title),
                     subtitle = stringResource(R.string.onboard_subtitle),
@@ -121,6 +121,7 @@ fun OnboardingScreen(
                 description = stringResource(R.string.onboard_character),
                 caption = stringResource(R.string.onboard_caption),
                 modifier = Modifier.grow(1f),
+                seated = true,
             )
         }
     }

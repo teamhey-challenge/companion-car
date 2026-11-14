@@ -120,7 +120,7 @@ fun MemoryScreen(
             },
             driving = false,
         ) {
-            HeyScrollColumn(HeyGap.G24, modifier = Modifier.fillSize()) {
+            HeyScrollColumn(HeyGap.G32, modifier = Modifier.fillSize()) {
                 PageHeading(stringResource(R.string.memory_title), subtitle = stringResource(R.string.memory_guide))
                 // The failure line sits in the page flow: the header and the back button stay visible.
                 if (notice != null) HeyNotice(notice, HeyStatusTone.Danger, persistent = true)
