@@ -97,3 +97,27 @@ class AudioFocusGateAndroid(context: Context) : FocusGate {
         audio.abandonAudioFocusRequest(r)
     }
 }
+
+/**
+ * [OtherAudioProbe] on [AudioManager]: music is active, or any active playback of a usage the driver must hear (media,
+ * navigation guidance, call, accessibility). Asked only while the character is silent, so its own audio is not counted.
+ */
+class AndroidOtherAudioProbe(context: Context) : OtherAudioProbe {
+    private val audio = context.applicationContext.getSystemService(AudioManager::class.java)
+
+    override fun otherAppPlaying(): Boolean {
+        if (audio.isMusicActive) return true
+        return audio.activePlaybackConfigurations.any { it.audioAttributes.usage in HELD_USAGES }
+    }
+
+    private companion object {
+        val HELD_USAGES = setOf(
+            AudioAttributes.USAGE_MEDIA,
+            AudioAttributes.USAGE_GAME,
+            AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE,
+            AudioAttributes.USAGE_VOICE_COMMUNICATION,
+            AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING,
+            AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY,
+        )
+    }
+}

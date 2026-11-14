@@ -5,6 +5,7 @@ import ai.hey.model.ConsentType
 import ai.hey.model.HeyLog
 import ai.hey.model.ServerFrame
 import ai.hey.vehicle.FakeVehicleGateway
+import ai.hey.vehicle.OtherAudioProbe
 import ai.hey.vehicle.FocusGate
 import ai.hey.vehicle.PlaybackEnd
 import ai.hey.vehicle.PlaybackListener
@@ -65,6 +66,7 @@ class TalkRepositoryTest {
         speechMillis: Long = 0,
         consented: Boolean = true,
         autoListenMillis: Long = 5_000,
+        otherAudio: OtherAudioProbe? = null,
     ) {
         val vehicle = FakeVehicleGateway(scope, speechMillis = speechMillis)
         lateinit var transport: FakeTransport
@@ -79,6 +81,7 @@ class TalkRepositoryTest {
             speechFocus = focus,
             autoListenMillis = autoListenMillis,
             ctxDebounceMillis = 1_000,
+            otherAudio = otherAudio,
         ).also { it.start() }
     }
 
@@ -372,6 +375,19 @@ class TalkRepositoryTest {
         rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", "반가워요", 100, 900))
         testScheduler.advanceTimeBy(REPLY_END_TIMEOUT_MILLIS * 2)
         assertNull(rig.repo.state.value.error)
+        cs.cancel()
+    }
+
+    @Test fun `a proactive line is dropped while another app plays audio and goes through once it stops`() = runTest {
+        val cs = rigScope(testScheduler)
+        var playing = true
+        val rig = Rig(cs, ScriptedVoiceInput(), otherAudio = { playing })
+        rig.transport.listener.onFrame(ServerFrame.Proactive("p1", "wiper"))
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertTrue(rig.transport.sent.any { it.contains("turn.cancel") && it.contains("p1") })
+        playing = false
+        rig.transport.listener.onFrame(ServerFrame.Proactive("p2", "wiper"))
+        assertEquals(TurnState.Replying, rig.repo.state.value.turn)
         cs.cancel()
     }
 

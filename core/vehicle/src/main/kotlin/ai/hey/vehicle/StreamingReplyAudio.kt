@@ -34,6 +34,11 @@ interface FocusGate {
     fun abandon()
 }
 
+/** Whether another app is playing audio right now (music, guidance, a call): the character never starts a line over it (PLEOS-171). */
+fun interface OtherAudioProbe {
+    fun otherAppPlaying(): Boolean
+}
+
 /**
  * Plays the server's PCM reply (s16le mono) and reports the mouth level. Pure JVM so the stop-on-focus-loss and
  * RMS rules are unit tested; Android supplies [PcmSink] and [FocusGate].
