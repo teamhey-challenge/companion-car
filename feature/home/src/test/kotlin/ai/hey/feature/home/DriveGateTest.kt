@@ -1,5 +1,7 @@
 package ai.hey.feature.home
 
+import ai.hey.session.CarFault
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -26,22 +28,21 @@ class DriveGateTest {
     }
 
     @Test fun `a fault is spoken once per cause while driving and never while parked`() {
-        val said = ArrayList<HomeFault>()
+        val said = ArrayList<CarFault>()
         val a = FaultAnnouncer { said += it }
-        a.onFault(HomeFault.Offline, parked = true)
-        assertEquals(emptyList<HomeFault>(), said)
-        a.onFault(HomeFault.Offline, parked = false)
-        a.onFault(HomeFault.Offline, parked = false)
-        assertEquals(listOf(HomeFault.Offline), said)
-        a.onFault(HomeFault.Microphone, parked = false)
-        assertEquals(listOf(HomeFault.Offline, HomeFault.Microphone), said)
+        a.onFault(CarFault.Offline, parked = true)
+        assertEquals(emptyList<CarFault>(), said)
+        a.onFault(CarFault.Offline, parked = false)
+        a.onFault(CarFault.Offline, parked = false)
+        assertEquals(listOf(CarFault.Offline), said)
+        a.onFault(CarFault.Microphone, parked = false)
+        assertEquals(listOf(CarFault.Offline, CarFault.Microphone), said)
         a.onFault(null, parked = false)
-        a.onFault(HomeFault.Offline, parked = false)
+        a.onFault(CarFault.Offline, parked = false)
         assertEquals(3, said.size)
     }
 
-    @Test fun `top fault priority is microphone then connection then sound`() {
-        assertEquals(HomeFault.Microphone, listOf(HomeFault.Audio, HomeFault.Offline, HomeFault.Microphone).topFault())
-        assertEquals(HomeFault.Offline, listOf(HomeFault.Audio, HomeFault.Offline).topFault())
+    @Test fun `the top fault is whatever the session reports, drive and home read the same value`() {
+        assertEquals(HomeUi(fault = CarFault.Microphone).fault, CarFault.Microphone)
     }
 }

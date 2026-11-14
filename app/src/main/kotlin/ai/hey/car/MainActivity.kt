@@ -3,7 +3,7 @@ package ai.hey.car
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.feature.home.DriveScreen
 import ai.hey.feature.home.FaultAnnouncer
-import ai.hey.feature.home.HomeFault
+import ai.hey.session.CarFault
 import ai.hey.feature.home.HomeScreen
 import ai.hey.feature.home.Routes
 import ai.hey.feature.home.gateRoute
@@ -58,8 +58,10 @@ class MainActivity : ComponentActivity() {
             val route = current?.destination?.route
 
             // The driving gate (PRD 3.5): the route follows the car, never the other way round. Unknown motion is "driving".
-            LaunchedEffect(route, parked) {
-                gateRoute(route, parked, needsOnboarding = false)?.let { target ->
+            LaunchedEffect(route, parked, state.needsOnboarding) {
+                // /onboarding is a destination once feature:onboarding is wired in; until then consent is not gated here.
+                val onboardingKnown = nav.graph.findNode(Routes.Onboarding) != null
+                gateRoute(route, parked, needsOnboarding = state.needsOnboarding && onboardingKnown)?.let { target ->
                     nav.navigate(target) { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
                 }
             }
@@ -106,24 +108,24 @@ class MainActivity : ComponentActivity() {
     private fun reducedMotion(): Boolean =
         Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
-    private fun onFaultAction(fault: HomeFault, retryTalk: () -> Unit) {
+    private fun onFaultAction(fault: CarFault, retryTalk: () -> Unit) {
         when (fault) {
-            HomeFault.Microphone -> startActivity(
+            CarFault.Microphone -> startActivity(
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
             )
-            HomeFault.Audio -> (application as HeyApp).graph.vehicle.retrySpeech()
-            HomeFault.Server, HomeFault.Recognition -> retryTalk()
-            HomeFault.Offline, HomeFault.Connecting -> Unit
+            CarFault.Audio -> (application as HeyApp).graph.vehicle.retrySpeech()
+            CarFault.Server, CarFault.Recognition -> retryTalk()
+            CarFault.Offline, CarFault.Connecting -> Unit
         }
     }
 
-    private fun voiceText(fault: HomeFault): String = getString(
+    private fun voiceText(fault: CarFault): String = getString(
         when (fault) {
-            HomeFault.Microphone -> R.string.voice_error_microphone
-            HomeFault.Offline, HomeFault.Connecting -> R.string.voice_error_offline
-            HomeFault.Server -> R.string.voice_error_server
-            HomeFault.Recognition -> R.string.voice_error_recognition
-            HomeFault.Audio -> R.string.voice_error_audio
+            CarFault.Microphone -> R.string.voice_error_microphone
+            CarFault.Offline, CarFault.Connecting -> R.string.voice_error_offline
+            CarFault.Server -> R.string.voice_error_server
+            CarFault.Recognition -> R.string.voice_error_recognition
+            CarFault.Audio -> R.string.voice_error_audio
         },
     )
 

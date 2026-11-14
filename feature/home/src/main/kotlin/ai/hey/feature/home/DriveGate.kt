@@ -1,5 +1,7 @@
 package ai.hey.feature.home
 
+import ai.hey.session.CarFault
+
 /** The routes of PRD 3.2 that this app has. One NavHost, these names. */
 object Routes {
     const val Onboarding = "onboarding"
@@ -32,15 +34,15 @@ fun gateRoute(current: String?, parked: Boolean, needsOnboarding: Boolean): Stri
  * The driving voice announcement for a fault (PRD 4.8.4 `txt-error-voice`): spoken once per cause, never again for the
  * same cause, and re-armed when the fault clears. Screens never change on a fault while driving (C5 stays as it is).
  */
-class FaultAnnouncer(private val speak: (HomeFault) -> Unit) {
-    private var last: HomeFault? = null
+class FaultAnnouncer(private val speak: (CarFault) -> Unit) {
+    private var last: CarFault? = null
 
-    fun onFault(fault: HomeFault?, parked: Boolean) {
+    fun onFault(fault: CarFault?, parked: Boolean) {
         if (fault == null) { last = null; return }
         if (parked) return // parked: the banner says it, no voice
         if (fault == last) return
         last = fault
         // Connecting is a transient state of a healthy reconnect, not worth interrupting a drive for.
-        if (fault != HomeFault.Connecting) speak(fault)
+        if (fault != CarFault.Connecting) speak(fault)
     }
 }

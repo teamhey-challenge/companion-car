@@ -1,5 +1,6 @@
 package ai.hey.feature.home
 
+import ai.hey.session.CarFault
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
 import ai.hey.designsystem.component.ErrorKind
@@ -42,13 +43,13 @@ internal fun HomePhase.toTalk(): TalkPhase = when (this) {
     HomePhase.Speaking -> TalkPhase.Speaking
 }
 
-internal fun HomeFault.toKind(): ErrorKind = when (this) {
-    HomeFault.Microphone -> ErrorKind.Microphone
-    HomeFault.Offline -> ErrorKind.Offline
-    HomeFault.Connecting -> ErrorKind.Connecting
-    HomeFault.Server -> ErrorKind.Server
-    HomeFault.Recognition -> ErrorKind.Recognition
-    HomeFault.Audio -> ErrorKind.Audio
+internal fun CarFault.toKind(): ErrorKind = when (this) {
+    CarFault.Microphone -> ErrorKind.Microphone
+    CarFault.Offline -> ErrorKind.Offline
+    CarFault.Connecting -> ErrorKind.Connecting
+    CarFault.Server -> ErrorKind.Server
+    CarFault.Recognition -> ErrorKind.Recognition
+    CarFault.Audio -> ErrorKind.Audio
 }
 
 /** The character on C3/C4: the live Rive rig, or the still image while it loads, fails, or motion is reduced. */
@@ -83,7 +84,7 @@ fun HomeScreen(
     onStop: () -> Unit,
     onMemory: () -> Unit,
     onSettings: () -> Unit,
-    onFaultAction: (HomeFault) -> Unit,
+    onFaultAction: (CarFault) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     OceanBackground(modifier = modifier.fillSize(), animated = !reducedMotion) {
@@ -117,7 +118,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
     ui: HomeUi,
     onTalk: () -> Unit,
     onStop: () -> Unit,
-    onFaultAction: (HomeFault) -> Unit,
+    onFaultAction: (CarFault) -> Unit,
 ) {
     val fault = ui.fault
     val talking = ui.phase != HomePhase.Idle
@@ -125,7 +126,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
     when {
         !talking && fault != null -> {
             ErrorPanel(kind = fault.toKind(), onAction = { onFaultAction(fault) })
-            TalkButton(phase = TalkPhase.Idle, onClick = onTalk, enabled = ui.online && fault != HomeFault.Microphone)
+            TalkButton(phase = TalkPhase.Idle, onClick = onTalk, enabled = ui.online && fault != CarFault.Microphone)
         }
         talking || ui.inTalk -> {
             VStack(HeyGap.G16) {
