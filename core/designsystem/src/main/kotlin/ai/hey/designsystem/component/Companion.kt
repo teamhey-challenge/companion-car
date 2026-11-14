@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -261,22 +262,25 @@ private fun TalkPill(
     val ink = glassInk(phase, pressed, blocked || dimmed)
     val shape = RoundedCornerShape(HeyTokens.Radius.full)
     val hold = onHoldStart != null
+    val latestClick by rememberUpdatedState(onClick)
+    val latestStart by rememberUpdatedState(onHoldStart)
+    val latestEnd by rememberUpdatedState(onHoldEnd)
     val press = if (blocked) {
         Modifier
     } else {
-        Modifier.pointerInput(hold, onClick, onHoldStart, onHoldEnd) {
+        Modifier.pointerInput(hold) {
             detectTapGestures(
                 onPress = {
                     pressed = true
-                    onHoldStart?.invoke()
+                    latestStart?.invoke()
                     try {
                         tryAwaitRelease()
                     } finally {
                         pressed = false
-                        onHoldEnd?.invoke()
+                        latestEnd?.invoke()
                     }
                 },
-                onTap = if (hold) null else { _ -> onClick() },
+                onTap = if (hold) null else { _ -> latestClick() },
             )
         }
     }
