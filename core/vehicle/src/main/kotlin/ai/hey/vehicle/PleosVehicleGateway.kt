@@ -108,6 +108,8 @@ class PleosVehicleGateway(
     private val tripMutex = Mutex()
     private val pendingTrip = AtomicReference<CompletableDeferred<TripInfo?>?>(null)
 
+    private val guidance = NaviGuidance { g -> signal { it.copy(naviGuiding = g) } }
+
     private val naviListener = object : NaviHelperEventListener {
 
         override fun onError(errorCode: NaviErrorCode) {
@@ -123,17 +125,33 @@ class PleosVehicleGateway(
         }
 
         override fun onDestinationArrived(destinationArrivedInfo: DestinationArrivedInfo) {
-            signal { it.copy(naviGuiding = false) }
+            guidance.routeStopped("onDestinationArrived")
             _events.tryEmit(VehicleEvent.Arrived)
         }
 
-        override fun onRouteStarted(info: ai.pleos.playground.navi.data.RouteStartInfo) = signal { it.copy(naviGuiding = true) }
+        override fun onRouteStarted(info: ai.pleos.playground.navi.data.RouteStartInfo) {
+            guidance.routeStarted()
+            // The callback alone proves nothing: ask whether a destination is really set.
+            guard("destination query") { navi?.getDestinationInfo() }
+        }
 
-        override fun onRouteEnded() = signal { it.copy(naviGuiding = false) }
+        override fun onDestinationInfo(destinationInfo: ai.pleos.playground.navi.data.DestinationInfo) =
+            guidance.destination(destinationInfo.name.isNotBlank() || destinationInfo.address.isNotBlank() ||
+                destinationInfo.latitude != 0.0 || destinationInfo.longitude != 0.0)
 
-        override fun onRouteCancelled() = signal { it.copy(naviGuiding = false) }
+        override fun onRouteStateInfo(routeStateInfo: ai.pleos.playground.navi.data.RouteStateInfo) {
+            guidance.routing(routeStateInfo.isRouting)
+            if (routeStateInfo.isRouting) guard("destination query") { navi?.getDestinationInfo() }
+        }
 
-        override fun onNavigationStatus(status: NavigationStatus) = signal { it.copy(naviGuiding = status == NavigationStatus.ROUTE_DRIVE) }
+        override fun onRouteEnded() = guidance.routeStopped("onRouteEnded")
+
+        override fun onRouteCancelled() = guidance.routeStopped("onRouteCancelled")
+
+        override fun onNavigationStatus(status: NavigationStatus) {
+            guidance.status(status == NavigationStatus.ROUTE_DRIVE)
+            if (status == NavigationStatus.ROUTE_DRIVE) guard("destination query") { navi?.getDestinationInfo() }
+        }
     }
 
     private var vehicle: Vehicle? = null
