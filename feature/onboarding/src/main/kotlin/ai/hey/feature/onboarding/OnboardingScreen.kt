@@ -5,8 +5,14 @@ import ai.hey.designsystem.component.CharacterStill
 import ai.hey.designsystem.component.CheckRow
 import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
-import ai.hey.designsystem.component.HeyButtonSize
+import ai.hey.designsystem.component.GlassButton
 import ai.hey.designsystem.component.HeyButtonVariant
+import ai.hey.designsystem.component.HeyIcon
+import ai.hey.designsystem.component.HeySection
+import ai.hey.designsystem.component.PageHeading
+import ai.hey.designsystem.component.ToggleRow
+import ai.hey.designsystem.icon.HeyIcons
+import androidx.compose.ui.graphics.vector.ImageVector
 import ai.hey.designsystem.component.HeyScrollColumn
 import ai.hey.designsystem.component.HeyText
 import ai.hey.designsystem.layout.HStack
@@ -64,12 +70,11 @@ fun OnboardingScreen(
                 if (ui.saving) HeyText(stringResource(R.string.onboard_saving), tone = HeyTone.Muted)
                 if (ui.failed) HeyText(stringResource(R.string.onboard_error_network), tone = HeyTone.Danger)
                 HStack(HeyGap.G16) {
-                    HeyButton(
+                    GlassButton(
                         stringResource(R.string.onboard_start),
                         if (ui.voice) onStart else onStartWithoutVoice,
-                        size = HeyButtonSize.Large,
                         enabled = !ui.saving,
-                        loading = ui.saving,
+                        dimmed = !ui.voice,
                     )
                     HeyButton(
                         stringResource(R.string.onboard_decline),
@@ -83,12 +88,19 @@ fun OnboardingScreen(
     ) {
         HStack(HeyGap.G32, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
             HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(1.3f)) {
-                HeyText(stringResource(R.string.onboard_title), variant = HeyTextVariant.Title)
-                HeyText(stringResource(R.string.onboard_notice_collect), tone = HeyTone.Muted)
-                HeyText(stringResource(R.string.onboard_notice_purpose), tone = HeyTone.Muted)
-                HeyText(stringResource(R.string.onboard_notice_retention), tone = HeyTone.Muted)
-                HeyText(stringResource(R.string.onboard_notice_refuse), tone = HeyTone.Muted)
-                HeyText(stringResource(R.string.onboard_notice_providers), tone = HeyTone.Muted)
+                PageHeading(
+                    title = stringResource(R.string.onboard_title),
+                    subtitle = stringResource(R.string.onboard_subtitle),
+                )
+                InfoRow(HeyIcons.Mic, stringResource(R.string.onboard_point_voice_title), stringResource(R.string.onboard_point_voice_body))
+                InfoRow(HeyIcons.Book, stringResource(R.string.onboard_point_memory_title), stringResource(R.string.onboard_point_memory_body))
+                ToggleRow(
+                    label = stringResource(R.string.onboard_toggle_memory),
+                    checked = ui.memory,
+                    onCheckedChange = onMemoryChange,
+                    description = stringResource(R.string.onboard_toggle_memory_body),
+                    enabled = !ui.saving,
+                )
                 CheckRow(
                     label = stringResource(R.string.onboard_check_voice),
                     checked = ui.voice,
@@ -96,19 +108,32 @@ fun OnboardingScreen(
                     enabled = !ui.saving,
                     error = if (ui.voiceRequiredShown && !ui.voice) stringResource(R.string.onboard_error_voice_required) else null,
                 )
-                CheckRow(
-                    label = stringResource(R.string.onboard_check_memory),
-                    checked = ui.memory,
-                    onCheckedChange = onMemoryChange,
-                    enabled = !ui.saving,
-                )
-                HeyButton(stringResource(R.string.onboard_policy), onPolicy, variant = HeyButtonVariant.Secondary)
+                HeySection(stringResource(R.string.onboard_notice_title)) {
+                    HeyText(stringResource(R.string.onboard_notice_collect), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+                    HeyText(stringResource(R.string.onboard_notice_purpose), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+                    HeyText(stringResource(R.string.onboard_notice_retention), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+                    HeyText(stringResource(R.string.onboard_notice_refuse), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+                    HeyText(stringResource(R.string.onboard_notice_providers), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+                }
+                HeyButton(stringResource(R.string.onboard_policy), onPolicy, variant = HeyButtonVariant.Ghost)
             }
             CharacterStill(
                 description = stringResource(R.string.onboard_character),
                 caption = stringResource(R.string.onboard_caption),
                 modifier = Modifier.grow(1f),
             )
+        }
+    }
+}
+
+/** One line of the "what this is" list: an icon, a heading and one explanatory line (C1 design). */
+@Composable
+private fun InfoRow(icon: ImageVector, title: String, body: String) {
+    HStack(HeyGap.G16, align = HeyAlign.Start, modifier = Modifier.fillWidth()) {
+        HeyIcon(icon, null)
+        VStack(HeyGap.G4, modifier = Modifier.grow()) {
+            HeyText(title, variant = HeyTextVariant.Heading)
+            HeyText(body, variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 2)
         }
     }
 }

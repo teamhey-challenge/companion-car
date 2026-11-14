@@ -247,7 +247,7 @@ private fun glassInk(phase: TalkPhase, pressed: Boolean, blocked: Boolean): Glas
 @Composable
 private fun TalkPill(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: androidx.compose.ui.graphics.vector.ImageVector?,
     phase: TalkPhase,
     blocked: Boolean,
     big: Boolean,
@@ -255,9 +255,11 @@ private fun TalkPill(
     modifier: Modifier,
     onHoldStart: (() -> Unit)? = null,
     onHoldEnd: (() -> Unit)? = null,
+    /** Blocked look but still pressable. */
+    dimmed: Boolean = false,
 ) {
     var pressed by remember { mutableStateOf(false) }
-    val ink = glassInk(phase, pressed, blocked)
+    val ink = glassInk(phase, pressed, blocked || dimmed)
     val shape = RoundedCornerShape(HeyTokens.Radius.full)
     val hold = onHoldStart != null
     val latestClick by rememberUpdatedState(onClick)
@@ -300,7 +302,7 @@ private fun TalkPill(
         contentAlignment = Alignment.Center,
     ) {
         HStack(HeyGap.G16) {
-            InkIcon(icon, null, ink.content, Modifier.size(HeyTokens.Size.iconCar * 4 / 3))
+            if (icon != null) InkIcon(icon, null, ink.content, Modifier.size(HeyTokens.Size.iconCar * 4 / 3))
             InkText(
                 label, ink.content,
                 variant = HeyTextVariant.Heading,
@@ -362,6 +364,31 @@ fun StopListeningButton(onClick: () -> Unit, modifier: Modifier = Modifier, big:
         big = big,
         onClick = onClick,
         modifier = modifier,
+    )
+}
+
+/**
+ * Glass pill for a screen's one main action (C1 "동의하고 시작하기", C2 "연결 완료 상태 보기", C4 "그만 듣기"), same look as
+ * the talk button. [dimmed] draws the blocked look while still taking the press.
+ */
+@Composable
+fun GlassButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    enabled: Boolean = true,
+    dimmed: Boolean = false,
+) {
+    TalkPill(
+        label = text,
+        icon = icon,
+        phase = TalkPhase.Idle,
+        blocked = !enabled,
+        big = false,
+        onClick = onClick,
+        modifier = modifier,
+        dimmed = dimmed,
     )
 }
 

@@ -1,6 +1,7 @@
 package ai.hey.feature.onboarding
 
 import ai.hey.designsystem.component.CarFrame
+import ai.hey.designsystem.component.GlassButton
 import ai.hey.designsystem.component.CharacterStill
 import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
@@ -58,13 +59,11 @@ fun PairScreen(
         actionRail = {
             HStack(HeyGap.G16) {
                 if (ui is PairUi.Expired || ui is PairUi.Failed) {
-                    HeyButton(stringResource(R.string.pair_retry), onRetry)
+                    GlassButton(stringResource(R.string.pair_retry), onRetry)
+                    HeyButton(stringResource(R.string.pair_later), onLater, variant = HeyButtonVariant.Ghost)
+                } else {
+                    GlassButton(stringResource(R.string.pair_later), onLater)
                 }
-                HeyButton(
-                    stringResource(R.string.pair_later),
-                    onLater,
-                    variant = if (ui is PairUi.Expired || ui is PairUi.Failed) HeyButtonVariant.Ghost else HeyButtonVariant.Primary,
-                )
             }
         },
     ) {
@@ -77,23 +76,21 @@ fun PairScreen(
                     is PairUi.Expired -> ui.code
                     else -> null
                 }
-                HStack(HeyGap.G24, align = HeyAlign.Start) {
-                    if (code != null) {
-                        QrPanel(
-                            content = pairUrl(code),
-                            code = code,
-                            status = statusText(ui),
-                            modifier = if (ui is PairUi.Expired) Modifier.alpha(0.35f) else Modifier,
-                        )
-                    } else {
-                        HeyText(
-                            statusText(ui),
-                            variant = HeyTextVariant.Heading,
-                            tone = if (ui == PairUi.Failed) HeyTone.Danger else if (ui == PairUi.Claimed) HeyTone.Success else HeyTone.Muted,
-                        )
-                    }
-                    if (ui is PairUi.Pending) HeyText(stringResource(R.string.pair_guide), tone = HeyTone.Muted, modifier = Modifier.grow())
-                    if (ui is PairUi.Expired) HeyText(stringResource(R.string.pair_status_expired), tone = HeyTone.Danger, modifier = Modifier.grow())
+                if (code != null) {
+                    if (ui is PairUi.Pending) HeyText(stringResource(R.string.pair_guide), variant = HeyTextVariant.Heading)
+                    if (ui is PairUi.Expired) HeyText(stringResource(R.string.pair_status_expired), variant = HeyTextVariant.Heading, tone = HeyTone.Danger)
+                    QrPanel(
+                        content = pairUrl(code),
+                        code = code,
+                        status = if (ui is PairUi.Expired) "" else statusText(ui),
+                        modifier = if (ui is PairUi.Expired) Modifier.alpha(0.35f) else Modifier,
+                    )
+                } else {
+                    HeyText(
+                        statusText(ui),
+                        variant = HeyTextVariant.Heading,
+                        tone = if (ui == PairUi.Failed) HeyTone.Danger else if (ui == PairUi.Claimed) HeyTone.Success else HeyTone.Muted,
+                    )
                 }
             }
             CharacterStill(
