@@ -59,7 +59,7 @@ fun SettingsScreen(
     CarFrame(
         statusStrip = {
             StatusStrip(
-                wordmarkParty = wordmarkParty,
+                title = null,
                 drivingLabel = null,
                 connection = connection,
                 clock = clock,

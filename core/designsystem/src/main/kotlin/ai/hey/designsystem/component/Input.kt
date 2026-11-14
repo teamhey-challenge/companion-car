@@ -104,11 +104,3 @@ fun HeyLayered(
         overlay?.invoke()
     }
 }
-
-private val QrBlockSize = 320.dp
-
-/** The car's fixed QR at the size the waiting screen is designed for. */
-@Composable
-fun QrBlock(content: String, modifier: Modifier = Modifier) {
-    HeyQrCode(content, QrBlockSize, modifier)
-}

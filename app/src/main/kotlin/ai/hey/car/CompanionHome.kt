@@ -33,7 +33,7 @@ fun ConnectionStatus.toStrip(): HeyConnection = when (this) {
 fun CompanionHome(state: CarUiState, onTalk: () -> Unit, onCancel: () -> Unit, onSettings: (() -> Unit)?) {
     val busy = state.turn != TurnState.Idle
     CarFrame(
-        statusStrip = { StatusStrip(wordmarkParty = 1, drivingLabel = null, connection = state.connection.toStrip()) },
+        statusStrip = { StatusStrip(drivingLabel = null, connection = state.connection.toStrip()) },
         driving = state.driving != DrivingStatus.Parked,
         actionRail = onSettings?.let { open -> { HStack(HeyGap.G16) { HeyButton(stringResource(R.string.home_settings), open) } } },
     ) {

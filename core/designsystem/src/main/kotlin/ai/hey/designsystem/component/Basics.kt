@@ -96,24 +96,6 @@ fun HeyText(
     InkText(text, tone.resolve(HeyTheme.colors), modifier, variant, maxLines, align)
 }
 
-/** HEY with one Y per passenger (HEY, HEYY, HEYYY, HEYYYY). */
-@Composable
-fun HeyWordmark(partySize: Int, modifier: Modifier = Modifier, large: Boolean = false) {
-    val colors = HeyTheme.colors
-    val spec = if (large) HeyTextVariant.Hero.spec else HeyTextVariant.Title.spec
-    val description = stringResource(R.string.hey_wordmark_description)
-    val styled = buildAnnotatedString {
-        append("HE")
-        withStyle(SpanStyle(color = colors.primary)) { append("Y".repeat(partySize.coerceIn(1, 4))) }
-    }
-    BasicText(
-        text = styled,
-        modifier = modifier.semantics { contentDescription = description },
-        style = spec.style(colors.fgDefault),
-        maxLines = 1,
-    )
-}
-
 enum class HeyIconSize { Regular, Large }
 
 @Composable
