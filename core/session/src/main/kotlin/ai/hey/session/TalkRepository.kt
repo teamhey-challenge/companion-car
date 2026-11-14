@@ -160,6 +160,9 @@ class TalkRepository(
         started = false
     }
 
+    /** C8 "다시 연결": try the server now instead of waiting out the backoff. */
+    fun reconnectNow() = link.reconnectNow()
+
     private fun publishMouth() {
         val level = maxOf(pcmMouth, pleosMouth)
         _state.update { if (it.mouth == level) it else it.copy(mouth = level) }

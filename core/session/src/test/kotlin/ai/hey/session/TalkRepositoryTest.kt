@@ -30,6 +30,7 @@ private class FakeTransport(val listener: TalkTransport.Listener) : TalkTranspor
     val sent = ArrayList<String>()
     var open = true
     override fun connect(serverUrl: String) = listener.onConnection(ConnectionStatus.Online)
+    override fun reconnectNow() = Unit
     override fun send(text: String): Boolean = open.also { if (it) sent += text }
     override fun close() = Unit
 }

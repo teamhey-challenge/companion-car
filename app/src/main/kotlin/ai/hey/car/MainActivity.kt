@@ -145,7 +145,7 @@ class MainActivity : ComponentActivity() {
                             onEndListening = repository::endListening,
                             onMemory = { state.parked?.let { if (nav.graph.findNode(Routes.Memory) != null) nav.navigate(Routes.Memory) } },
                             onSettings = { state.parked?.let { nav.navigate(Routes.Settings) } },
-                            onFaultAction = { fault -> onFaultAction(fault, repository::startTalk) },
+                            onFaultAction = { fault -> onFaultAction(fault, repository::startTalk, repository::reconnectNow) },
                         )
                     }
                     composable(Routes.Settings) {
@@ -182,14 +182,14 @@ class MainActivity : ComponentActivity() {
     private fun reducedMotion(): Boolean =
         Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
-    private fun onFaultAction(fault: CarFault, retryTalk: () -> Unit) {
+    private fun onFaultAction(fault: CarFault, retryTalk: () -> Unit, reconnect: () -> Unit) {
         when (fault) {
             CarFault.Microphone -> startActivity(
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
             )
             CarFault.Audio -> (application as HeyApp).graph.vehicle.retrySpeech()
             CarFault.Server, CarFault.Recognition -> retryTalk()
-            CarFault.Offline, CarFault.Connecting -> Unit
+            CarFault.Offline, CarFault.Connecting -> reconnect()
         }
     }
 

@@ -6,6 +6,8 @@ import ai.hey.session.CompanionRepository
 import ai.hey.session.HttpCompanionApi
 import ai.hey.session.HttpTalkApi
 import ai.hey.session.PrefsCarStorage
+import ai.hey.session.AndroidConnectivity
+import ai.hey.session.ReconnectPacer
 import ai.hey.session.TalkLink
 import ai.hey.session.TalkRepository
 import ai.hey.session.newHttpClient
@@ -69,6 +71,7 @@ class AppGraph(private val app: Application) {
                     listener = listener,
                     appVersion = BuildConfig.VERSION_NAME,
                     provisionSecret = { readProvisionSecret(app) },
+                    pacer = ReconnectPacer(clock = { System.nanoTime() / 1_000_000 }, connectivity = AndroidConnectivity(app)),
                 )
             },
             audio = StreamingReplyAudio({ AudioTrackSink() }, AudioFocusGateAndroid(app)),
