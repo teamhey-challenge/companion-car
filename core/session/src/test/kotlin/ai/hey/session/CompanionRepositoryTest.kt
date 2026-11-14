@@ -228,6 +228,31 @@ class CompanionRepositoryTest {
         cs.cancel()
     }
 
+    @Test fun `a slow withdraw or unpair shows a running state, ignores a second tap and always ends it`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.api.slowMillis = 3_000
+        rig.repo.withdrawRecordConsent()
+        assertEquals(SettingsAction.Withdrawing, rig.repo.state.value.settingsAction)
+        rig.repo.unpair() // blocked while the withdraw runs
+        assertEquals(SettingsAction.Withdrawing, rig.repo.state.value.settingsAction)
+        assertEquals(0, rig.api.unpaired)
+        advanceTimeBy(3_100)
+        assertEquals(SettingsAction.None, rig.repo.state.value.settingsAction)
+        rig.repo.unpair()
+        assertEquals(SettingsAction.Unpairing, rig.repo.state.value.settingsAction)
+        advanceTimeBy(3_100)
+        assertEquals(SettingsAction.None, rig.repo.state.value.settingsAction)
+        assertEquals(1, rig.api.unpaired)
+        rig.api.slowMillis = 0
+        rig.api.failing = true
+        rig.repo.withdrawRecordConsent()
+        advanceTimeBy(10_000) // two retries (1 s + 2 s) before it counts as failed
+        assertEquals(SettingsAction.None, rig.repo.state.value.settingsAction)
+        assertEquals(AccountFailure.Withdraw, rig.repo.state.value.accountFailure)
+        cs.cancel()
+    }
+
     @Test fun `memory on in C7 grants the memory consent before the settings patch`() = runTest {
         val cs = scope(testScheduler)
         val fake = FakeCompanionApi()

@@ -64,6 +64,9 @@ enum class SettingsSave { Idle, Saving, Failed }
 /** C7 account actions that failed and are shown again with a retry (PRD 4.7: a privacy action never fails silently). */
 enum class AccountFailure { None, Withdraw, Unpair }
 
+/** The C7 account request that is running; its dialog shows work and blocks both buttons until it ends (Pleos: >2 s needs a working state). */
+enum class SettingsAction { None, Unpairing, Withdrawing }
+
 /** C6. [items] arrive page by page; a delete is applied when the server said 204. */
 data class MemoryState(
     val items: List<MemoryItem> = emptyList(),
@@ -87,6 +90,7 @@ data class CompanionState(
     val settingsSave: SettingsSave = SettingsSave.Idle,
     /** The last "녹음 동의 철회" / "폰 연결 해제" request failed; cleared when the next one starts or succeeds. */
     val accountFailure: AccountFailure = AccountFailure.None,
+    val settingsAction: SettingsAction = SettingsAction.None,
 ) {
     val paired: Boolean get() = pairing == PairingUi.Claimed
 }
@@ -202,17 +206,18 @@ class CompanionRepository(
     }
 
     override fun withdrawRecordConsent() {
-        _state.update { it.copy(accountFailure = AccountFailure.None) }
+        if (_state.value.settingsAction != SettingsAction.None) return
+        _state.update { it.copy(accountFailure = AccountFailure.None, settingsAction = SettingsAction.Withdrawing) }
         scope.launch {
             try {
                 withRetry { api.withdrawConsent(ConsentType.Record) }
                 storage.setConsent(ConsentType.Record, false)
                 storage.setConsent(ConsentType.Memory, false)
                 nextCursor = null
-                _state.update { it.copy(memory = MemoryState(loaded = true), onboarding = OnboardingUi()) }
+                _state.update { it.copy(memory = MemoryState(loaded = true), onboarding = OnboardingUi(), settingsAction = SettingsAction.None) }
             } catch (e: IOException) {
                 log("withdraw", e)
-                _state.update { it.copy(accountFailure = AccountFailure.Withdraw) }
+                _state.update { it.copy(accountFailure = AccountFailure.Withdraw, settingsAction = SettingsAction.None) }
             }
         }
     }
@@ -255,15 +260,16 @@ class CompanionRepository(
     }
 
     override fun unpair() {
+        if (_state.value.settingsAction != SettingsAction.None) return
         poll?.cancel()
-        _state.update { it.copy(accountFailure = AccountFailure.None) }
+        _state.update { it.copy(accountFailure = AccountFailure.None, settingsAction = SettingsAction.Unpairing) }
         scope.launch {
             try {
                 api.deletePairing()
-                _state.update { it.copy(pairing = PairingUi.None) }
+                _state.update { it.copy(pairing = PairingUi.None, settingsAction = SettingsAction.None) }
             } catch (e: IOException) {
                 log("unpair", e)
-                _state.update { it.copy(accountFailure = AccountFailure.Unpair) }
+                _state.update { it.copy(accountFailure = AccountFailure.Unpair, settingsAction = SettingsAction.None) }
             }
         }
     }

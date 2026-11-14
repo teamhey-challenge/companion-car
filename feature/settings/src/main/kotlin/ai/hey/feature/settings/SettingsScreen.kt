@@ -23,12 +23,16 @@ import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.fillWidth
 import ai.hey.designsystem.theme.HeyGap
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.delay
+
+private const val PENDING_GRACE_MS = 250L
 
 /** 먼저 말 걸기 단계. Off hides the frequency chips; the minutes are the contract values (20 / 10 / 5). */
 enum class ProactiveUi { Off, Low, Normal, High }
@@ -37,6 +41,9 @@ enum class SpeechUi { Banmal, Jondaetmal }
 
 /** A privacy action (withdraw / unpair) whose request failed: the screen says so and offers the same action again. */
 enum class AccountFailureUi { None, Withdraw, Unpair }
+
+/** The C7 account request that is in flight. */
+enum class SettingsPending { None, Unpair, Withdraw }
 
 /** The settings fields that can have a save in flight (each saves on its own, PRD 4.7.5 Partial = n/a). */
 enum class SettingField { Proactive, Memory, Speech }
@@ -50,6 +57,8 @@ data class SettingsUi(
     /** Fields whose save request has been running; the toggle shows work after 2 s, the screen blocks that field. */
     val saving: Set<SettingField> = emptySet(),
     val accountFailure: AccountFailureUi = AccountFailureUi.None,
+    /** The confirmed unpair/withdraw request that is still running (its dialog shows work; the retry button waits). */
+    val pending: SettingsPending = SettingsPending.None,
 )
 
 /** The debug-only server address field; null in release builds, which never show it. */
@@ -80,7 +89,17 @@ fun SettingsScreen(
     server: ServerAddress? = null,
 ) {
     var confirm by remember { mutableStateOf(Confirm.None) }
-    if (confirm == Confirm.Unpair && !settings.phonePaired) confirm = Confirm.None
+    // A confirmed request keeps its dialog open (spinner, buttons blocked) until it ends. A fast request can start and end
+    // between two frames, so the dialog also closes after a short wait when "pending" was never seen.
+    var submitted by remember { mutableStateOf(false) }
+    LaunchedEffect(submitted, settings.pending) {
+        if (submitted && settings.pending == SettingsPending.None) {
+            delay(PENDING_GRACE_MS)
+            submitted = false
+            confirm = Confirm.None
+        }
+    }
+    if (confirm == Confirm.Unpair && !settings.phonePaired && settings.pending == SettingsPending.None) confirm = Confirm.None
     HeyLayered(
         modifier = modifier.fillSize(),
         overlay = {
@@ -90,7 +109,8 @@ fun SettingsScreen(
                     message = stringResource(R.string.settings_unpair_message),
                     confirmText = stringResource(R.string.settings_unpair_confirm),
                     dismissText = stringResource(R.string.settings_cancel),
-                    onConfirm = { confirm = Confirm.None; onUnpair() },
+                    onConfirm = { submitted = true; onUnpair() },
+                    busy = settings.pending == SettingsPending.Unpair,
                     onDismiss = { confirm = Confirm.None },
                     modifier = Modifier.fillSize(),
                 )
@@ -99,7 +119,8 @@ fun SettingsScreen(
                     message = stringResource(R.string.settings_withdraw_message),
                     confirmText = stringResource(R.string.settings_withdraw_confirm),
                     dismissText = stringResource(R.string.settings_cancel),
-                    onConfirm = { confirm = Confirm.None; onWithdraw() },
+                    onConfirm = { submitted = true; onWithdraw() },
+                    busy = settings.pending == SettingsPending.Withdraw,
                     onDismiss = { confirm = Confirm.None },
                     modifier = Modifier.fillSize(),
                     danger = true,
@@ -136,6 +157,7 @@ fun SettingsScreen(
                             { if (withdraw) onWithdraw() else onUnpair() },
                             variant = HeyButtonVariant.Secondary,
                             icon = HeyIcons.Refresh,
+                            enabled = settings.pending == SettingsPending.None,
                         )
                     }
                 }
