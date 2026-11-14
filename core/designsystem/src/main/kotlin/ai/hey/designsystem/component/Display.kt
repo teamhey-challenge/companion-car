@@ -237,7 +237,8 @@ fun CarFrame(
         modifier = modifier
             .fillMaxSize()
             .background(HeyTheme.colors.bgPage)
-            .padding(start = CarPageX, end = CarPageX, top = CarPageTop, bottom = CarPageBottom),
+            // Scrolling pages (no action rail) run to the screen edge like the mockups; pages with a rail keep 64.
+            .padding(start = CarPageX, end = CarPageX, top = CarPageTop, bottom = if (actionRail != null) CarPageBottom else 0.dp),
     ) {
         statusStrip()
         Box(Modifier.grow().fillMaxWidth().padding(top = CarContentGap)) { content() }

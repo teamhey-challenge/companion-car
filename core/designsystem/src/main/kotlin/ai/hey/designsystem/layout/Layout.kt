@@ -107,6 +107,7 @@ fun Modifier.fillSize(): Modifier = fillMaxSize()
 /** Padding is the parent's decision; it can only pick a step. */
 fun Modifier.inset(gap: HeyGap): Modifier = padding(gap.value)
 fun Modifier.insetHorizontal(gap: HeyGap): Modifier = padding(horizontal = gap.value)
+fun Modifier.insetTop(gap: HeyGap): Modifier = padding(top = gap.value)
 
 /** Mockup car outer margin (ui-spec "차량 외곽": 80 left/right, 40 top/bottom). */
 fun Modifier.carMargin(): Modifier = padding(horizontal = 80.dp, vertical = 40.dp)

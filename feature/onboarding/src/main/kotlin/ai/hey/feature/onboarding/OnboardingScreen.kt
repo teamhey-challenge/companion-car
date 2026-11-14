@@ -19,6 +19,7 @@ import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.layout.fillWidth
+import ai.hey.designsystem.layout.insetTop
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTone
@@ -87,14 +88,16 @@ fun OnboardingScreen(
         },
     ) {
         HStack(HeyGap.G32, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
-            HeyScrollColumn(HeyGap.G16, modifier = Modifier.grow(1.07f)) {
+            HeyScrollColumn(HeyGap.G24, modifier = Modifier.grow(1.07f)) {
                 PageHeading(
                     title = stringResource(R.string.onboard_title),
                     subtitle = stringResource(R.string.onboard_subtitle),
                 )
-                InfoRow(HeyIcons.Mic, stringResource(R.string.onboard_point_voice_title), stringResource(R.string.onboard_point_voice_body))
+                InfoRow(HeyIcons.Mic, stringResource(R.string.onboard_point_voice_title), stringResource(R.string.onboard_point_voice_body), Modifier.insetTop(HeyGap.G8))
+                // Mockup C1: first row 68 dp under the title, rows 89 dp apart, text 33 dp right of the icon edge.
                 InfoRow(HeyIcons.Book, stringResource(R.string.onboard_point_memory_title), stringResource(R.string.onboard_point_memory_body))
                 ToggleRow(
+                    modifier = Modifier.insetTop(HeyGap.G8),
                     label = stringResource(R.string.onboard_toggle_memory),
                     checked = ui.memory,
                     onCheckedChange = onMemoryChange,
@@ -129,11 +132,12 @@ fun OnboardingScreen(
 
 /** One line of the "what this is" list: an icon, a heading and one explanatory line (C1 design). */
 @Composable
-private fun InfoRow(icon: ImageVector, title: String, body: String) {
-    HStack(HeyGap.G16, align = HeyAlign.Start, modifier = Modifier.fillWidth()) {
+private fun InfoRow(icon: ImageVector, title: String, body: String, modifier: Modifier = Modifier) {
+    HStack(HeyGap.G24, align = HeyAlign.Start, modifier = modifier.fillWidth()) {
         HeyIcon(icon, null)
-        VStack(HeyGap.G4, modifier = Modifier.grow()) {
-            HeyText(title, variant = HeyTextVariant.Heading)
+        // Mockup C1: title is 24 sp (cap band 23 dp, was 32 sp = 30 dp), explanation 24 sp caption, rows 36 dp apart.
+        VStack(HeyGap.G8, modifier = Modifier.grow()) {
+            HeyText(title, variant = HeyTextVariant.Body)
             HeyText(body, variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 2)
         }
     }
