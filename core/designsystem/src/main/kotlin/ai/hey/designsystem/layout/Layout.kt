@@ -114,8 +114,11 @@ fun Modifier.insetTop(gap: HeyGap): Modifier = padding(top = gap.value)
 /** Mockup car outer margin (ui-spec "차량 외곽", styles.css `--ui-shell-pad:80px;--ui-edge-y:64px`): 80 left/right, 64 top/bottom at 1600x900. */
 fun Modifier.carMargin(): Modifier = padding(horizontal = 80.dp, vertical = 64.dp)
 
-/** Mockup `.conversation` padding-top: the C3/C4/C8 body starts 48 below the 24 row gap under the header (header block 172 + 48 = 220 from the top). */
-fun Modifier.carBodyTop(): Modifier = padding(top = 48.dp)
+/** Mockup `.conversation` padding-top: the C3/C4/C8 body starts 54 below the 24 row gap under the header (measured: hero ink top at 236 on C3). */
+fun Modifier.carBodyTop(): Modifier = padding(top = 54.dp)
+
+/** Mockup C4: the caption ink starts 50 under the bottom of the status row's ink (251 -> 301); the stack gap gives 37, so 13 more. */
+fun Modifier.carCaptionTop(): Modifier = padding(top = 13.dp)
 
 /** Mockup parked grid: columns 1.05fr / 1fr with a 48 gutter. [HeyGap] stops at 32, so the left column adds the missing 16 here. */
 fun Modifier.carGutter(): Modifier = padding(end = 16.dp)

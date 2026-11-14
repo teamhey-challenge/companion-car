@@ -368,7 +368,7 @@ fun ErrorPanel(
                     weight = androidx.compose.ui.text.font.FontWeight.Normal, trackingEm = -0.055f, size = 48.sp, lineHeight = 67.sp,
                 )
                 InkText(
-                    message ?: stringResource(copy.message), HeyTheme.colors.fgMuted, maxLines = 4,
+                    message ?: stringResource(copy.message), HeyTheme.colors.fgMuted, Modifier.padding(top = 8.dp), maxLines = 4,
                     weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 24.sp, lineHeight = 38.sp,
                 )
             }

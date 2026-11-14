@@ -24,6 +24,7 @@ import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
+import ai.hey.designsystem.layout.carCaptionTop
 import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.carBodyTop
 import ai.hey.designsystem.layout.carGutter
@@ -139,9 +140,12 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
         talking || ui.inTalk -> {
             VStack(HeyGap.G24) {
                 StatusBadge(phase = ui.phase.toTalk(), connection = HeyConnection.Online)
-                // Mockup C4 shows the driver's words as the caption while thinking, the character's own reply while it speaks.
-                if (ui.phase == HomePhase.Thinking) ui.heard?.let { Subtitle(text = "“$it”") }
-                if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)
+                // Mockup C4 shows the driver's words as the caption while thinking, the character's own reply while it speaks;
+                // the caption starts 8 lower than the stack gap (status slot 40 + 24 + 8).
+                VStack(HeyGap.G16, modifier = Modifier.carCaptionTop()) {
+                    if (ui.phase == HomePhase.Thinking) ui.heard?.let { Subtitle(text = "“$it”") }
+                    if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)
+                }
             }
         }
         else -> {
