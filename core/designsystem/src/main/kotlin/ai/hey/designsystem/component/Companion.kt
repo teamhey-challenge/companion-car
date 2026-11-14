@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
@@ -93,8 +94,11 @@ fun OceanBackground(
     val dark = HeyTheme.dark
     val moving = animated && !rememberReducedMotion()
     val brush = remember(colors) { Brush.verticalGradient(listOf(colors.bgPage, colors.sceneSky)) }
-    val fill = if (dark) colors.accent.copy(alpha = 0.10f) else colors.bgRaised.copy(alpha = 0.30f)
-    val line = if (dark) colors.accent.copy(alpha = 0.28f) else colors.accent.copy(alpha = 0.70f)
+    // Soft filled bubbles (design `.ocean-bubbles i`): radial highlight at 32%/28%, faint rim.
+    val rimColor = if (dark) Color(0xFF83CEDE).copy(alpha = 0.12f) else Color.White.copy(alpha = 0.32f)
+    val hi = if (dark) Color(0xFF91D6E5).copy(alpha = 0.12f) else Color.White.copy(alpha = 0.38f)
+    val mid = if (dark) Color(0xFF2C7893).copy(alpha = 0.05f) else Color(0xFFE1F5FC).copy(alpha = 0.10f)
+    val edge = if (dark) Color(0xFF49A5B8).copy(alpha = 0.07f) else Color(0xFF93CAE0).copy(alpha = 0.10f)
     val clock: Float = if (moving) {
         val transition = rememberInfiniteTransition(label = "ocean")
         val t by transition.animateFloat(
@@ -116,9 +120,15 @@ fun OceanBackground(
                 val rise = size.height + d * 2f
                 val cx = size.width * b.x + b.driftDp.dp.toPx() * (phase - 0.5f)
                 val cy = size.height + d - rise * phase
-                val fade = sin(PI * phase).toFloat().coerceIn(0f, 1f)
-                drawCircle(fill.copy(alpha = fill.alpha * fade), d / 2f, Offset(cx, cy))
-                drawCircle(line.copy(alpha = line.alpha * fade), d / 2f, Offset(cx, cy), style = Stroke(1.dp.toPx()))
+                val fade = (sin(PI * phase).toFloat() * 0.58f).coerceIn(0f, 0.58f)
+                val center = Offset(cx, cy)
+                val r = d / 2f
+                val fill = Brush.radialGradient(
+                    0f to hi, 0.48f to mid, 0.76f to edge, 1f to Color.Transparent,
+                    center = Offset(center.x - r * 0.36f, center.y - r * 0.44f), radius = r * 1.4f,
+                )
+                drawCircle(fill, r, center, alpha = fade)
+                drawCircle(rimColor, r, center, alpha = fade, style = Stroke(1.dp.toPx()))
             }
         }
         content()
@@ -192,20 +202,43 @@ fun CharacterStill(
 enum class TalkPhase { Idle, Listening, Thinking, Speaking }
 
 private val TalkMinWidth = 320.dp
-private val TalkBigMinWidth = 400.dp
-private val TalkBigHeight = 112.dp
+private val TalkBigMinWidth = 360.dp
 
-private class GlassInk(val container: Brush, val content: Color, val border: Color)
+private class GlassInk(val container: Brush, val content: Color, val border: Color, val shadow: Color)
 
+private fun glass(a: Color, b: Color, c: Color? = null): Brush = Brush.linearGradient(listOfNotNull(a, b, c))
+
+/** Soft glass pill of the design (`.talk-button`): translucent tint, light rim, soft shadow; no hard outline. */
 @Composable
 private fun glassInk(phase: TalkPhase, pressed: Boolean, blocked: Boolean): GlassInk {
     val c = HeyTheme.colors
-    return when {
-        phase == TalkPhase.Listening && !blocked ->
-            GlassInk(Brush.linearGradient(listOf(c.info, c.info)), c.bgPage, c.info)
-        blocked -> GlassInk(Brush.linearGradient(listOf(c.surfaceContainer, c.surfaceContainer)), c.fgMuted, c.borderDefault)
-        pressed -> GlassInk(Brush.linearGradient(listOf(c.buttonSecondaryPressed, c.buttonSecondaryPressed)), c.fgOnSecondary, c.borderStrong)
-        else -> GlassInk(Brush.horizontalGradient(listOf(c.buttonSecondary, c.accentContainer)), c.fgOnSecondary, c.borderStrong)
+    val dark = HeyTheme.dark
+    val none = Color.Transparent
+    return if (dark) {
+        val rim = Color(0xFF89D5E1).copy(alpha = 0.30f)
+        val shadow = Color(0xFF00070E).copy(alpha = 0.20f)
+        when {
+            blocked -> GlassInk(glass(c.bgSurface, c.bgSurface), c.fgMuted, c.borderDefault, none)
+            phase == TalkPhase.Listening -> GlassInk(glass(Color(0xFF2D7F90).copy(alpha = 0.28f), Color(0xFF2D7F90).copy(alpha = 0.28f)), c.fgDefault, rim, shadow)
+            pressed -> GlassInk(glass(c.accentContainer, c.accentContainer), c.fgDefault, rim, shadow)
+            else -> GlassInk(
+                glass(Color(0xFF72BFD7).copy(alpha = 0.14f), Color(0xFF3E8FA3).copy(alpha = 0.12f), Color(0xFF33A0B1).copy(alpha = 0.22f)),
+                c.fgDefault, rim, shadow,
+            )
+        }
+    } else {
+        val rim = Color.White.copy(alpha = 0.80f)
+        val shadow = Color(0xFF25506C).copy(alpha = 0.16f)
+        val blue = Color(0xFF69B4DA)
+        when {
+            blocked -> GlassInk(glass(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f)), c.fgMuted, Color.White.copy(alpha = 0.5f), none)
+            phase == TalkPhase.Listening -> GlassInk(glass(Color.White.copy(alpha = 0.12f), Color(0xFF91BED0).copy(alpha = 0.16f)), c.fgDefault, rim, shadow)
+            pressed -> GlassInk(glass(blue.copy(alpha = 0.22f), blue.copy(alpha = 0.30f)), c.fgOnAccent, rim, none)
+            else -> GlassInk(
+                glass(Color.White.copy(alpha = 0.14f), blue.copy(alpha = 0.08f), blue.copy(alpha = 0.20f)),
+                c.fgOnAccent, rim, shadow,
+            )
+        }
     }
 }
 
@@ -247,8 +280,9 @@ private fun TalkPill(
     }
     Box(
         modifier
-            .heightIn(min = if (big) TalkBigHeight else HeyTokens.Size.touchCarPrimary)
+            .heightIn(min = HeyTokens.Size.touchCarPrimary)
             .widthIn(min = if (big) TalkBigMinWidth else TalkMinWidth)
+            .shadow(if (ink.shadow == Color.Transparent) 0.dp else 6.dp, shape, ambientColor = ink.shadow, spotColor = ink.shadow)
             .clip(shape)
             .background(ink.container, shape)
             .border(HeyTokens.Border.hairline, ink.border, shape)
@@ -262,10 +296,10 @@ private fun TalkPill(
         contentAlignment = Alignment.Center,
     ) {
         HStack(HeyGap.G16) {
-            InkIcon(icon, null, ink.content, Modifier.size(if (big) HeyTokens.Size.iconCar * 2 else HeyTokens.Size.iconCar * 3 / 2))
+            InkIcon(icon, null, ink.content, Modifier.size(HeyTokens.Size.iconCar * 4 / 3))
             InkText(
                 label, ink.content,
-                variant = if (big) HeyTextVariant.Title else HeyTextVariant.Heading,
+                variant = HeyTextVariant.Heading,
                 maxLines = 2, align = HeyTextAlign.Center,
             )
         }
@@ -338,7 +372,14 @@ fun PageHeading(
     hero: Boolean = false,
 ) {
     VStack(HeyGap.G8, modifier = modifier) {
-        HeyText(title, variant = if (hero) HeyTextVariant.Hero else HeyTextVariant.Title, maxLines = if (hero) 3 else 2)
+        // Design: headings are regular weight (450) with -0.055em tracking (`.welcome h1`, `.page-heading h1`).
+        InkText(
+            title, HeyTheme.colors.fgDefault,
+            variant = if (hero) HeyTextVariant.Hero else HeyTextVariant.Title,
+            maxLines = if (hero) 3 else 2,
+            weight = androidx.compose.ui.text.font.FontWeight.Normal,
+            trackingEm = -0.055f,
+        )
         if (subtitle != null) HeyText(subtitle, tone = HeyTone.Muted, maxLines = 3)
     }
 }
