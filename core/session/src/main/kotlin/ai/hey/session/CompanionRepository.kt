@@ -139,6 +139,21 @@ class CompanionRepository(
         _state.update { it.copy(settings = settings) }
     }
 
+    /**
+     * A `pairing` frame came on the socket: C7 and C2 follow at once instead of waiting for the next poll/refresh.
+     * Claimed -> shown as connected; anything else while connected -> not connected. A pending code that C2 is showing
+     * is left to its own poll (the frame cannot tell the code just created from the one that was removed).
+     */
+    fun onServerPairing(phase: PairingPhase) {
+        _state.update {
+            when {
+                phase == PairingPhase.Claimed -> it.copy(pairing = PairingUi.Claimed)
+                it.pairing == PairingUi.Claimed -> it.copy(pairing = PairingUi.None)
+                else -> it
+            }
+        }
+    }
+
     /** Socket came online: read what the server knows (consents, settings, pairing), once. */
     fun onOnline() = refresh()
 

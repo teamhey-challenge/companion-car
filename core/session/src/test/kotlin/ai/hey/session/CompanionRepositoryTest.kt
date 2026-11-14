@@ -45,6 +45,30 @@ class CompanionRepositoryTest {
         cs.cancel()
     }
 
+    @Test fun `pairing frame none turns a connected car to not connected at once and claimed turns it on`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.repo.openPairing()
+        rig.api.pairing = PairingStatus(PairingPhase.Claimed, pairedAt = "x")
+        advanceTimeBy(2_100)
+        assertTrue(rig.repo.state.value.paired)
+        rig.repo.onServerPairing(PairingPhase.None) // the phone unpaired itself
+        assertEquals(PairingUi.None, rig.repo.state.value.pairing)
+        assertFalse(rig.repo.state.value.paired)
+        rig.repo.onServerPairing(PairingPhase.None) // repeated frame changes nothing
+        assertEquals(PairingUi.None, rig.repo.state.value.pairing)
+        rig.repo.onServerPairing(PairingPhase.Claimed)
+        assertTrue(rig.repo.state.value.paired)
+        cs.cancel()
+    }
+
+    @Test fun `pairing frame wire parse accepts the four statuses and rejects others`() {
+        assertEquals(ai.hey.model.ServerFrame.Pairing(PairingPhase.None), ai.hey.model.parseServerFrame("""{"type":"pairing","status":"none"}"""))
+        assertEquals(ai.hey.model.ServerFrame.Pairing(PairingPhase.Claimed), ai.hey.model.parseServerFrame("""{"type":"pairing","status":"claimed"}"""))
+        assertEquals(null, ai.hey.model.parseServerFrame("""{"type":"pairing","status":"gone"}"""))
+        assertEquals(null, ai.hey.model.parseServerFrame("""{"type":"pairing"}"""))
+    }
+
     @Test fun `pairing code that expires shows expired and closing C2 stops polling`() = runTest {
         val cs = scope(testScheduler)
         val rig = Rig(cs)

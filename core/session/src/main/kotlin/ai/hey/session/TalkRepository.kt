@@ -209,6 +209,7 @@ class TalkRepository(
                 }
                 is ServerFrame.Proactive -> onProactive(frame)
                 is ServerFrame.Settings -> companion?.onServerSettings(frame.settings)
+                is ServerFrame.Pairing -> companion?.onServerPairing(frame.phase)
             }
         }
 
