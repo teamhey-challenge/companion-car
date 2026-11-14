@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
                                 repository.microphoneDeniedAtOnboarding()
                                 nav.navigate(Routes.Home) { popUpTo(nav.graph.id) { inclusive = true } }
                             },
-                            onDone = { nav.navigate(Routes.Pair) },
+                            onDone = { nav.navigate(Routes.Home) { popUpTo(nav.graph.id) { inclusive = true } } },
                             onExit = { finish() },
                         )
                     }
@@ -124,8 +124,8 @@ class MainActivity : ComponentActivity() {
                         PairRoute(
                             companion = graph.companion,
                             talk = repository,
-                            onDone = { nav.navigate(Routes.Home) { popUpTo(Routes.Pair) { inclusive = true } } },
-                            onBack = { nav.navigate(Routes.Home) { popUpTo(Routes.Pair) { inclusive = true } } },
+                            onDone = { nav.popBackStack() },
+                            onBack = { nav.popBackStack() },
                             onDriving = { nav.navigate(Routes.Drive) { popUpTo(nav.graph.id) { inclusive = true } } },
                         )
                     }
@@ -142,12 +142,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Routes.Settings) {
-                        // "해제" (PRD 4.7): once the link is gone the driver lands on C2 to pair again.
-                        var wasPaired by remember { mutableStateOf(state.companion.paired) }
-                        LaunchedEffect(state.companion.paired) {
-                            if (wasPaired && !state.companion.paired) nav.navigate(Routes.Pair) { popUpTo(Routes.Home) }
-                            wasPaired = state.companion.paired
-                        }
+                        // "해제" (PRD 4.7, D-33): the screen stays; C7 shows the unpaired state. C2 is opened only by "폰 연결" here.
                         SettingsRoute(
                             state = state.companion,
                             commands = graph.companion,
