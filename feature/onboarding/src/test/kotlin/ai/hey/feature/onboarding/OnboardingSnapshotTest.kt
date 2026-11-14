@@ -29,6 +29,7 @@ private val c2: List<Pair<String, PairUi>> = listOf(
     "c2-loading" to PairUi.Loading,
     "c2-pending" to PairUi.Pending("K7M2QX9P"),
     "c2-partial" to PairUi.Pending("K7M2QX9P", phoneEntered = true),
+    "c2-not-yet" to PairUi.Pending("K7M2QX9P", notYet = true),
     "c2-claimed" to PairUi.Claimed,
     "c2-expired" to PairUi.Expired("K7M2QX9P"),
     "c2-failed" to PairUi.Failed,
@@ -43,7 +44,7 @@ private fun Paparazzi.recordAll() {
             }
         }
         c2.forEach { (name, ui) ->
-            snapshot("$name-$theme") { HeyTheme(dark) { PairScreen(ui, {}, {}, {}) } }
+            snapshot("$name-$theme") { HeyTheme(dark) { PairScreen(ui, {}, {}, {}, {}) } }
         }
     }
 }

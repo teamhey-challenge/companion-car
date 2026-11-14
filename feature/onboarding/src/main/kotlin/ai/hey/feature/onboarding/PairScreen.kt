@@ -1,6 +1,7 @@
 package ai.hey.feature.onboarding
 
 import ai.hey.designsystem.component.CarFrame
+import ai.hey.designsystem.component.GlassButton
 import ai.hey.designsystem.component.CharacterStill
 import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
@@ -29,7 +30,8 @@ fun pairUrl(pairCode: String): String = PAIR_URL_BASE + pairCode
 sealed interface PairUi {
     /** The code is being issued: the QR place stays empty. */
     data object Loading : PairUi
-    data class Pending(val code: String, val phoneEntered: Boolean = false) : PairUi
+    /** [notYet]: "연결 완료 상태 보기" was pressed before the phone claimed the code. */
+    data class Pending(val code: String, val phoneEntered: Boolean = false, val notYet: Boolean = false) : PairUi
     data object Claimed : PairUi
     data class Expired(val code: String) : PairUi
     data object Failed : PairUi
@@ -41,6 +43,7 @@ fun PairScreen(
     ui: PairUi,
     onBack: () -> Unit,
     onLater: () -> Unit,
+    onShowStatus: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -58,13 +61,11 @@ fun PairScreen(
         actionRail = {
             HStack(HeyGap.G16) {
                 if (ui is PairUi.Expired || ui is PairUi.Failed) {
-                    HeyButton(stringResource(R.string.pair_retry), onRetry)
+                    GlassButton(stringResource(R.string.pair_retry), onRetry)
+                } else {
+                    GlassButton(stringResource(R.string.pair_done), onShowStatus)
                 }
-                HeyButton(
-                    stringResource(R.string.pair_later),
-                    onLater,
-                    variant = if (ui is PairUi.Expired || ui is PairUi.Failed) HeyButtonVariant.Ghost else HeyButtonVariant.Primary,
-                )
+                HeyButton(stringResource(R.string.pair_later), onLater, variant = HeyButtonVariant.Ghost)
             }
         },
     ) {
@@ -77,23 +78,21 @@ fun PairScreen(
                     is PairUi.Expired -> ui.code
                     else -> null
                 }
-                HStack(HeyGap.G24, align = HeyAlign.Start) {
-                    if (code != null) {
-                        QrPanel(
-                            content = pairUrl(code),
-                            code = code,
-                            status = statusText(ui),
-                            modifier = if (ui is PairUi.Expired) Modifier.alpha(0.35f) else Modifier,
-                        )
-                    } else {
-                        HeyText(
-                            statusText(ui),
-                            variant = HeyTextVariant.Heading,
-                            tone = if (ui == PairUi.Failed) HeyTone.Danger else if (ui == PairUi.Claimed) HeyTone.Success else HeyTone.Muted,
-                        )
-                    }
-                    if (ui is PairUi.Pending) HeyText(stringResource(R.string.pair_guide), tone = HeyTone.Muted, modifier = Modifier.grow())
-                    if (ui is PairUi.Expired) HeyText(stringResource(R.string.pair_status_expired), tone = HeyTone.Danger, modifier = Modifier.grow())
+                if (code != null) {
+                    if (ui is PairUi.Pending) HeyText(stringResource(R.string.pair_guide), variant = HeyTextVariant.Heading)
+                    if (ui is PairUi.Expired) HeyText(stringResource(R.string.pair_status_expired), variant = HeyTextVariant.Heading, tone = HeyTone.Danger)
+                    QrPanel(
+                        content = pairUrl(code),
+                        code = code,
+                        status = if (ui is PairUi.Expired) "" else statusText(ui),
+                        modifier = if (ui is PairUi.Expired) Modifier.alpha(0.35f) else Modifier,
+                    )
+                } else {
+                    HeyText(
+                        statusText(ui),
+                        variant = HeyTextVariant.Heading,
+                        tone = if (ui == PairUi.Failed) HeyTone.Danger else if (ui == PairUi.Claimed) HeyTone.Success else HeyTone.Muted,
+                    )
                 }
             }
             CharacterStill(
@@ -109,7 +108,7 @@ fun PairScreen(
 private fun statusText(ui: PairUi): String = stringResource(
     when (ui) {
         PairUi.Loading -> R.string.pair_status_waiting
-        is PairUi.Pending -> if (ui.phoneEntered) R.string.pair_status_partial else R.string.pair_status_waiting
+        is PairUi.Pending -> if (ui.notYet) R.string.pair_status_not_yet else if (ui.phoneEntered) R.string.pair_status_partial else R.string.pair_status_waiting
         PairUi.Claimed -> R.string.pair_status_claimed
         is PairUi.Expired -> R.string.pair_status_expired
         PairUi.Failed -> R.string.pair_status_failed

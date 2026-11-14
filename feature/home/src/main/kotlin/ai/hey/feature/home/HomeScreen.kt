@@ -7,7 +7,7 @@ import ai.hey.designsystem.component.ErrorKind
 import ai.hey.designsystem.component.ErrorPanel
 import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
-import ai.hey.designsystem.component.HeyButtonSize
+import ai.hey.designsystem.component.GlassButton
 import ai.hey.designsystem.component.HeyButtonVariant
 import ai.hey.designsystem.component.HeyConnection
 import ai.hey.designsystem.component.HeyText
@@ -20,7 +20,6 @@ import ai.hey.designsystem.component.TalkButton
 import ai.hey.designsystem.component.TalkPhase
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
-import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.layout.fillSize
@@ -142,7 +141,9 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
                 ui.heard?.let { HeyText(it, tone = HeyTone.Muted, variant = HeyTextVariant.Body, maxLines = 2) }
                 if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)
             }
-            HStack(HeyGap.G16, align = HeyAlign.Center) {
+            if (ui.phase == HomePhase.Speaking) {
+                GlassButton(stringResource(R.string.home_stop), onStop, icon = HeyIcons.Pause)
+            } else {
                 TalkButton(
                     phase = ui.phase.toTalk(),
                     onClick = onTalk,
@@ -150,9 +151,6 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
                     onHoldEnd = onEndListening,
                     enabled = ui.phase == HomePhase.Idle || ui.phase == HomePhase.Listening,
                 )
-                if (ui.phase == HomePhase.Speaking) {
-                    HeyButton(stringResource(R.string.home_stop), onStop, variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, icon = HeyIcons.Pause)
-                }
             }
         }
         else -> {
