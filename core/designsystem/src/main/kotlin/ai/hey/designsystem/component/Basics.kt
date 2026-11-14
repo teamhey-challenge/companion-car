@@ -74,11 +74,19 @@ internal fun InkText(
     variant: HeyTextVariant = HeyTextVariant.Body,
     maxLines: Int = Int.MAX_VALUE,
     align: HeyTextAlign = HeyTextAlign.Start,
+    /** Overrides the token weight (design headings are regular, not bold). */
+    weight: androidx.compose.ui.text.font.FontWeight? = null,
+    /** Overrides the token tracking, in em. */
+    trackingEm: Float? = null,
 ) {
+    val base = variant.spec.style(color).copy(textAlign = align.toCompose())
     BasicText(
         text = remember(text) { keepKoreanWords(text) },
         modifier = modifier,
-        style = variant.spec.style(color).copy(textAlign = align.toCompose()),
+        style = base.copy(
+            fontWeight = weight ?: base.fontWeight,
+            letterSpacing = if (trackingEm != null) androidx.compose.ui.unit.TextUnit(trackingEm, androidx.compose.ui.unit.TextUnitType.Em) else base.letterSpacing,
+        ),
         overflow = TextOverflow.Ellipsis,
         maxLines = maxLines,
     )

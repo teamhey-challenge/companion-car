@@ -34,7 +34,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
-enum class HeyButtonVariant { Primary, Accent, Secondary, Danger, Ghost }
+/** Soft = filled, outline-free surface (header 기억/설정 in the design); the others are unchanged. */
+enum class HeyButtonVariant { Primary, Accent, Secondary, Danger, Ghost, Soft }
 enum class HeyButtonSize { Regular, Large }
 
 private class ButtonInk(val container: Color, val content: Color, val border: Color?)
@@ -47,6 +48,7 @@ private fun HeyColors.ink(variant: HeyButtonVariant, pressed: Boolean, enabled: 
         HeyButtonVariant.Secondary -> ButtonInk(if (pressed) bgSunken else bgRaised, fgDefault, borderStrong)
         HeyButtonVariant.Danger -> ButtonInk(if (pressed) danger.copy(alpha = 0.32f) else dangerContainer, danger, danger)
         HeyButtonVariant.Ghost -> ButtonInk(if (pressed) bgSunken else Color.Transparent, fgDefault, borderDefault)
+        HeyButtonVariant.Soft -> ButtonInk(if (pressed) bgSunken else bgRaised, fgDefault, null)
     }
 }
 
