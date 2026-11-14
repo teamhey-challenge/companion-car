@@ -79,6 +79,8 @@ class CompanionRepositoryTest {
         val rig = Rig(cs)
         rig.api.failing = true
         rig.repo.submitConsent(memory = true)
+        assertTrue(rig.repo.state.value.onboarding.saving) // retrying, not yet failed
+        advanceTimeBy(3_100)
         assertTrue(rig.repo.state.value.onboarding.failed)
         assertFalse(rig.storage.consents.value.recordDone)
         rig.api.failing = false
@@ -88,6 +90,47 @@ class CompanionRepositoryTest {
         // AC-4.1-06: memory off at onboarding is the C7 value
         assertFalse(rig.repo.state.value.settings.memoryEnabled)
         assertFalse(rig.api.settings.memoryEnabled)
+        cs.cancel()
+    }
+
+    @Test fun `a consent POST that fails once is retried after 1 s and the flow succeeds`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.api.failNext = 1
+        rig.repo.submitConsent(memory = true)
+        assertFalse(rig.storage.consents.value.recordDone)
+        advanceTimeBy(900)
+        assertEquals(1, rig.api.postAttempts)
+        advanceTimeBy(200)
+        assertTrue(rig.storage.consents.value.recordDone)
+        assertFalse(rig.repo.state.value.onboarding.failed)
+        assertEquals(6, rig.api.postAttempts) // 1 failed + 5 consents
+        cs.cancel()
+    }
+
+    @Test fun `HTTP 5xx is retried with 1 s then 2 s and gives up after the third failure`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.api.failNext = 3
+        rig.api.failWith = HttpFailure(502)
+        rig.repo.submitConsent(memory = true)
+        advanceTimeBy(2_900)
+        assertEquals(2, rig.api.postAttempts)
+        assertFalse(rig.repo.state.value.onboarding.failed)
+        advanceTimeBy(200)
+        assertEquals(3, rig.api.postAttempts)
+        assertTrue(rig.repo.state.value.onboarding.failed)
+        cs.cancel()
+    }
+
+    @Test fun `HTTP 4xx is not retried`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.api.failNext = 1
+        rig.api.failWith = HttpFailure(400)
+        rig.repo.submitConsent(memory = true)
+        assertEquals(1, rig.api.postAttempts)
+        assertTrue(rig.repo.state.value.onboarding.failed)
         cs.cancel()
     }
 
@@ -149,6 +192,7 @@ class CompanionRepositoryTest {
         rig.repo.submitConsent(memory = true)
         rig.api.failing = true
         rig.repo.withdrawRecordConsent()
+        advanceTimeBy(3_100)
         assertEquals(AccountFailure.Withdraw, rig.repo.state.value.accountFailure)
         assertTrue(rig.storage.consents.value.recordDone) // honest: nothing was withdrawn
         rig.repo.unpair()
