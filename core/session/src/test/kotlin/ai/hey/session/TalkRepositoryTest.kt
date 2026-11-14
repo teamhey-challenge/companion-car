@@ -472,6 +472,7 @@ class TalkRepositoryTest {
         val cs = rigScope(testScheduler)
         val voice = ScriptedVoiceInput(text = "안녕")
         val rig = Rig(cs, voice)
+        rig.vehicle.setDriving(true)
         rig.vehicle.setSignals { it.copy(naviGuiding = true) }
         rig.repo.startTalk()
         replyWith(rig, "어디 가?")
@@ -510,6 +511,23 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
+    @Test fun `a range proactive at a parked stop is spoken although a destination is set, any other reason stays refused`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput())
+        rig.vehicle.setDriving(false)
+        rig.vehicle.setSignals { it.copy(naviGuiding = true, destKm = 42) }
+        testScheduler.runCurrent()
+        rig.transport.listener.onFrame(ServerFrame.Proactive("p1", "wiper"))
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        rig.transport.listener.onFrame(ServerFrame.Proactive("p2", "range"))
+        assertEquals(TurnState.Replying, rig.repo.state.value.turn)
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart("p2", AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd("p2", "목적지까지 42km인데 남은 거리가 30km야.", 100, 900))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("목적지까지 42km인데 남은 거리가 30km야."), rig.vehicle.spoken)
+        cs.cancel()
+    }
+
     @Test fun `a proactive frame during a conversation or before consent is refused`() = runTest {
         val cs = rigScope(testScheduler)
         val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
@@ -543,6 +561,22 @@ class TalkRepositoryTest {
         assertEquals(first + 1, rig.transport.sent.count { it.contains("\"type\":\"ctx\"") })
         assertTrue(rig.transport.sent.last().contains("\"headlight\":true"))
         assertTrue(rig.transport.sent.last().contains("\"naviGuiding\":false"))
+        cs.cancel()
+    }
+
+    @Test fun `the distance to the navigation destination goes out in ctx only while there is one, never a name or coordinates`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput())
+        testScheduler.runCurrent()
+        assertTrue(rig.transport.sent.last { it.contains("\"type\":\"ctx\"") }.let { !it.contains("destKm") })
+        rig.vehicle.setSignals { it.copy(naviGuiding = true, destKm = 42) }
+        testScheduler.advanceTimeBy(1100)
+        val sent = rig.transport.sent.last { it.contains("\"type\":\"ctx\"") }
+        assertTrue(sent.contains("\"destKm\":42"))
+        assertTrue(!sent.contains("lat") && !sent.contains("lon") && !sent.contains("name"))
+        rig.vehicle.setSignals { it.copy(naviGuiding = false, destKm = null) }
+        testScheduler.advanceTimeBy(1100)
+        assertTrue(!rig.transport.sent.last { it.contains("\"type\":\"ctx\"") }.contains("destKm"))
         cs.cancel()
     }
 }

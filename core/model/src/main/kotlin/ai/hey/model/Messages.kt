@@ -55,6 +55,7 @@ object ClientFrames {
                 s.rangeKm?.let { put("rangeKm", it) }
                 s.fuelType?.let { put("fuelType", it) }
                 s.headlight?.let { put("headlight", it) }
+                s.destKm?.let { put("destKm", it) }
                 put("naviGuiding", s.naviGuiding)
             },
         )

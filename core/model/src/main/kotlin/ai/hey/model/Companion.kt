@@ -94,4 +94,6 @@ data class VehicleSignals(
     val fuelType: String? = null,
     val headlight: Boolean? = null,
     val naviGuiding: Boolean = false,
+    /** Remaining distance to the navigation destination in whole km; null without a destination. Never a name or coordinates. */
+    val destKm: Int? = null,
 )
