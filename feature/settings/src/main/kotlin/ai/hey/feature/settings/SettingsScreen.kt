@@ -66,6 +66,8 @@ fun SettingsScreen(
     onMemoryEnabled: (Boolean) -> Unit,
     onSpeech: (SpeechUi) -> Unit,
     onOpenMemory: () -> Unit,
+    /** C7 is the only way to C2 (D-33): shown while no phone is linked. */
+    onOpenPair: () -> Unit,
     onUnpair: () -> Unit,
     onWithdraw: () -> Unit,
     modifier: Modifier = Modifier,
@@ -171,6 +173,13 @@ fun SettingsScreen(
                             { confirm = Confirm.Unpair },
                             variant = HeyButtonVariant.Secondary,
                             icon = HeyIcons.Link,
+                        )
+                    } else {
+                        HeyButton(
+                            stringResource(R.string.settings_pair),
+                            onOpenPair,
+                            variant = HeyButtonVariant.Secondary,
+                            icon = HeyIcons.Qr,
                         )
                     }
                 }
