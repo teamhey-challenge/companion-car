@@ -134,6 +134,7 @@ class MainActivity : ComponentActivity() {
                             commands = graph.companion,
                             onBack = { nav.popBackStack() },
                             onOpenMemory = { nav.navigate(Routes.Memory) },
+                            onOpenPair = { nav.navigate(Routes.Pair) },
                             // The address field exists in debug builds only.
                             server = if (BuildConfig.DEBUG) {
                                 ServerAddress(state.settings.serverUrl) { url -> repository.updateSettings { it.copy(serverUrl = url) } }

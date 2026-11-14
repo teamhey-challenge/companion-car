@@ -49,6 +49,7 @@ private fun Screen(shot: Shot) {
         onMemoryEnabled = {},
         onSpeech = {},
         onOpenMemory = {},
+        onOpenPair = {},
         onUnpair = {},
         onWithdraw = {},
         notice = shot.notice,
