@@ -1,6 +1,7 @@
 package ai.hey.session
 
 import ai.hey.model.CarSettings
+import ai.hey.model.ConsentType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,12 +21,27 @@ sealed interface SaveResult {
     data object Saved : SaveResult
     data class Failed(val reason: SaveFailure) : SaveResult
 }
+/**
+ * The consents this device has recorded on the server and keeps a copy of, so the app can pick /onboarding or /home at
+ * once, without waiting for the network. Only `granted = true` entries are in [granted].
+ */
+data class ConsentMirror(val granted: Set<ConsentType> = emptySet()) {
+    /** The required consent (C1 "record"): without it the app shows /onboarding and has no conversation. */
+    val recordDone: Boolean get() = ConsentType.Record in granted
+}
+
+/** Wording version recorded with every consent POST (bump when the C1/W1 copy changes). */
+const val CONSENT_VERSION = "2026-11-15"
 
 /**
  * Device-only storage. The car token (what /v1/cars/register gave this install) lives here and nowhere else; it is
  * never logged and never part of [CarUiState].
  */
 interface CarStorage {
+    /** Local mirror of the consents; changed only after the server accepted the change. */
+    val consents: StateFlow<ConsentMirror>
+    suspend fun setConsent(type: ConsentType, granted: Boolean)
+
     val settings: StateFlow<CarSettings>
 
     /**
@@ -43,10 +59,19 @@ interface CarStorage {
     suspend fun forgetCarToken(serverUrl: String)
 }
 
-class InMemoryCarStorage(initial: CarSettings = CarSettings(), private val install: String = "test-install-0001") : CarStorage {
+class InMemoryCarStorage(
+    initial: CarSettings = CarSettings(),
+    private val install: String = "test-install-0001",
+    initialConsents: ConsentMirror = ConsentMirror(),
+) : CarStorage {
     private val _settings = MutableStateFlow(initial)
+    private val _consents = MutableStateFlow(initialConsents)
     private val tokens = HashMap<String, String>()
     override val settings: StateFlow<CarSettings> = _settings.asStateFlow()
+    override val consents: StateFlow<ConsentMirror> = _consents.asStateFlow()
+    override suspend fun setConsent(type: ConsentType, granted: Boolean) {
+        _consents.update { ConsentMirror(if (granted) it.granted + type else it.granted - type) }
+    }
     override suspend fun updateSettings(transform: (CarSettings) -> CarSettings): SaveResult {
         _settings.update(transform)
         return SaveResult.Saved

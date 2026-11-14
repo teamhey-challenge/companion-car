@@ -42,6 +42,24 @@ object ClientFrames {
 
     fun turnCancel(turnId: String): String = obj { put("type", "turn.cancel"); put("turnId", turnId) }
 
+    /** Vehicle context; null values are left out. Keys follow contract.md. */
+    fun ctx(s: VehicleSignals): String = obj {
+        put("type", "ctx")
+        put(
+            "ctx",
+            buildJsonObject {
+                s.gear?.let { put("gear", it) }
+                s.speedKmh?.let { put("speedKmh", it) }
+                s.wiper?.let { put("wiper", it) }
+                s.doorOpen?.let { put("doorOpen", it) }
+                s.rangeKm?.let { put("rangeKm", it) }
+                s.fuelType?.let { put("fuelType", it) }
+                s.headlight?.let { put("headlight", it) }
+                put("naviGuiding", s.naviGuiding)
+            },
+        )
+    }
+
     private fun obj(build: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): String = buildJsonObject(build).toString()
 }
 
@@ -57,6 +75,7 @@ sealed interface ServerFrame {
     data class ReplyDelta(val turnId: String, val text: String) : ServerFrame
     data class ReplyEnd(val turnId: String, val text: String, val firstTokenMs: Long?, val totalMs: Long) : ServerFrame
     data class Proactive(val id: String, val reason: String) : ServerFrame
+    data class Settings(val settings: CompanionSettings) : ServerFrame
     data class Error(val code: String, val turnId: String?, val message: String?) : ServerFrame
 }
 
@@ -93,6 +112,7 @@ private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
             totalMs = o["totalMs"]?.jsonPrimitive?.longOrNull ?: 0,
         )
         "proactive" -> ServerFrame.Proactive(s("id") ?: return null, s("reason").orEmpty())
+        "settings" -> ServerFrame.Settings(parseCompanionSettings(o["settings"]?.jsonObject ?: return null) ?: return null)
         "error" -> ServerFrame.Error(s("code") ?: return null, s("turnId"), s("message"))
         else -> null
     }

@@ -9,4 +9,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
     <uses-permission android:name="pleos.car.permission.CAR_DOORS" />
+    <uses-permission android:name="pleos.car.permission.CAR_WINDOWS" />
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+    <uses-permission android:name="android.car.permission.CAR_INFO" />
 </manifest>

@@ -1,6 +1,7 @@
 package ai.hey.vehicle
 
 import ai.hey.model.HeyConfig
+import ai.hey.model.VehicleSignals
 import ai.hey.model.Place
 import ai.hey.model.SpeechPriority
 import kotlinx.coroutines.flow.SharedFlow
@@ -74,6 +75,13 @@ interface VehicleGateway {
 
     /** Doors that are currently open. */
     val doors: StateFlow<Set<VehicleDoor>>
+
+    /**
+     * What the server is told as context (gear, speed, wiper, door, range, fuel, headlight, navigation guiding). A signal
+     * the car does not answer stays null. [VehicleSignals.naviGuiding] is true while the navigation service has a route
+     * (the character never starts a line then, D-14).
+     */
+    val signals: StateFlow<VehicleSignals>
     val events: SharedFlow<VehicleEvent>
 
     /** Mouth level 0..3 while the local (Pleos) voice reads, from its `onUpdatedRms` (D-13); 0 when it is quiet. */

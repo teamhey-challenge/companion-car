@@ -2,6 +2,8 @@ package ai.hey.car
 
 import ai.hey.model.HeyLog
 import ai.hey.session.CarStorage
+import ai.hey.session.CompanionRepository
+import ai.hey.session.HttpCompanionApi
 import ai.hey.session.HttpTalkApi
 import ai.hey.session.PrefsCarStorage
 import ai.hey.session.TalkLink
@@ -42,6 +44,7 @@ class AppGraph(private val app: Application) {
 
     /** Pleos SpeechToText (ON_DEVICE, Locale.KOREA); the debug/e2e builds swap in the injectable demo source. */
     val voice: VoiceInput by lazy { demoVoiceOrNull(app) ?: PleosVoiceInput(app) }
+    val companion: CompanionRepository by lazy { CompanionRepository(scope, HttpCompanionApi(storage, newHttpClient()), storage) }
     val repository: TalkRepository by lazy {
         val http = newHttpClient()
         TalkRepository(
@@ -61,6 +64,7 @@ class AppGraph(private val app: Application) {
                 )
             },
             audio = StreamingReplyAudio({ AudioTrackSink() }, AudioFocusGateAndroid(app)),
+            companion = companion,
             speechFocus = AudioFocusGateAndroid(app),
         ).also { it.start() }
     }

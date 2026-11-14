@@ -1,6 +1,7 @@
 package ai.hey.vehicle
 
 import ai.hey.model.HeyConfig
+import ai.hey.model.VehicleSignals
 import ai.hey.model.Place
 import ai.hey.model.SpeechPriority
 import kotlinx.coroutines.CoroutineScope
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Stand-in for previews and tests only (production never falls back to it). Driving state and arrival are driven by the
@@ -27,6 +29,7 @@ class FakeVehicleGateway(
     private val _driving = MutableStateFlow(initialDriving)
     private val _gear = MutableStateFlow(VehicleGear.Park)
     private val _doors = MutableStateFlow<Set<VehicleDoor>>(emptySet())
+    private val _signals = MutableStateFlow(VehicleSignals(gear = "P", speedKmh = 0, doorOpen = false))
     private val _events = MutableSharedFlow<VehicleEvent>(extraBufferCapacity = 64)
     private val _mouth = MutableStateFlow(0)
 
@@ -48,6 +51,10 @@ class FakeVehicleGateway(
     override val drivingState: StateFlow<DrivingStatus> = _driving.asStateFlow()
     override val gear: StateFlow<VehicleGear> = _gear.asStateFlow()
     override val doors: StateFlow<Set<VehicleDoor>> = _doors.asStateFlow()
+    override val signals: StateFlow<VehicleSignals> = _signals.asStateFlow()
+
+    /** Test/preview control of the context the server gets. */
+    fun setSignals(transform: (VehicleSignals) -> VehicleSignals) = _signals.update(transform)
     override val events: SharedFlow<VehicleEvent> = _events.asSharedFlow()
     override val mouth: StateFlow<Int> = _mouth.asStateFlow()
 

@@ -1,6 +1,7 @@
 package ai.hey.session
 
 import ai.hey.model.AudioSpec
+import ai.hey.model.ConsentType
 import ai.hey.model.ServerFrame
 import ai.hey.vehicle.FakeVehicleGateway
 import ai.hey.vehicle.FocusGate
@@ -50,21 +51,31 @@ private class FakeFocusGate : FocusGate {
     override fun abandon() { held = false }
 }
 
-private fun types(sent: List<String>) = sent.map { Regex("\"type\":\"([^\"]+)\"").find(it)!!.groupValues[1] }
+private fun types(sent: List<String>) = sent.map { Regex("\"type\":\"([^\"]+)\"").find(it)!!.groupValues[1] }.filter { it != "ctx" }
 @OptIn(ExperimentalCoroutinesApi::class)
 class TalkRepositoryTest {
-    private class Rig(scope: CoroutineScope, voice: VoiceInput, audio: ReplyAudio? = null, focus: FocusGate? = null, speechMillis: Long = 0) {
+    private class Rig(
+        scope: CoroutineScope,
+        voice: VoiceInput,
+        audio: ReplyAudio? = null,
+        focus: FocusGate? = null,
+        speechMillis: Long = 0,
+        consented: Boolean = true,
+        autoListenMillis: Long = 5_000,
+    ) {
         val vehicle = FakeVehicleGateway(scope, speechMillis = speechMillis)
         lateinit var transport: FakeTransport
         val repo = TalkRepository(
             scope = scope,
             vehicle = vehicle,
-            storage = InMemoryCarStorage(),
+            storage = InMemoryCarStorage(initialConsents = if (consented) ConsentMirror(setOf(ConsentType.Record)) else ConsentMirror()),
             voiceInput = voice,
             transport = { FakeTransport(it).also { t -> transport = t } },
             newTurnId = { "t1" },
             audio = audio,
             speechFocus = focus,
+            autoListenMillis = autoListenMillis,
+            ctxDebounceMillis = 1_000,
         ).also { it.start() }
     }
 
@@ -210,5 +221,142 @@ class TalkRepositoryTest {
 
     @Test fun `reconnect backoff is 1 2 4 8 15 then stays at 15`() {
         assertEquals(listOf(1000L, 2000L, 4000L, 8000L, 15000L, 15000L, 15000L), (1..7).map { backoffMillis(it) })
+    }
+
+    // ---------------------------------------------------------------- F4-F6 auto-listen, proactive, ctx
+
+    private fun TalkRepositoryTest.askThenHang(): Pair<VoiceInput, () -> Int> {
+        var calls = 0
+        val voice = object : VoiceInput {
+            override fun hasPermission() = true
+            override suspend fun listen(): VoiceResult {
+                calls++
+                if (calls == 1) return VoiceResult.Text("안녕")
+                kotlinx.coroutines.awaitCancellation()
+            }
+            override fun release() = Unit
+        }
+        return voice to { calls }
+    }
+
+    private fun replyWith(rig: Rig, text: String) {
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", text, 100, 900))
+    }
+
+    @Test fun `a reply ending with a question opens the microphone for 5 s and ends quietly when nothing is said`() = runTest {
+        val cs = rigScope(testScheduler)
+        val (voice, calls) = askThenHang()
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        replyWith(rig, "오늘 어땠어?")
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Listening, rig.repo.state.value.turn)
+        assertEquals(TurnSource.AutoListen, rig.repo.state.value.source)
+        assertEquals(2, calls())
+        testScheduler.advanceTimeBy(4_900)
+        assertEquals(TurnState.Listening, rig.repo.state.value.turn)
+        testScheduler.advanceTimeBy(200)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertNull(rig.repo.state.value.error) // no prompt, no error
+        assertEquals(listOf("turn.start", "text", "turn.end"), types(rig.transport.sent)) // nothing was sent for the silent listening
+        cs.cancel()
+    }
+
+    @Test fun `a statement does not open the microphone and an answer in the window is sent as listen_after_proactive`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "안녕")
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        replyWith(rig, "반가워요.")
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(1, voice.listens)
+        // question: the auto listen hears something and sends it with the follow-up trigger
+        rig.transport.sent.clear()
+        rig.repo.startTalk()
+        replyWith(rig, "뭐 할래?")
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        assertTrue(rig.transport.sent.last { it.contains("turn.start") }.contains("listen_after_proactive"))
+        cs.cancel()
+    }
+
+    @Test fun `no auto listen while navigation is guiding`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "안녕")
+        val rig = Rig(cs, voice)
+        rig.vehicle.setSignals { it.copy(naviGuiding = true) }
+        rig.repo.startTalk()
+        replyWith(rig, "어디 가?")
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(1, voice.listens)
+        cs.cancel()
+    }
+
+    @Test fun `a proactive frame starts the character talking and its reply is read`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput())
+        val l = rig.transport.listener
+        l.onFrame(ServerFrame.Proactive("p1", "wiper"))
+        assertEquals(TurnState.Replying, rig.repo.state.value.turn)
+        assertEquals(TurnSource.Proactive, rig.repo.state.value.source)
+        l.onFrame(ServerFrame.ReplyStart("p1", AudioSpec.None))
+        l.onFrame(ServerFrame.ReplyEnd("p1", "비 오네.", 100, 900))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("비 오네."), rig.vehicle.spoken)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        cs.cancel()
+    }
+
+    @Test fun `a proactive frame while navigation guides is refused and cancelled`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput())
+        rig.vehicle.setSignals { it.copy(naviGuiding = true) }
+        rig.transport.listener.onFrame(ServerFrame.Proactive("p1", "wiper"))
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart("p1", AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd("p1", "비 오네.", 100, 900))
+        testScheduler.advanceUntilIdle()
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(emptyList<String>(), rig.vehicle.spoken)
+        assertTrue(rig.transport.sent.any { it.contains("turn.cancel") && it.contains("p1") })
+        cs.cancel()
+    }
+
+    @Test fun `a proactive frame during a conversation or before consent is refused`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
+        rig.repo.startTalk()
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        rig.transport.listener.onFrame(ServerFrame.Proactive("p1", "door"))
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        assertEquals(TurnSource.Ptt, rig.repo.state.value.source)
+        val cs2 = rigScope(testScheduler)
+        val noConsent = Rig(cs2, ScriptedVoiceInput(), consented = false)
+        assertTrue(noConsent.repo.state.value.needsOnboarding)
+        noConsent.transport.listener.onFrame(ServerFrame.Proactive("p2", "door"))
+        assertEquals(TurnState.Idle, noConsent.repo.state.value.turn)
+        noConsent.repo.startTalk() // no conversation before consent
+        assertEquals(TurnState.Idle, noConsent.repo.state.value.turn)
+        cs.cancel()
+        cs2.cancel()
+    }
+
+    @Test fun `vehicle context goes out on connect and on change, debounced`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput())
+        testScheduler.runCurrent()
+        val first = rig.transport.sent.count { it.contains("\"type\":\"ctx\"") }
+        assertTrue(first >= 1)
+        rig.vehicle.setSignals { it.copy(wiper = "low") }
+        rig.vehicle.setSignals { it.copy(wiper = "low", headlight = true) }
+        testScheduler.advanceTimeBy(500)
+        assertEquals(first, rig.transport.sent.count { it.contains("\"type\":\"ctx\"") })
+        testScheduler.advanceTimeBy(600)
+        assertEquals(first + 1, rig.transport.sent.count { it.contains("\"type\":\"ctx\"") })
+        assertTrue(rig.transport.sent.last().contains("\"headlight\":true"))
+        assertTrue(rig.transport.sent.last().contains("\"naviGuiding\":false"))
+        cs.cancel()
     }
 }
