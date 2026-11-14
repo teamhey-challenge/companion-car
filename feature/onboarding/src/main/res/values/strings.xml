@@ -1,0 +1,37 @@
+<resources>
+    <string name="onboard_title_bar">헤이파리</string>
+    <string name="onboard_title">안녕, 나는 헤이파리. 같이 달려 볼까?</string>
+    <string name="onboard_subtitle">시작하기 전에 꼭 알려 드릴 게 있어요.</string>
+    <string name="onboard_caption">당신의 이야기가 머무는 곳</string>
+    <string name="onboard_character">헤이파리 캐릭터</string>
+    <string name="onboard_header">정차 중</string>
+
+    <string name="onboard_notice_collect">수집: 말한 내용(마이크 소리는 차 안에서 글자로만 바꾸고 차 밖으로 나가지 않아요), 대화 요약과 기억, 차량 신호</string>
+    <string name="onboard_notice_purpose">목적: 대화하고, 기억을 바탕으로 먼저 말 걸기</string>
+    <string name="onboard_notice_retention">보관: 대화 원문은 저장하지 않고, 요약과 사실만 기억으로 남겨요. 폰이나 차에서 언제든 지울 수 있어요</string>
+    <string name="onboard_notice_refuse">거부할 수 있어요. 거부하면 대화 기능을 쓸 수 없어요</string>
+    <string name="onboard_notice_providers">인식된 글자는 답변 공급사(LLM)로, 답 글자는 목소리 공급사(BreezeBlue)로 보내져요. 공급사가 학습에 쓸 수 있고 최대 1년 보관해요</string>
+
+    <string name="onboard_check_voice">(필수) 목소리 녹음과 대화 처리에 동의해요</string>
+    <string name="onboard_check_memory">(선택) 대화 요약을 기억으로 저장하는 데 동의해요</string>
+    <string name="onboard_policy">개인정보처리방침 보기</string>
+    <string name="onboard_start">동의하고 시작</string>
+    <string name="onboard_decline">동의하지 않기</string>
+    <string name="onboard_saving">잠깐만요…</string>
+    <string name="onboard_error_voice_required">필수 항목에 동의해야 대화할 수 있어요</string>
+    <string name="onboard_error_network">연결이 안 돼요. 다시 눌러 주세요</string>
+
+    <string name="pair_header_back">뒤로</string>
+    <string name="pair_title">내 폰에서도 함께해요</string>
+    <string name="pair_subtitle">폰에서 기억을 보고 지울 수 있어요</string>
+    <string name="pair_guide">폰 카메라로 QR을 찍어 주세요</string>
+    <string name="pair_qr_description">폰 연결 QR 코드</string>
+    <string name="pair_status_waiting">기다리는 중…</string>
+    <string name="pair_status_partial">폰에서 동의를 기다리는 중…</string>
+    <string name="pair_status_claimed">연결됐어요!</string>
+    <string name="pair_status_expired">QR이 만료됐어요</string>
+    <string name="pair_status_failed">QR을 만들지 못했어요</string>
+    <string name="pair_code_label">연결 코드 %1$s</string>
+    <string name="pair_retry">새 QR 만들기</string>
+    <string name="pair_later">나중에</string>
+</resources>
