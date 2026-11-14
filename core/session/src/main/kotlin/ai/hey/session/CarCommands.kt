@@ -15,6 +15,9 @@ interface CarCommands {
 
     /** The result of the runtime RECORD_AUDIO request the activity made when [TurnState.NeedsPermission] showed. */
     fun voicePermissionResult(granted: Boolean)
+
+    /** Re-reads RECORD_AUDIO (activity onResume): granted now → the Microphone fault goes away without a press. */
+    fun refreshVoicePermission()
     fun closeSettings()
     fun updateSettings(transform: (CarSettings) -> CarSettings)
 }

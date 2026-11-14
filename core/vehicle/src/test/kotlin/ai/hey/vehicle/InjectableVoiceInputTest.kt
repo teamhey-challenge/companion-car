@@ -61,11 +61,16 @@ class InjectableVoiceInputTest {
     }
 
     @Test
-    fun `permission follows the real recognizer unless a sentence is injected`() {
+    fun `permission is always the real one, injected sentence or not`() = runTest {
         val (input, real) = rig()
         real.permission = false
         assertFalse(input.hasPermission())
         input.inject("안녕")
+        assertFalse(input.hasPermission())
+        assertEquals(VoiceResult.PermissionDenied, input.listen())
+        assertTrue(input.injected) // the refused press did not use up the sentence
+        real.permission = true
         assertTrue(input.hasPermission())
+        assertEquals(VoiceResult.Text("안녕"), input.listen())
     }
 }

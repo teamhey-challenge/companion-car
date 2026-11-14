@@ -153,7 +153,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
             onHoldStart = onTalk,
             onHoldEnd = onEndListening,
             enabled = when {
-                faultShown -> ui.online && fault != CarFault.Microphone
+                faultShown -> ui.online
                 talking || ui.inTalk -> ui.phase == HomePhase.Idle || ui.phase == HomePhase.Listening
                 else -> ui.online
             },

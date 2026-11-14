@@ -25,9 +25,11 @@ class InjectableVoiceInput(
     /** True while an injected sentence is waiting (one-shot not yet consumed, or sticky). */
     val injected: Boolean get() = synchronized(lock) { override != null }
 
-    override fun hasPermission(): Boolean = injected || real.hasPermission()
+    /** Always the device's real RECORD_AUDIO state, injected sentence or not: a revoked permission must show the C8 microphone path in debug builds too. */
+    override fun hasPermission(): Boolean = real.hasPermission()
 
     override suspend fun listen(): VoiceResult {
+        if (!real.hasPermission()) return VoiceResult.PermissionDenied
         val o = synchronized(lock) { override?.also { if (!it.sticky) override = null } }
             ?: return real.listen()
         scripted.text = o.text
@@ -35,7 +37,11 @@ class InjectableVoiceInput(
     }
 
     /** While a sentence is injected the automatic listening after a reply hears nothing (no self-answer loop); otherwise the real microphone. */
-    override suspend fun listenAfterReply(): VoiceResult = if (injected) scripted.listenAfterReply() else real.listenAfterReply()
+    override suspend fun listenAfterReply(): VoiceResult = when {
+        !real.hasPermission() -> VoiceResult.PermissionDenied
+        injected -> scripted.listenAfterReply()
+        else -> real.listenAfterReply()
+    }
 
     override fun finishListening() = real.finishListening()
 
