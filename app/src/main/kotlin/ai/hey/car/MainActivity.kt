@@ -17,22 +17,30 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+
+/** Width in dp of the 1600x900 design canvas every car mockup (hey-companion-ui) is drawn on. */
+private const val DESIGN_WIDTH_DP = 1600f
 
 class MainActivity : ComponentActivity() {
     // One launcher for both runtime permissions; only an answer that contains the microphone goes back to the session.
@@ -85,7 +93,17 @@ class MainActivity : ComponentActivity() {
             }
             LaunchedEffect(ui.fault, parked) { announcer.onFault(ui.fault, parked) }
 
-            HeyTheme(dark = state.settings.dark) {
+            // Design reference (hey-companion-ui, ui-spec): every car screen is laid out at 1600x900 dp. A 2560x1440 or 1280x720
+            // window is scaled to that so type, buttons and the character keep the mockup proportions (DesignParity #1).
+            val density = LocalDensity.current
+            val config = LocalConfiguration.current
+            val designDensity = remember(config.screenWidthDp, density.density) {
+                Density(density = config.screenWidthDp * density.density / DESIGN_WIDTH_DP, fontScale = 1f)
+            }
+            // D-26: the car follows the system day/night setting (the mockup default is the light sea theme).
+            val dark = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            CompositionLocalProvider(LocalDensity provides designDensity) {
+            HeyTheme(dark = dark) {
                 NavHost(nav, startDestination = Routes.Drive) {
                     composable(Routes.Drive) {
                         DriveScreen(ui, onTalk = repository::startTalk, onEndListening = repository::endListening)
@@ -98,7 +116,7 @@ class MainActivity : ComponentActivity() {
                                 repository.microphoneDeniedAtOnboarding()
                                 nav.navigate(Routes.Home) { popUpTo(nav.graph.id) { inclusive = true } }
                             },
-                            onDone = { nav.navigate(Routes.Pair) },
+                            onDone = { nav.navigate(Routes.Home) { popUpTo(nav.graph.id) { inclusive = true } } },
                             onExit = { finish() },
                         )
                     }
@@ -106,18 +124,17 @@ class MainActivity : ComponentActivity() {
                         PairRoute(
                             companion = graph.companion,
                             talk = repository,
-                            onDone = { nav.navigate(Routes.Home) { popUpTo(Routes.Pair) { inclusive = true } } },
-                            onBack = { nav.navigate(Routes.Home) { popUpTo(Routes.Pair) { inclusive = true } } },
+                            onDone = { nav.popBackStack() },
+                            onBack = { nav.popBackStack() },
                             onDriving = { nav.navigate(Routes.Drive) { popUpTo(nav.graph.id) { inclusive = true } } },
                         )
                     }
                     composable(Routes.Home) {
                         HomeScreen(
                             ui = ui,
-                            dark = state.settings.dark,
+                            dark = dark,
                             reducedMotion = reducedMotion(),
                             onTalk = repository::startTalk,
-                            onStop = repository::cancelTalk,
                             onEndListening = repository::endListening,
                             onMemory = { state.parked?.let { if (nav.graph.findNode(Routes.Memory) != null) nav.navigate(Routes.Memory) } },
                             onSettings = { state.parked?.let { nav.navigate(Routes.Settings) } },
@@ -125,12 +142,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Routes.Settings) {
-                        // "해제" (PRD 4.7): once the link is gone the driver lands on C2 to pair again.
-                        var wasPaired by remember { mutableStateOf(state.companion.paired) }
-                        LaunchedEffect(state.companion.paired) {
-                            if (wasPaired && !state.companion.paired) nav.navigate(Routes.Pair) { popUpTo(Routes.Home) }
-                            wasPaired = state.companion.paired
-                        }
+                        // "해제" (PRD 4.7, D-33): the screen stays; C7 shows the unpaired state. C2 is opened only by "폰 연결" here.
                         SettingsRoute(
                             state = state.companion,
                             commands = graph.companion,
@@ -149,6 +161,7 @@ class MainActivity : ComponentActivity() {
                         MemoryRoute(state = state.companion, commands = graph.companion, onBack = { nav.popBackStack() })
                     }
                 }
+            }
             }
         }
     }

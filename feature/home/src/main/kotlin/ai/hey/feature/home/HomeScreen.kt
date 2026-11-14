@@ -7,7 +7,6 @@ import ai.hey.designsystem.component.ErrorKind
 import ai.hey.designsystem.component.ErrorPanel
 import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
-import ai.hey.designsystem.component.GlassButton
 import ai.hey.designsystem.component.HeyButtonVariant
 import ai.hey.designsystem.component.HeyConnection
 import ai.hey.designsystem.component.HeyText
@@ -15,11 +14,13 @@ import ai.hey.designsystem.component.HeyTextAlign
 import ai.hey.designsystem.component.OceanBackground
 import ai.hey.designsystem.component.PageHeading
 import ai.hey.designsystem.component.StatusBadge
+import ai.hey.designsystem.component.StopListeningButton
 import ai.hey.designsystem.component.Subtitle
 import ai.hey.designsystem.component.TalkButton
 import ai.hey.designsystem.component.TalkPhase
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
+import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.layout.fillSize
@@ -80,7 +81,6 @@ fun HomeScreen(
     dark: Boolean,
     reducedMotion: Boolean,
     onTalk: () -> Unit,
-    onStop: () -> Unit,
     onEndListening: () -> Unit,
     onMemory: () -> Unit,
     onSettings: () -> Unit,
@@ -93,13 +93,13 @@ fun HomeScreen(
                 title = stringResource(R.string.home_title),
                 stateLabel = stringResource(R.string.home_parked),
                 trailing = {
-                    HeyButton(stringResource(R.string.home_memory), onMemory, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Book)
-                    HeyButton(stringResource(R.string.home_settings), onSettings, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Gear)
+                    HeyButton(stringResource(R.string.home_memory), onMemory, variant = HeyButtonVariant.Soft, icon = HeyIcons.Book)
+                    HeyButton(stringResource(R.string.home_settings), onSettings, variant = HeyButtonVariant.Soft, icon = HeyIcons.Gear)
                 },
             )
             HStack(HeyGap.G32, modifier = Modifier.fillSize()) {
                 VStack(HeyGap.G24, modifier = Modifier.grow().fillSize(), arrange = HeyArrange.SpaceBetween) {
-                    HomeLeft(ui, onTalk, onEndListening, onStop, onFaultAction)
+                    HomeLeft(ui, onTalk, onEndListening, onFaultAction)
                 }
                 HomeCharacter(
                     ui = ui,
@@ -118,7 +118,6 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
     ui: HomeUi,
     onTalk: () -> Unit,
     onEndListening: () -> Unit,
-    onStop: () -> Unit,
     onFaultAction: (CarFault) -> Unit,
 ) {
     val fault = ui.fault
@@ -141,8 +140,9 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
                 ui.heard?.let { HeyText(it, tone = HeyTone.Muted, variant = HeyTextVariant.Body, maxLines = 2) }
                 if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)
             }
+            // One button, like the mockup: "그만 듣기" while the character talks (D-24: stops the voice and listens), otherwise the talk pill.
             if (ui.phase == HomePhase.Speaking) {
-                GlassButton(stringResource(R.string.home_stop), onStop, icon = HeyIcons.Pause)
+                StopListeningButton(onClick = onTalk)
             } else {
                 TalkButton(
                     phase = ui.phase.toTalk(),
