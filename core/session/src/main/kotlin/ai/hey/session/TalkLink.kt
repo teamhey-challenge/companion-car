@@ -10,10 +10,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -64,7 +66,10 @@ class HttpTalkApi(private val http: OkHttpClient = newHttpClient()) : TalkApi {
     private fun endpoint(serverUrl: String, path: String) = serverUrl.trimEnd('/').toHttpUrl().newBuilder().addPathSegments(path).build()
 
     private suspend fun call(request: Request): String = withContext(Dispatchers.IO) {
-        http.newCall(request).execute().use { res ->
+        val call = http.newCall(request)
+        // A cancelled attempt (network came back) must not sit out the 10 s connect timeout on the dead network.
+        coroutineContext[Job]?.invokeOnCompletion { if (it != null) call.cancel() }
+        call.execute().use { res ->
             val text = res.body?.string().orEmpty()
             if (!res.isSuccessful) throw HttpFailure(res.code)
             text
@@ -103,6 +108,9 @@ interface TalkTransport {
 
     fun connect(serverUrl: String)
 
+    /** The C8 "다시 연결" button: skip the pause before the next attempt (PLEOS-94). */
+    fun reconnectNow()
+
     /** True when the frame went onto an open socket. */
     fun send(text: String): Boolean
     fun close()
@@ -126,61 +134,100 @@ class TalkLink(
     private val appVersion: String,
     /** Reads the provision secret from the device (a 600 file); null when it is not there. Called only to register. */
     private val provisionSecret: () -> String?,
-    private val backoffSec: List<Long> = HeyConfig.RECONNECT_BACKOFF_SEC,
+    /** Paces the reconnects: the 1/2/4/8/15 s backoff, cut short by the network coming back or the C8 button. */
+    private val pacer: ReconnectPacer,
+    private val clock: () -> Long = { System.nanoTime() / 1_000_000 },
 ) : TalkTransport {
     @Volatile private var socket: WebSocket? = null
     private var loop: Job? = null
 
     override fun connect(serverUrl: String) {
         close()
+        pacer.start()
         loop = scope.launch { run(serverUrl) }
+    }
+
+    override fun reconnectNow() = pacer.trigger(ReconnectTrigger.Button)
+
+    private companion object {
+        /** A button press drops an attempt only when it has hung this long (a fresh one is already doing what the button asks). */
+        const val BUTTON_DROPS_AFTER_MS = 2_000L
     }
 
     private suspend fun run(serverUrl: String) {
         var failures = 0
         while (scope.isActive) {
             listener.onConnection(if (failures == 0) ConnectionStatus.Connecting else ConnectionStatus.Reconnecting)
-            val closed = CompletableDeferred<Unit>()
-            var opened = false
-            try {
-                val session = openSession(serverUrl)
-                socket = http.newWebSocket(Request.Builder().url(api.socketUrl(serverUrl, session.wsTicket)).build(), object : WebSocketListener() {
-                    override fun onOpen(webSocket: WebSocket, response: Response) {
-                        opened = true
-                        webSocket.send(ClientFrames.hello(appVersion))
-                        listener.onConnection(ConnectionStatus.Online)
+            val startedAt = clock()
+            val attempt = scope.async { attempt(serverUrl) }
+            var opened: Boolean? = null
+            while (opened == null) {
+                select<Unit> {
+                    attempt.onAwait { opened = it }
+                    pacer.events.onReceive { trigger ->
+                        val now = clock()
+                        // Stale: it began before the network came back (it sits on the dead network), or a press found it hung.
+                        val stale = when (trigger) {
+                            ReconnectTrigger.Network -> startedAt < pacer.networkBackAt
+                            ReconnectTrigger.Button -> now - startedAt >= BUTTON_DROPS_AFTER_MS
+                            ReconnectTrigger.Backoff -> false
+                        }
+                        if (stale) {
+                            HeyLog.i(TAG, "link: reconnect trigger=${trigger.label} after ${now - startedAt} ms (attempt dropped)")
+                            attempt.cancel()
+                            socket?.cancel()
+                            opened = false
+                        }
                     }
-
-                    override fun onMessage(webSocket: WebSocket, text: String) {
-                        parseServerFrame(text)?.let(listener::onFrame) ?: HeyLog.w(TAG, "unreadable frame ignored")
-                    }
-
-                    override fun onMessage(webSocket: WebSocket, bytes: ByteString) = listener.onAudio(bytes.toByteArray())
-
-                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                        closed.complete(Unit)
-                    }
-
-                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                        HeyLog.w(TAG, "socket failed: ${t.javaClass.simpleName} ${response?.code ?: ""}".trim())
-                        closed.complete(Unit)
-                    }
-                })
-                closed.await()
-                failures = if (opened) 1 else failures + 1
-            } catch (e: HttpFailure) {
-                HeyLog.w(TAG, "connect step refused: HTTP ${e.code}")
-                listener.onConnection(if (e.code == 401 || e.code == 403) ConnectionStatus.Rejected else ConnectionStatus.RegistrationFailed)
-                failures++
-            } catch (e: IOException) {
-                HeyLog.w(TAG, "connect step failed: ${e.javaClass.simpleName}")
-                listener.onConnection(ConnectionStatus.RegistrationFailed)
-                failures++
+                }
             }
             socket = null
             if (!scope.isActive) return
-            delay(backoffMillis(failures, backoffSec))
+            failures = if (opened == true) 1 else failures + 1
+            pacer.markDown()
+            if (attempt.isCancelled) continue
+            pacer.pause(failures)
         }
+    }
+
+    /** One connect: ticket, socket, then waits until the socket is gone. True when the socket had opened. */
+    private suspend fun attempt(serverUrl: String): Boolean {
+        val closed = CompletableDeferred<Unit>()
+        var opened = false
+        try {
+            val session = openSession(serverUrl)
+            socket = http.newWebSocket(Request.Builder().url(api.socketUrl(serverUrl, session.wsTicket)).build(), object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    opened = true
+                    webSocket.send(ClientFrames.hello(appVersion))
+                    pacer.markOnline()
+                    listener.onConnection(ConnectionStatus.Online)
+                }
+
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    parseServerFrame(text)?.let(listener::onFrame) ?: HeyLog.w(TAG, "unreadable frame ignored")
+                }
+
+                override fun onMessage(webSocket: WebSocket, bytes: ByteString) = listener.onAudio(bytes.toByteArray())
+
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    closed.complete(Unit)
+                }
+
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    HeyLog.w(TAG, "socket failed: ${t.javaClass.simpleName} ${response?.code ?: ""}".trim())
+                    closed.complete(Unit)
+                }
+            })
+            closed.await()
+        } catch (e: HttpFailure) {
+            HeyLog.w(TAG, "connect step refused: HTTP ${e.code}")
+            listener.onConnection(if (e.code == 401 || e.code == 403) ConnectionStatus.Rejected else ConnectionStatus.RegistrationFailed)
+        } catch (e: IOException) {
+            HeyLog.w(TAG, "connect step failed: ${e.javaClass.simpleName}")
+            listener.onConnection(ConnectionStatus.RegistrationFailed)
+        }
+        return opened
     }
 
     /** Car token from the device, or a fresh registration (needs the provision secret); a refused token is forgotten. */
@@ -205,6 +252,7 @@ class TalkLink(
     override fun close() {
         loop?.cancel()
         loop = null
+        pacer.stop()
         socket?.close(1000, null)
         socket = null
     }
