@@ -53,14 +53,14 @@ class MainActivity : ComponentActivity() {
             // session. While driving no permission screen opens (PRD 4.5.7): the press ends in the Microphone fault, which
             // is announced by voice only.
             val needsMic = state.turn is TurnState.NeedsPermission
+            LaunchedEffect(state.isParked) { askNotificationPermission(state.isParked) }
             LaunchedEffect(needsMic, state.isParked) {
-                if (needsMic && state.isParked) {
+                if (needsMic && mayAskPermission(state.isParked)) {
                     permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                 } else if (needsMic) {
                     repository.voicePermissionResult(false)
                 }
             }
-            LaunchedEffect(state.isParked) { if (state.isParked) requestNotificationPermission() }
             val ui = homeUi(state)
             val parked = state.isParked
             val nav = rememberNavController()
@@ -182,9 +182,12 @@ class MainActivity : ComponentActivity() {
      * The foreground-service notification is the driver's way back to the screen (a service cannot start an activity),
      * and on API 33+ it only shows once this runtime permission is granted. A denial changes nothing else.
      */
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT < 33) return
-        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+    private var notificationAsked = false
+
+    private fun askNotificationPermission(parked: Boolean) {
+        val granted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (!shouldAskNotification(Build.VERSION.SDK_INT, granted, parked, notificationAsked)) return
+        notificationAsked = true
         permissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
     }
 }

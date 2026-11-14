@@ -23,4 +23,17 @@ class PermissionResultsTest {
         assertEquals(false, voiceAnswer(mapOf(notif to true, mic to false)))
         assertEquals(true, voiceAnswer(mapOf(notif to false, mic to true)))
     }
+
+    @Test fun permissionsAreOnlyAskedWhileParked() {
+        assertEquals(true, mayAskPermission(parked = true))
+        assertEquals(false, mayAskPermission(parked = false)) // driving or unknown
+    }
+
+    @Test fun notificationWaitsForParkAndIsAskedOnce() {
+        assertEquals(false, shouldAskNotification(34, granted = false, parked = false, alreadyAsked = false))
+        assertEquals(true, shouldAskNotification(34, granted = false, parked = true, alreadyAsked = false))
+        assertEquals(false, shouldAskNotification(34, granted = false, parked = true, alreadyAsked = true))
+        assertEquals(false, shouldAskNotification(34, granted = true, parked = true, alreadyAsked = false))
+        assertEquals(false, shouldAskNotification(32, granted = false, parked = true, alreadyAsked = false))
+    }
 }
