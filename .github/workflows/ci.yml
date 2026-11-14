@@ -56,7 +56,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then ./check.sh --configuration-cache; else ./check.sh; fi
       - name: Assert APK is signed with the team debug key
         run: |
-          want=$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android | awk '/SHA256:/{gsub(/[: ]|SHA256/,""); print tolower($0)}')
+          want=$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android | awk '/SHA256:/{print $2}' | tr -d ':[:space:]' | tr 'A-F' 'a-f')
           apk=$(ls app/build/outputs/apk/debug/*.apk | sed -n 1p)
           signer=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
           got=$("$signer" verify --print-certs "$apk" | awk '/SHA-256 digest/{print $NF; exit}')
