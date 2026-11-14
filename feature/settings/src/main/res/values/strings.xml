@@ -1,6 +1,7 @@
 <resources>
     <string name="settings_app_name">헤이파리</string>
     <string name="settings_back">뒤로</string>
+    <string name="settings_parked">정차 중</string>
     <string name="settings_title">설정</string>
     <string name="settings_subtitle">말을 거는 순간도, 기억하는 방식도 내가 정해요.</string>
     <string name="settings_proactive">먼저 말 걸기</string>

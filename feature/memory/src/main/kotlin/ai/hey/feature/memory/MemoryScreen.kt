@@ -112,7 +112,12 @@ fun MemoryScreen(
     ) {
         CarFrame(
             statusStrip = {
-                HeaderBar(title = stringResource(R.string.memory_app_name), onBack = onBack, backLabel = stringResource(R.string.memory_back))
+                HeaderBar(
+                    title = stringResource(R.string.memory_app_name),
+                    onBack = onBack,
+                    backLabel = stringResource(R.string.memory_back),
+                    stateLabel = stringResource(R.string.memory_parked),
+                )
             },
             driving = false,
         ) {

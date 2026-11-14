@@ -104,7 +104,12 @@ fun SettingsScreen(
     ) {
         CarFrame(
             statusStrip = {
-                HeaderBar(title = stringResource(R.string.settings_app_name), onBack = onBack, backLabel = stringResource(R.string.settings_back))
+                HeaderBar(
+                    title = stringResource(R.string.settings_app_name),
+                    onBack = onBack,
+                    backLabel = stringResource(R.string.settings_back),
+                    stateLabel = stringResource(R.string.settings_parked),
+                )
             },
             driving = false,
         ) {

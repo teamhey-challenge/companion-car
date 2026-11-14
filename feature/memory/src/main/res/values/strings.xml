@@ -1,6 +1,7 @@
 <resources>
     <string name="memory_app_name">헤이파리</string>
     <string name="memory_back">뒤로</string>
+    <string name="memory_parked">정차 중</string>
     <string name="memory_title">기억</string>
     <string name="memory_guide">헤이파리가 기억하는 것이에요. 대화 원문은 저장하지 않아요.</string>
     <string name="memory_loading">기억을 불러오고 있어요</string>
