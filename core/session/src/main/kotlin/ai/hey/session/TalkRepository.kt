@@ -17,6 +17,7 @@ import ai.hey.vehicle.SpeechSettings
 import ai.hey.vehicle.VehicleEvent
 import ai.hey.vehicle.VehicleGateway
 import ai.hey.vehicle.VoiceInput
+import ai.hey.vehicle.OtherAudioProbe
 import ai.hey.vehicle.VoiceResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -67,6 +68,8 @@ class TalkRepository(
     /** How long the microphone stays open by itself after a line that ends with a question mark (F4-F6). */
     private val autoListenMillis: Long = AUTO_LISTEN_MILLIS,
     private val ctxDebounceMillis: Long = CTX_DEBOUNCE_MILLIS,
+    /** Asked when the character wants to start a line by itself; true = another app is playing, so the line is dropped (PLEOS-171). Null in tests that do not need it. */
+    private val otherAudio: OtherAudioProbe? = null,
 ) : CarCommands {
     private val hands = Hands()
     private val _state = MutableStateFlow(CarUiState(hands = hands))
@@ -322,6 +325,7 @@ class TalkRepository(
             // D-14: no new line while navigation guides. The one exception is scenario 2 (range vs the destination) at a parked stop:
             // a destination is set but the car stands still, so no guidance voice is running.
             vehicle.signals.value.naviGuiding && !(frame.reason == "range" && s.driving == DrivingStatus.Parked) -> "navigation guiding"
+            otherAudio?.otherAppPlaying() == true -> "another app is playing audio"
             else -> null
         }
         if (why != null) {

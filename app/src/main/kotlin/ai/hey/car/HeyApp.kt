@@ -11,6 +11,7 @@ import ai.hey.session.ReconnectPacer
 import ai.hey.session.TalkLink
 import ai.hey.session.TalkRepository
 import ai.hey.session.newHttpClient
+import ai.hey.vehicle.AndroidOtherAudioProbe
 import ai.hey.vehicle.AudioFocusGateAndroid
 import ai.hey.vehicle.AudioTrackSink
 import ai.hey.vehicle.PleosVehicleGateway
@@ -77,6 +78,7 @@ class AppGraph(private val app: Application) {
             audio = StreamingReplyAudio({ AudioTrackSink() }, AudioFocusGateAndroid(app)),
             companion = companion,
             speechFocus = AudioFocusGateAndroid(app),
+            otherAudio = AndroidOtherAudioProbe(app),
         ).also { it.start() }
     }
 
