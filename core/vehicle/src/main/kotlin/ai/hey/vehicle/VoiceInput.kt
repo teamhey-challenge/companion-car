@@ -27,6 +27,12 @@ interface VoiceInput {
 
     suspend fun listen(): VoiceResult
 
+    /**
+     * The driver ended the sentence by hand (button released / pressed again): the running [listen] returns what was heard
+     * so far (NoSpeech when nothing). No-op when nothing is listening.
+     */
+    fun finishListening() = Unit
+
     fun release()
 }
 

@@ -3,9 +3,8 @@ package ai.hey.feature.home
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
 import ai.hey.designsystem.component.HeyText
-import ai.hey.designsystem.component.StatusBadge
+import ai.hey.designsystem.component.StopListeningButton
 import ai.hey.designsystem.component.TalkButton
-import ai.hey.designsystem.component.TalkPhase
 import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
@@ -14,6 +13,7 @@ import ai.hey.designsystem.layout.inset
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTheme
+import ai.hey.feature.home.temp.StatusBadge
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,13 +29,13 @@ import kotlinx.coroutines.delay
 const val DRIVE_WAIT_MILLIS = 2_000L
 
 /**
- * C5 while the car moves (or its motion is unknown): ONE still character image, one status line and one big talk
- * button. Nothing here moves (no Rive, no animation: D-31, PRD 3.5), there are no subtitles (D-25) and no way to another
- * screen: the only callback is [onTalk]. The button is the one D-24 button: idle starts listening, listening ends it and
- * sends, speaking stops the voice and listens. Errors do not change this screen (voice only, see DriveVoice).
+ * C5 while the car moves (or its motion is unknown): ONE still character image, one status line and one big button.
+ * Nothing here moves (no Rive, no animation: D-31, PRD 3.5), there are no subtitles (D-25) and no way to another screen.
+ * The one button is the D-24 button: idle starts listening; listening ends it and sends; while the character talks it is
+ * "그만 듣기" and stops the voice and listens. Errors never change this screen (voice only, see FaultAnnouncer).
  */
 @Composable
-fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, modifier: Modifier = Modifier) {
+fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, onEndListening: () -> Unit, modifier: Modifier = Modifier) {
     // "잠깐만요" shows when the driver has spoken (thinking) and nothing has answered for 2 s.
     var waiting by remember { mutableStateOf(false) }
     LaunchedEffect(ui.phase) {
@@ -57,6 +57,15 @@ fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, modifier: Modifier = Modifier) {
                 StatusBadge(phase = ui.phase.toTalk(), driving = true, animated = false)
             waiting -> HeyText(stringResource(R.string.drive_wait), variant = HeyTextVariant.Heading)
         }
-        TalkButton(phase = ui.phase.toTalk(), onClick = onTalk, big = true, driving = true)
+        if (ui.phase == HomePhase.Speaking) {
+            StopListeningButton(onClick = onTalk, big = true)
+        } else {
+            TalkButton(
+                phase = ui.phase.toTalk(),
+                onClick = if (ui.phase == HomePhase.Listening) onEndListening else onTalk,
+                big = true,
+                driving = true,
+            )
+        }
     }
 }

@@ -3,8 +3,8 @@ package ai.hey.feature.home
 import ai.hey.session.CarFault
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
-import ai.hey.designsystem.component.ErrorKind
-import ai.hey.designsystem.component.ErrorPanel
+import ai.hey.feature.home.temp.ErrorKind
+import ai.hey.feature.home.temp.ErrorPanel
 import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
 import ai.hey.designsystem.component.HeyButtonSize
@@ -14,8 +14,8 @@ import ai.hey.designsystem.component.HeyText
 import ai.hey.designsystem.component.HeyTextAlign
 import ai.hey.designsystem.component.OceanBackground
 import ai.hey.designsystem.component.PageHeading
-import ai.hey.designsystem.component.StatusBadge
-import ai.hey.designsystem.component.Subtitle
+import ai.hey.feature.home.temp.StatusBadge
+import ai.hey.feature.home.temp.Subtitle
 import ai.hey.designsystem.component.TalkButton
 import ai.hey.designsystem.component.TalkPhase
 import ai.hey.designsystem.icon.HeyIcons
@@ -82,6 +82,7 @@ fun HomeScreen(
     reducedMotion: Boolean,
     onTalk: () -> Unit,
     onStop: () -> Unit,
+    onEndListening: () -> Unit,
     onMemory: () -> Unit,
     onSettings: () -> Unit,
     onFaultAction: (CarFault) -> Unit,
@@ -91,7 +92,7 @@ fun HomeScreen(
         VStack(HeyGap.G24, modifier = Modifier.fillSize().inset(HeyGap.G32)) {
             HeaderBar(
                 title = stringResource(R.string.home_title),
-                backLabel = "",
+                stateLabel = stringResource(R.string.home_parked),
                 trailing = {
                     HeyButton(stringResource(R.string.home_memory), onMemory, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Book)
                     HeyButton(stringResource(R.string.home_settings), onSettings, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Gear)
@@ -99,7 +100,7 @@ fun HomeScreen(
             )
             HStack(HeyGap.G32, modifier = Modifier.fillSize()) {
                 VStack(HeyGap.G24, modifier = Modifier.grow().fillSize(), arrange = HeyArrange.SpaceBetween) {
-                    HomeLeft(ui, onTalk, onStop, onFaultAction)
+                    HomeLeft(ui, onTalk, onEndListening, onStop, onFaultAction)
                 }
                 HomeCharacter(
                     ui = ui,
@@ -117,6 +118,7 @@ fun HomeScreen(
 private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
     ui: HomeUi,
     onTalk: () -> Unit,
+    onEndListening: () -> Unit,
     onStop: () -> Unit,
     onFaultAction: (CarFault) -> Unit,
 ) {
@@ -126,7 +128,13 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
     when {
         !talking && fault != null -> {
             ErrorPanel(kind = fault.toKind(), onAction = { onFaultAction(fault) })
-            TalkButton(phase = TalkPhase.Idle, onClick = onTalk, enabled = ui.online && fault != CarFault.Microphone)
+            TalkButton(
+                phase = TalkPhase.Idle,
+                onClick = onTalk,
+                onHoldStart = onTalk,
+                onHoldEnd = onEndListening,
+                enabled = ui.online && fault != CarFault.Microphone,
+            )
         }
         talking || ui.inTalk -> {
             VStack(HeyGap.G16) {
@@ -135,8 +143,14 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
                 if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)
             }
             HStack(HeyGap.G16, align = HeyAlign.Center) {
-                TalkButton(phase = ui.phase.toTalk(), onClick = onTalk, enabled = ui.phase == HomePhase.Idle)
-                if (ui.phase == HomePhase.Speaking || ui.phase == HomePhase.Listening) {
+                TalkButton(
+                    phase = ui.phase.toTalk(),
+                    onClick = onTalk,
+                    onHoldStart = onTalk,
+                    onHoldEnd = onEndListening,
+                    enabled = ui.phase == HomePhase.Idle || ui.phase == HomePhase.Listening,
+                )
+                if (ui.phase == HomePhase.Speaking) {
                     HeyButton(stringResource(R.string.home_stop), onStop, variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, icon = HeyIcons.Pause)
                 }
             }
@@ -146,7 +160,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
                 PageHeading(title = stringResource(R.string.home_hint))
                 if (!ui.online) StatusBadge(phase = TalkPhase.Idle, connection = HeyConnection.Reconnecting)
             }
-            TalkButton(phase = TalkPhase.Idle, onClick = onTalk, enabled = ui.online)
+            TalkButton(phase = TalkPhase.Idle, onClick = onTalk, onHoldStart = onTalk, onHoldEnd = onEndListening, enabled = ui.online)
         }
     }
 }

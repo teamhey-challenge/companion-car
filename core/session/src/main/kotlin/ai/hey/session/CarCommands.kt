@@ -10,6 +10,9 @@ interface CarCommands {
     /** Stops listening and drops a turn that has not been answered. Safe in any phase. */
     fun cancelTalk()
 
+    /** The driver ended the sentence (button released, or pressed again on the driving screen): send what was heard. No-op unless listening. */
+    fun endListening()
+
     /** The result of the runtime RECORD_AUDIO request the activity made when [TurnState.NeedsPermission] showed. */
     fun voicePermissionResult(granted: Boolean)
     fun closeSettings()

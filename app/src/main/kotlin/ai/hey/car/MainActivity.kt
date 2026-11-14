@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
             HeyTheme(dark = state.settings.dark) {
                 NavHost(nav, startDestination = Routes.Drive) {
                     composable(Routes.Drive) {
-                        DriveScreen(ui, onTalk = repository::startTalk)
+                        DriveScreen(ui, onTalk = repository::startTalk, onEndListening = repository::endListening)
                     }
                     composable(Routes.Home) {
                         HomeScreen(
@@ -83,6 +83,7 @@ class MainActivity : ComponentActivity() {
                             reducedMotion = reducedMotion(),
                             onTalk = repository::startTalk,
                             onStop = repository::cancelTalk,
+                            onEndListening = repository::endListening,
                             onMemory = { state.parked?.let { if (nav.graph.findNode(Routes.Memory) != null) nav.navigate(Routes.Memory) } },
                             onSettings = { state.parked?.let { nav.navigate(Routes.Settings) } },
                             onFaultAction = { fault -> onFaultAction(fault, repository::startTalk) },
