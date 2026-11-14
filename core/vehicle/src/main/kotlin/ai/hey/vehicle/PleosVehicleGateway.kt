@@ -6,6 +6,7 @@ import ai.hey.model.HeyLog
 import ai.hey.model.Place
 import ai.hey.model.SpeechPriority
 import ai.pleos.playground.navi.constants.NaviErrorCode
+import ai.pleos.playground.navi.constants.NaviMode
 import ai.pleos.playground.navi.data.DestinationArrivedInfo
 import ai.pleos.playground.navi.data.TripInfo as PleosTripInfo
 import ai.pleos.playground.navi.data.TripRequest
@@ -140,8 +141,10 @@ class PleosVehicleGateway(
                 destinationInfo.latitude != 0.0 || destinationInfo.longitude != 0.0)
 
         override fun onRouteStateInfo(routeStateInfo: ai.pleos.playground.navi.data.RouteStateInfo) {
-            guidance.routing(routeStateInfo.isRouting)
-            if (routeStateInfo.isRouting) guard("destination query") { navi?.getDestinationInfo() }
+            // RouteStateInfo.isRouting stays false while the emulator guides a real route (probe 2026-11-09); the navi mode is the signal.
+            val guiding = routeStateInfo.naviMode == NaviMode.ROUTE_GUIDING || routeStateInfo.naviMode == NaviMode.SIMULATION_GUIDING
+            guidance.routing(guiding)
+            if (guiding) guard("destination query") { navi?.getDestinationInfo() }
         }
 
         override fun onRouteEnded() = guidance.routeStopped("onRouteEnded")
