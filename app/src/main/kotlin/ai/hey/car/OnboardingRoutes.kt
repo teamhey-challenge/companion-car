@@ -27,7 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.flow.first
 
 private const val PRIVACY_URL = "https://hey.lastmile.ltd/privacy"
@@ -68,7 +71,17 @@ fun OnboardingRoute(
                 val answer = CompletableDeferred<Boolean>()
                 pending = answer
                 launcher.launch(permission)
-                answer.await()
+                // The gear leaves P while the dialog is open: MainActivity brings the app back above it and the answer is
+                // "no", so the flow goes on instead of waiting for a hidden dialog; the driver can be asked again while parked.
+                coroutineScope {
+                    val left = async { talk.state.first { !it.isParked }; false }
+                    val result = select<Boolean> {
+                        answer.onAwait { it }
+                        left.onAwait { it }
+                    }
+                    left.cancel()
+                    result
+                }
             },
             microphone = Manifest.permission.RECORD_AUDIO,
             vehicleSpeed = CAR_SPEED,

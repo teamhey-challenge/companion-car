@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -89,13 +90,19 @@ fun HeyButton(
     loading: Boolean = false,
 ) {
     val colors = HeyTheme.colors
-    val floor = if (size == HeyButtonSize.Large) HeyTokens.Size.touchCarPrimary else HeyTokens.Size.touchCar
+    val soft = variant == HeyButtonVariant.Soft
+    val floor = when {
+        soft -> HeaderTouch
+        size == HeyButtonSize.Large -> HeyTokens.Size.touchCarPrimary
+        else -> HeyTokens.Size.touchCar
+    }
     val textVariant = if (size == HeyButtonSize.Large) HeyTextVariant.Heading else HeyTextVariant.Label
     PressSurface(
         onClick = onClick,
         enabled = enabled && !loading,
         modifier = modifier.heightIn(min = floor).widthIn(min = floor),
         ink = { pressed -> colors.ink(variant, pressed, enabled) },
+        radius = if (soft) HeyTokens.Radius.full else HeyTokens.Radius.md,
     ) { ink ->
         HStack(
             gap = HeyGap.G8,
@@ -128,6 +135,24 @@ fun HeyIconButton(
             .semantics { this.contentDescription = contentDescription },
         ink = { pressed -> colors.ink(HeyButtonVariant.Secondary, pressed, enabled) },
     ) { ink -> InkIcon(icon, null, ink.content) }
+}
+
+/** Header touch size of the mockups (ui-spec "헤더 84"): header pills are 84 high, the back button is an 84 circle. */
+internal val HeaderTouch = 84.dp
+
+/** Header back button: white circle (mockup C2/C6/C7). */
+@Composable
+fun HeyBackButton(contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = HeyTheme.colors
+    PressSurface(
+        onClick = onClick,
+        enabled = true,
+        modifier = modifier
+            .size(HeaderTouch)
+            .semantics { this.contentDescription = contentDescription },
+        ink = { pressed -> colors.ink(HeyButtonVariant.Soft, pressed, true) },
+        radius = HeyTokens.Radius.full,
+    ) { ink -> InkIcon(HeyIcons.ArrowLeft, null, ink.content) }
 }
 
 @Composable
