@@ -24,7 +24,6 @@ import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTone
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 
 /**
@@ -122,7 +121,7 @@ fun OnboardingScreen(
                 description = stringResource(R.string.onboard_character),
                 caption = stringResource(R.string.onboard_caption),
                 modifier = Modifier.grow(1f),
-                topOffset = 100.dp,
+                seated = true,
             )
         }
     }

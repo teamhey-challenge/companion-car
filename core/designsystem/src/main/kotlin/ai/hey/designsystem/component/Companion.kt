@@ -196,9 +196,9 @@ fun CharacterStill(
     size: CharacterSize = CharacterSize.Hero,
     caption: String? = null,
     /** C1/C2 mockups seat the stage 100 dp below the content top (character centre sits at y≈545 of 900). */
-    topOffset: Dp = 0.dp,
+    seated: Boolean = false,
 ) {
-    VStack(HeyGap.G16, modifier = modifier.padding(top = topOffset), align = HeyAlign.Center) {
+    VStack(HeyGap.G16, modifier = if (seated) modifier.padding(top = 100.dp) else modifier, align = HeyAlign.Center) {
         CharacterSlot(size, contentDescription = description)
         if (caption != null) HeyText(caption, tone = HeyTone.Muted, maxLines = 2, align = HeyTextAlign.Center)
     }
