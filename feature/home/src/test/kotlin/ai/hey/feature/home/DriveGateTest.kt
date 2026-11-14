@@ -42,7 +42,10 @@ class DriveGateTest {
         assertEquals(3, said.size)
     }
 
-    @Test fun `the top fault is whatever the session reports, drive and home read the same value`() {
-        assertEquals(HomeUi(fault = CarFault.Microphone).fault, CarFault.Microphone)
+    @Test fun `a turn that heard nothing is spoken by the character even while parked`() {
+        val said = ArrayList<CarFault>()
+        val a = FaultAnnouncer { said += it }
+        a.onFault(CarFault.Recognition, parked = true)
+        assertEquals(listOf(CarFault.Recognition), said)
     }
 }
