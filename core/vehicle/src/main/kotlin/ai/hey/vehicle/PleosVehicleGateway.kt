@@ -146,7 +146,7 @@ class PleosVehicleGateway(
         }
 
         override fun onRouteStateInfo(routeStateInfo: ai.pleos.playground.navi.data.RouteStateInfo) {
-            // RouteStateInfo.isRouting stays false while the emulator guides a real route (probe 2026-11-09); the navi mode is the signal.
+            // RouteStateInfo.isRouting is not the signal for guidance; the navi mode is.
             val guiding = routeStateInfo.naviMode == NaviMode.ROUTE_GUIDING || routeStateInfo.naviMode == NaviMode.SIMULATION_GUIDING
             guidance.routing(guiding)
             if (guiding) guard("destination query") { navi?.getDestinationInfo() }

@@ -48,12 +48,12 @@ class NaviGuidanceTest {
         assertEquals(false, guiding)
     }
 
-    @Test fun `the emulator's real route sequence ends guiding after the destination arrives, and the stopped route never revives it`() {
-        // seen on mbp14a for a real route (PLEOS-65): started, ended 3 ms later, ROUTE_DRIVE, route state (ROUTE_GUIDING), destination
+    @Test fun `a real route sequence ends guiding after the destination arrives, and the stopped route never revives it`() {
+        // sequence: started, ended, ROUTE_DRIVE, route state (ROUTE_GUIDING), destination
         g.routeStarted()
         g.routeStopped("onRouteEnded")
         g.status(true)
-        g.routing(true) // naviMode == ROUTE_GUIDING (isRouting itself stays false on the emulator)
+        g.routing(true) // naviMode == ROUTE_GUIDING
         assertEquals(false, guiding)
         g.destination(true)
         assertEquals(listOf(true), seen)

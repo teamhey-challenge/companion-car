@@ -17,9 +17,19 @@ android {
         versionCode = providers.gradleProperty("hey.versionCode").get().toInt()
         versionName = providers.gradleProperty("hey.versionName").get()
     }
-    // Local signing only: key material stays in a 600 properties file outside the repo (no CI, nothing committed).
+    // Release signing. CI (release-apk job) and local builds can pass HEYPARRI_STORE_FILE / HEYPARRI_STORE_PASSWORD /
+    // HEYPARRI_KEY_ALIAS (key password = store password); otherwise the 600 properties file outside the repo is used.
+    // Neither present: the release APK stays unsigned (debug builds and the debug CI path never touch this).
     val signingFile = File(System.getProperty("user.home"), ".config/hey/signing.properties")
-    val releaseSigning = if (signingFile.isFile) {
+    val envStore = System.getenv("HEYPARRI_STORE_FILE")
+    val releaseSigning = if (envStore != null) {
+        signingConfigs.create("release") {
+            storeFile = file(envStore)
+            storePassword = System.getenv("HEYPARRI_STORE_PASSWORD")
+            keyAlias = System.getenv("HEYPARRI_KEY_ALIAS")
+            keyPassword = System.getenv("HEYPARRI_STORE_PASSWORD")
+        }
+    } else if (signingFile.isFile) {
         val p = Properties().apply { signingFile.inputStream().use { load(it) } }
         signingConfigs.create("release") {
             storeFile = file(p.getProperty("storeFile"))
@@ -94,6 +104,6 @@ val copyReleaseApk = tasks.register<Copy>("copyReleaseApk") {
     from(layout.buildDirectory.dir("outputs/apk/release")) { include("*.apk") }
     into(rootProject.layout.projectDirectory.dir("dist/apk"))
     rename { "${teamName}_HEY_release.apk" }
-    doFirst { check(File(System.getProperty("user.home"), ".config/hey/signing.properties").isFile) { "no ~/.config/hey/signing.properties: the release APK is unsigned" } }
+    doFirst { check(System.getenv("HEYPARRI_STORE_FILE") != null || File(System.getProperty("user.home"), ".config/hey/signing.properties").isFile) { "no HEYPARRI_STORE_FILE and no ~/.config/hey/signing.properties: the release APK is unsigned" } }
 }
 tasks.matching { it.name == "assembleRelease" }.configureEach { finalizedBy(copyReleaseApk) }

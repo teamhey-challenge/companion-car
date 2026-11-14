@@ -4,7 +4,7 @@ import ai.hey.model.HeyLog
 
 /**
  * Whether the car is really guiding to a destination. The Pleos navigation service also calls `onRouteStarted` with no
- * route at all (the emulator does it every few seconds), so a callback alone never means guidance: guiding needs a route
+ * route at all, so a callback alone never means guidance: guiding needs a route
  * that is on (route started / routing / ROUTE_DRIVE) AND a destination that is actually set. Every change is logged once.
  */
 class NaviGuidance(private val onChange: (Boolean) -> Unit) {
