@@ -2,6 +2,7 @@ package ai.hey.session
 
 import ai.hey.model.AudioSpec
 import ai.hey.model.ConsentType
+import ai.hey.model.HeyLog
 import ai.hey.model.ServerFrame
 import ai.hey.vehicle.FakeVehicleGateway
 import ai.hey.vehicle.FocusGate
@@ -99,6 +100,41 @@ class TalkRepositoryTest {
         assertEquals(listOf("반가워요"), rig.vehicle.spoken)
         assertEquals(TurnState.Idle, rig.repo.state.value.turn)
         cs.cancel()
+    }
+
+    @Test fun `PLEOS-135 consent_required from the server ends the turn and asks for onboarding, not a server fault`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
+        rig.repo.startTalk()
+        rig.transport.listener.onFrame(ServerFrame.Error("consent_required", "t1", null))
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertNull(rig.repo.state.value.error)
+        assertEquals(1, rig.repo.state.value.onboardingRequests)
+        cs.cancel()
+    }
+
+    @Test fun `PLEOS-137 the driver's words and the reply stay out of the log unless content logging is on`() = runTest {
+        val lines = ArrayList<String>()
+        val oldSink = HeyLog.sink
+        HeyLog.sink = { _, _, m -> lines += m }
+        try {
+            for (content in listOf(false, true)) {
+                lines.clear()
+                HeyLog.contentEnabled = content
+                val cs = rigScope(testScheduler)
+                val rig = Rig(cs, ScriptedVoiceInput(text = "비밀스런문장"))
+                rig.repo.startTalk()
+                rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", "비밀답변", 100, 900))
+                testScheduler.advanceUntilIdle()
+                val joined = lines.joinToString("\n")
+                assertTrue(joined, joined.contains("chars=6"))
+                assertEquals(joined, content, joined.contains("비밀스런문장") || joined.contains("비밀답변"))
+                cs.cancel()
+            }
+        } finally {
+            HeyLog.contentEnabled = false
+            HeyLog.sink = oldSink
+        }
     }
 
     @Test fun `leaving P does not cut listening or the turn`() = runTest {
