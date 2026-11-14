@@ -20,6 +20,7 @@ import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -240,6 +241,55 @@ class TalkRepositoryTest {
         assertEquals(1, rig.vehicle.stops)
         testScheduler.advanceUntilIdle()
         assertEquals(1, rig.vehicle.spoken.size) // read once, never again
+        // D-14: a lost focus is not a fault: no audio-fault flag, no C8, the turn is simply over, the focus is let go
+        assertFalse(rig.repo.state.value.audioFailed)
+        assertNull(rig.repo.state.value.fault)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertFalse(focus.held)
+        cs.cancel()
+    }
+
+    @Test fun `a turn without reply start ends with the server fault and frees the talk button`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
+        rig.repo.startTalk()
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        testScheduler.advanceTimeBy(REPLY_START_TIMEOUT_MILLIS - 1)
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        testScheduler.advanceTimeBy(2)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(TurnError.Server, rig.repo.state.value.error)
+        assertEquals(CarFault.Server, rig.repo.state.value.fault)
+        assertTrue(types(rig.transport.sent).contains("turn.cancel"))
+        rig.repo.startTalk() // the button works again
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        cs.cancel()
+    }
+
+    @Test fun `a reply that goes quiet without reply end ends the turn, a streaming reply keeps it alive`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
+        rig.repo.startTalk()
+        val l = rig.transport.listener
+        l.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.None))
+        testScheduler.advanceTimeBy(REPLY_END_TIMEOUT_MILLIS - 1_000)
+        l.onFrame(ServerFrame.ReplyDelta("t1", "음")) // sign of life re-arms the timer
+        testScheduler.advanceTimeBy(REPLY_END_TIMEOUT_MILLIS - 1_000)
+        assertEquals(TurnState.Replying, rig.repo.state.value.turn)
+        testScheduler.advanceTimeBy(2_000)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(CarFault.Server, rig.repo.state.value.fault)
+        cs.cancel()
+    }
+
+    @Test fun `a reply end in time cancels the watchdog`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
+        rig.repo.startTalk()
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", "반가워요", 100, 900))
+        testScheduler.advanceTimeBy(REPLY_END_TIMEOUT_MILLIS * 2)
+        assertNull(rig.repo.state.value.error)
         cs.cancel()
     }
 
