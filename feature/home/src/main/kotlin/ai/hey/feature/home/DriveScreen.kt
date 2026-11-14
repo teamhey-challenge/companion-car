@@ -2,18 +2,17 @@ package ai.hey.feature.home
 
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
-import ai.hey.designsystem.component.HeyText
-import ai.hey.designsystem.component.StopListeningButton
-import ai.hey.designsystem.component.TalkButton
-import ai.hey.designsystem.layout.HeyAlign
-import ai.hey.designsystem.layout.HeyArrange
-import ai.hey.designsystem.layout.VStack
-import ai.hey.designsystem.layout.fillSize
-import ai.hey.designsystem.layout.inset
-import ai.hey.designsystem.theme.HeyGap
-import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.component.PageBackground
 import ai.hey.designsystem.component.StatusBadge
+import ai.hey.designsystem.component.StopListeningButton
+import ai.hey.designsystem.component.TalkButton
+import ai.hey.designsystem.component.TalkPhase
+import ai.hey.designsystem.layout.HeyAlign
+import ai.hey.designsystem.layout.VStack
+import ai.hey.designsystem.layout.driveStatusSlot
+import ai.hey.designsystem.layout.driveTop
+import ai.hey.designsystem.layout.fillSize
+import ai.hey.designsystem.theme.HeyGap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,24 +45,25 @@ fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, onEndListening: () -> Unit, modi
     }
     PageBackground(modifier = modifier.fillSize()) {
         VStack(
-            gap = HeyGap.G24,
-            modifier = Modifier.fillSize().inset(HeyGap.G32),
+            gap = HeyGap.G4,
+            modifier = Modifier.fillSize().driveTop(),
             align = HeyAlign.Center,
-            arrange = HeyArrange.Center,
         ) {
             CharacterSlot(size = CharacterSize.Driving, live = null, contentDescription = stringResource(R.string.home_character))
-            when {
-                ui.phase == HomePhase.Listening || ui.phase == HomePhase.Speaking ->
-                    StatusBadge(phase = ui.phase.toTalk(), driving = true, animated = false)
-                waiting -> HeyText(stringResource(R.string.drive_wait), variant = HeyTextVariant.Heading)
+            // The status line has a fixed slot so the button never moves between phases (mockup C5).
+            VStack(HeyGap.G4, modifier = Modifier.driveStatusSlot(), align = HeyAlign.Center) {
+                when {
+                    ui.phase == HomePhase.Listening || ui.phase == HomePhase.Speaking ->
+                        StatusBadge(phase = ui.phase.toTalk(), driving = true, animated = false)
+                    waiting -> StatusBadge(phase = TalkPhase.Thinking, driving = true, animated = false)
+                }
             }
             if (ui.phase == HomePhase.Speaking) {
-                StopListeningButton(onClick = onTalk, big = true)
+                StopListeningButton(onClick = onTalk)
             } else {
                 TalkButton(
                     phase = ui.phase.toTalk(),
                     onClick = if (ui.phase == HomePhase.Listening) onEndListening else onTalk,
-                    big = true,
                     driving = true,
                 )
             }

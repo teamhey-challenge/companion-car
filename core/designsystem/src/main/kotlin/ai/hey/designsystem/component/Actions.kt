@@ -31,13 +31,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
 /** Soft = filled, outline-free surface (header 기억/설정 in the design); the others are unchanged. */
 enum class HeyButtonVariant { Primary, Accent, Secondary, Danger, Ghost, Soft }
-enum class HeyButtonSize { Regular, Large }
+/** [Header] is the C3 top-bar pill (mockup `.app-header nav .control`: 84 high, 30sp label, 36dp icon, 30dp side padding). */
+enum class HeyButtonSize { Regular, Large, Header }
 
 private class ButtonInk(val container: Color, val content: Color, val border: Color?)
 
@@ -96,6 +98,7 @@ fun HeyButton(
         size == HeyButtonSize.Large -> HeyTokens.Size.touchCarPrimary
         else -> HeyTokens.Size.touchCar
     }
+    val header = size == HeyButtonSize.Header
     val textVariant = if (size == HeyButtonSize.Large) HeyTextVariant.Heading else HeyTextVariant.Label
     PressSurface(
         onClick = onClick,
@@ -106,14 +109,24 @@ fun HeyButton(
     ) { ink ->
         HStack(
             gap = HeyGap.G8,
-            modifier = Modifier.padding(horizontal = HeyTokens.Space.s24, vertical = HeyTokens.Space.s8),
+            modifier = Modifier.padding(
+                horizontal = if (header) 30.dp else HeyTokens.Space.s24,
+                vertical = if (header) 18.dp else HeyTokens.Space.s8,
+            ),
         ) {
             if (loading) {
                 HeySpinner(ink.content)
             } else if (icon != null) {
-                InkIcon(icon, null, ink.content)
+                InkIcon(icon, null, ink.content, if (header) Modifier.size(36.dp) else Modifier)
             }
-            InkText(text, ink.content, variant = textVariant, maxLines = 2, align = HeyTextAlign.Center)
+            if (header) {
+                InkText(
+                    text, ink.content, Modifier.padding(start = 4.dp), variant = textVariant, maxLines = 1,
+                    align = HeyTextAlign.Center, weight = androidx.compose.ui.text.font.FontWeight.Medium, size = 30.sp,
+                )
+            } else {
+                InkText(text, ink.content, variant = textVariant, maxLines = 2, align = HeyTextAlign.Center)
+            }
         }
     }
 }
