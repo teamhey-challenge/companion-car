@@ -92,7 +92,10 @@ class MainActivity : ComponentActivity() {
                         OnboardingRoute(
                             companion = graph.companion,
                             talk = repository,
-                            onMicDenied = { nav.navigate(Routes.Pair) },
+                            onMicDenied = {
+                                repository.microphoneDeniedAtOnboarding()
+                                nav.navigate(Routes.Home) { popUpTo(nav.graph.id) { inclusive = true } }
+                            },
                             onDone = { nav.navigate(Routes.Pair) },
                             onExit = { finish() },
                         )
