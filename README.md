@@ -30,8 +30,9 @@ git clone --recurse-submodules git@github.com:darren-pleos-challenge/companion-c
 ```
 
 - JDK 17, Android SDK(compileSdk 36)가 필요하다. `shared/`는 `companion-shared` v0.3.0에 고정한 서브모듈이다.
-- 에뮬레이터는 `darren-mbp-16`의 `emulator-5602`(mbp16b)에서 시험한다. darren-vm에서는 띄우지 않는다.
+- 에뮬레이터·실차 시험에는 Pleos 에뮬레이터(Android Automotive)가 필요하다. 마이크가 없는 환경에서는 디버그 빌드의 텍스트 주입(`DemoVoice`)으로 음성 입력을 대신한다.
 - 패키지 이름 `ai.hey.*`는 앱 이름이 확정될 때까지 바꾸지 않는다.
+<<<<<<< HEAD
 - `docs/`에는 HEY 시절 문서가 남아 있다. 컴패니언 기준은 기획 저장소의 PRD가 정본이다.
 
 ## CI와 스냅숏 기록
@@ -41,3 +42,10 @@ git clone --recurse-submodules git@github.com:darren-pleos-challenge/companion-c
   - PR에 `record-snapshots` 라벨을 붙이거나(같은 저장소의 브랜치만), `gh workflow run record-snapshots.yml -f branch=<브랜치>`로 실행한다.
   - 모든 모듈에 `recordPaparazziDebug`를 돌려 바뀐 `*/src/test/snapshots` PNG를 그 브랜치에 커밋 하나(`snapshots: record on CI`)로 푸시하고, 이어서 `ci`를 그 브랜치에 다시 돌린다. 끝나면 라벨은 자동으로 지워진다.
   - 푸시된 뒤에는 `git pull --rebase`로 받아 이어서 작업한다. 바뀐 PNG는 PR diff에서 눈으로 확인한다.
+
+
+## 링크·라이선스
+
+- 서버: [companion-server](https://github.com/darren-pleos-challenge/companion-server), 폰 웹: [companion-web](https://github.com/darren-pleos-challenge/companion-web)
+- 코드는 MIT(`LICENSE`). 글꼴·SDK·런타임 고지는 `THIRD_PARTY.md`. Pleos SDK는 이 저장소에 들어 있지 않고 Playground 약관을 따른다.
+

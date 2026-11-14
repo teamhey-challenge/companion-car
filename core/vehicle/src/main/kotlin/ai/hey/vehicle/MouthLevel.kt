@@ -27,7 +27,7 @@ data class MouthThresholds(val t1: Double, val t2: Double, val t3: Double) {
         val PCM = MouthThresholds(t1 = 0.02, t2 = 0.06, t3 = 0.12)
 
         /**
-         * Pleos `onUpdatedRms`: the value is on a 16-bit sample scale (one emulator reading was 5526), not 0..1. Starting edges,
+         * Pleos `onUpdatedRms`: the value is on a 16-bit sample scale, not 0..1. Starting edges,
          * to be tuned from the raw values the engine logs (`pleos rms raw=`).
          */
         val PLEOS = MouthThresholds(t1 = 800.0, t2 = 2500.0, t3 = 5000.0)
