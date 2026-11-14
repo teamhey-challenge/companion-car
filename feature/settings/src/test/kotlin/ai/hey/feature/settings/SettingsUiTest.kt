@@ -36,4 +36,10 @@ class SettingsUiTest {
         assertFalse(ui.memoryEnabled)
         assertEquals(SpeechUi.Jondaetmal, ui.speech)
     }
+
+    @Test fun `a failed withdraw or unpair reaches the screen state`() {
+        assertEquals(AccountFailureUi.Withdraw, settingsUi(CompanionState(accountFailure = ai.hey.session.AccountFailure.Withdraw), null).accountFailure)
+        assertEquals(AccountFailureUi.Unpair, settingsUi(CompanionState(accountFailure = ai.hey.session.AccountFailure.Unpair), null).accountFailure)
+        assertEquals(AccountFailureUi.None, settingsUi(CompanionState(), null).accountFailure)
+    }
 }

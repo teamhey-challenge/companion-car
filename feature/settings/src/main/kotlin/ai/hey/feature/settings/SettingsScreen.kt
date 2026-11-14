@@ -15,6 +15,7 @@ import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyTextField
 import ai.hey.designsystem.component.PageHeading
 import ai.hey.designsystem.component.ToggleRow
+import ai.hey.designsystem.component.ToggleSurface
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
@@ -34,6 +35,9 @@ enum class ProactiveUi { Off, Low, Normal, High }
 
 enum class SpeechUi { Banmal, Jondaetmal }
 
+/** A privacy action (withdraw / unpair) whose request failed: the screen says so and offers the same action again. */
+enum class AccountFailureUi { None, Withdraw, Unpair }
+
 /** The settings fields that can have a save in flight (each saves on its own, PRD 4.7.5 Partial = n/a). */
 enum class SettingField { Proactive, Memory, Speech }
 
@@ -45,6 +49,7 @@ data class SettingsUi(
     val phonePaired: Boolean = false,
     /** Fields whose save request has been running; the toggle shows work after 2 s, the screen blocks that field. */
     val saving: Set<SettingField> = emptySet(),
+    val accountFailure: AccountFailureUi = AccountFailureUi.None,
 )
 
 /** The debug-only server address field; null in release builds, which never show it. */
@@ -117,6 +122,22 @@ fun SettingsScreen(
         ) {
             HeyScrollColumn(HeyGap.G24, modifier = Modifier.fillSize()) {
                 PageHeading(stringResource(R.string.settings_title), subtitle = stringResource(R.string.settings_subtitle))
+                if (settings.accountFailure != AccountFailureUi.None) {
+                    val withdraw = settings.accountFailure == AccountFailureUi.Withdraw
+                    HStack(HeyGap.G16, align = HeyAlign.Center) {
+                        HeyNotice(
+                            stringResource(if (withdraw) R.string.settings_withdraw_failed else R.string.settings_unpair_failed),
+                            HeyStatusTone.Danger,
+                            persistent = true,
+                        )
+                        HeyButton(
+                            stringResource(R.string.settings_retry),
+                            { if (withdraw) onWithdraw() else onUnpair() },
+                            variant = HeyButtonVariant.Secondary,
+                            icon = HeyIcons.Refresh,
+                        )
+                    }
+                }
                 val proactiveSaving = SettingField.Proactive in settings.saving
                 ToggleRow(
                     label = stringResource(R.string.settings_proactive),
@@ -125,6 +146,7 @@ fun SettingsScreen(
                     // Turning it back on returns to the usual step, not to a step the driver never picked.
                     onCheckedChange = { on -> onProactive(if (on) ProactiveUi.Normal else ProactiveUi.Off) },
                     saving = proactiveSaving,
+                    surface = ToggleSurface.Info,
                     modifier = Modifier.fillWidth(),
                 )
                 if (settings.proactive != ProactiveUi.Off) {
@@ -147,6 +169,7 @@ fun SettingsScreen(
                     checked = settings.memoryEnabled,
                     onCheckedChange = onMemoryEnabled,
                     saving = SettingField.Memory in settings.saving,
+                    surface = ToggleSurface.Plain,
                     modifier = Modifier.fillWidth(),
                 )
                 ChoiceRow(
@@ -164,21 +187,21 @@ fun SettingsScreen(
                     HeyButton(
                         stringResource(R.string.settings_open_memory),
                         onOpenMemory,
-                        variant = HeyButtonVariant.Secondary,
+                        variant = HeyButtonVariant.Soft,
                         icon = HeyIcons.Book,
                     )
                     if (settings.phonePaired) {
                         HeyButton(
                             stringResource(R.string.settings_unpair),
                             { confirm = Confirm.Unpair },
-                            variant = HeyButtonVariant.Secondary,
+                            variant = HeyButtonVariant.Soft,
                             icon = HeyIcons.Link,
                         )
                     } else {
                         HeyButton(
                             stringResource(R.string.settings_pair),
                             onOpenPair,
-                            variant = HeyButtonVariant.Secondary,
+                            variant = HeyButtonVariant.Soft,
                             icon = HeyIcons.Qr,
                         )
                     }

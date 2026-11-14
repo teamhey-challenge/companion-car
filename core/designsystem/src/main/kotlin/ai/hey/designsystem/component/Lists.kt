@@ -95,16 +95,21 @@ internal fun rememberReducedMotion(): Boolean {
     }
 }
 
-/** Short one-off notice at the top of a screen. Disappears after 4 seconds, instantly under reduced motion. */
+/**
+ * Short one-off notice at the top of a screen. Disappears after 4 seconds, instantly under reduced motion; a
+ * [persistent] notice stays (inline error next to its retry action).
+ */
 @Composable
 fun HeyNotice(
     text: String,
     tone: HeyStatusTone,
     modifier: Modifier = Modifier,
+    persistent: Boolean = false,
 ) {
     var visible by remember(text) { mutableStateOf(true) }
     val reduced = rememberReducedMotion()
     LaunchedEffect(text) {
+        if (persistent) return@LaunchedEffect
         delay(NOTICE_VISIBLE_MS)
         visible = false
     }

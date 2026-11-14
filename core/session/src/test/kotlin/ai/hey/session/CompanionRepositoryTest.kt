@@ -142,6 +142,60 @@ class CompanionRepositoryTest {
         assertEquals(ProactiveLevel.Low, rig.repo.state.value.settings.proactive)
         cs.cancel()
     }
+
+    @Test fun `failed withdraw and unpair raise an account failure that the retry clears`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.repo.submitConsent(memory = true)
+        rig.api.failing = true
+        rig.repo.withdrawRecordConsent()
+        assertEquals(AccountFailure.Withdraw, rig.repo.state.value.accountFailure)
+        assertTrue(rig.storage.consents.value.recordDone) // honest: nothing was withdrawn
+        rig.repo.unpair()
+        assertEquals(AccountFailure.Unpair, rig.repo.state.value.accountFailure)
+        rig.api.failing = false
+        rig.repo.withdrawRecordConsent()
+        assertEquals(AccountFailure.None, rig.repo.state.value.accountFailure)
+        assertFalse(rig.storage.consents.value.recordDone)
+        cs.cancel()
+    }
+
+    @Test fun `memory on in C7 grants the memory consent before the settings patch`() = runTest {
+        val cs = scope(testScheduler)
+        val fake = FakeCompanionApi()
+        var consentsWhenPatched = -1
+        val api = object : CompanionApi by fake {
+            override suspend fun patchSettings(from: CompanionSettings, to: CompanionSettings): CompanionSettings {
+                consentsWhenPatched = fake.consentLog.count { it.first == ConsentType.Memory && it.second }
+                return fake.patchSettings(from, to)
+            }
+        }
+        val storage = InMemoryCarStorage()
+        val repo = CompanionRepository(cs, api, storage)
+        repo.submitConsent(memory = false) // C1 with the box unchecked
+        assertFalse(ConsentType.Memory in storage.consents.value.granted)
+        repo.updateSettings { it.copy(memoryEnabled = true) }
+        assertEquals(1, consentsWhenPatched)
+        assertTrue(ConsentType.Memory in storage.consents.value.granted)
+        assertTrue(repo.state.value.settings.memoryEnabled)
+        // consent exists now: switching off and on again is a plain settings write
+        repo.updateSettings { it.copy(memoryEnabled = false) }
+        repo.updateSettings { it.copy(memoryEnabled = true) }
+        assertEquals(1, fake.consentLog.count { it.first == ConsentType.Memory && it.second })
+        cs.cancel()
+    }
+
+    @Test fun `a failed memory consent leaves memory off and says the save failed`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.repo.submitConsent(memory = false)
+        rig.api.failing = true
+        rig.repo.updateSettings { it.copy(memoryEnabled = true) }
+        assertFalse(rig.repo.state.value.settings.memoryEnabled)
+        assertEquals(SettingsSave.Failed, rig.repo.state.value.settingsSave)
+        assertFalse(ConsentType.Memory in rig.storage.consents.value.granted)
+        cs.cancel()
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

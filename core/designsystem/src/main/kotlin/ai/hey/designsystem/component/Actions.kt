@@ -118,6 +118,7 @@ fun HeyButton(
     }
 }
 
+/** Icon-only button. [bare] draws just the glyph (mockup C6 delete: no fill, no outline, 56dp glyph in a 76dp target). */
 @Composable
 fun HeyIconButton(
     icon: ImageVector,
@@ -125,6 +126,7 @@ fun HeyIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    bare: Boolean = false,
 ) {
     val colors = HeyTheme.colors
     PressSurface(
@@ -133,8 +135,12 @@ fun HeyIconButton(
         modifier = modifier
             .size(HeyTokens.Size.touchCar)
             .semantics { this.contentDescription = contentDescription },
-        ink = { pressed -> colors.ink(HeyButtonVariant.Secondary, pressed, enabled) },
-    ) { ink -> InkIcon(icon, null, ink.content) }
+        ink = { pressed ->
+            if (bare) ButtonInk(Color.Transparent, if (enabled) (if (pressed) colors.fgMuted else colors.fgDefault) else colors.fgDisabled, null)
+            else colors.ink(HeyButtonVariant.Secondary, pressed, enabled)
+        },
+        radius = if (bare) HeyTokens.Radius.full else HeyTokens.Radius.md,
+    ) { ink -> InkIcon(icon, null, ink.content, if (bare) Modifier.size(56.dp) else Modifier) }
 }
 
 /** Header touch size of the mockups (ui-spec "헤더 84"): header pills are 84 high, the back button is an 84 circle. */

@@ -3,6 +3,7 @@ package ai.hey.feature.settings
 import ai.hey.model.ProactiveLevel
 import ai.hey.model.SpeechStyle
 import ai.hey.session.CompanionCommands
+import ai.hey.session.AccountFailure
 import ai.hey.session.CompanionState
 import ai.hey.session.SettingsSave
 import androidx.compose.runtime.Composable
@@ -38,6 +39,11 @@ fun settingsUi(state: CompanionState, lastField: SettingField?): SettingsUi = Se
     speech = if (state.settings.speech == SpeechStyle.Jondaetmal) SpeechUi.Jondaetmal else SpeechUi.Banmal,
     phonePaired = state.paired,
     saving = if (state.settingsSave == SettingsSave.Saving && lastField != null) setOf(lastField) else emptySet(),
+    accountFailure = when (state.accountFailure) {
+        AccountFailure.None -> AccountFailureUi.None
+        AccountFailure.Withdraw -> AccountFailureUi.Withdraw
+        AccountFailure.Unpair -> AccountFailureUi.Unpair
+    },
 )
 
 /**
