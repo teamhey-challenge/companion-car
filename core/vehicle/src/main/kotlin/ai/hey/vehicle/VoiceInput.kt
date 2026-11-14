@@ -40,9 +40,9 @@ interface VoiceInput {
 }
 
 /**
- * A recognizer that returns a given sentence instead of listening: the emulator's microphone is silent, so the demo
- * and the tests inject the text. The text comes from [text] at the moment of each call, so it can be swapped while
- * the app runs (the debug build wires it to a bundled fixture and an adb broadcast, see app/src/e2e).
+ * A recognizer that returns a given sentence instead of listening, for tests and for the debug builds' injected override
+ * (wrapped by [InjectableVoiceInput]; the debug builds listen to the real microphone unless a sentence is injected).
+ * The text comes from [text] at the moment of each call, so it can be swapped while the app runs.
  */
 class ScriptedVoiceInput(
     @Volatile var permission: Boolean = true,
