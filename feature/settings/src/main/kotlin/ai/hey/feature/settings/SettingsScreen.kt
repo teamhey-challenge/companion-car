@@ -107,7 +107,6 @@ fun SettingsScreen(
                 Confirm.None -> Unit
             }
         },
-        notice = notice?.let { text -> { HeyNotice(text, HeyStatusTone.Danger) } },
     ) {
         CarFrame(
             statusStrip = {
@@ -122,6 +121,8 @@ fun SettingsScreen(
         ) {
             HeyScrollColumn(HeyGap.G24, modifier = Modifier.fillSize()) {
                 PageHeading(stringResource(R.string.settings_title), subtitle = stringResource(R.string.settings_subtitle))
+                // The save-failure line sits in the page flow: the header and the back button stay visible.
+                if (notice != null) HeyNotice(notice, HeyStatusTone.Danger, persistent = true)
                 if (settings.accountFailure != AccountFailureUi.None) {
                     val withdraw = settings.accountFailure == AccountFailureUi.Withdraw
                     HStack(HeyGap.G16, align = HeyAlign.Center) {
