@@ -34,6 +34,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
 private const val TAG = "Talk"
+private const val CONSENT_REQUIRED = "consent_required"
 
 /**
  * Owns the one /v1/talk connection and the vehicle and exposes ONE state. A turn is: Pleos STT hears one sentence ->
@@ -194,7 +195,13 @@ class TalkRepository(
                     HeyLog.w(TAG, "server error: ${frame.code}")
                     if (frame.turnId == null || frame.turnId == turnId) {
                         silence()
-                        endTurn(TurnError.Server)
+                        // AC-4.9-05: the server holds no record/external_ai consent for this car; C1 asks again instead of a server fault.
+                        if (frame.code == CONSENT_REQUIRED) {
+                            endTurn(null)
+                            _state.update { it.copy(onboardingRequests = it.onboardingRequests + 1) }
+                        } else {
+                            endTurn(TurnError.Server)
+                        }
                     }
                 }
                 is ServerFrame.Proactive -> onProactive(frame)
@@ -208,7 +215,7 @@ class TalkRepository(
     }
 
     private fun onReplyEnd(frame: ServerFrame.ReplyEnd) {
-        HeyLog.i(TAG, "reply.end chars=${frame.text.length} firstTokenMs=${frame.firstTokenMs} totalMs=${frame.totalMs} text=${frame.text}")
+        HeyLog.content(TAG, "reply.end chars=${frame.text.length} firstTokenMs=${frame.firstTokenMs} totalMs=${frame.totalMs}", frame.text)
         watchdog?.cancel()
         replyText.setLength(0)
         replyText.append(frame.text)
@@ -450,7 +457,7 @@ class TalkRepository(
         }
         turnEndSentAt = clock()
         turnId = id
-        HeyLog.i(TAG, "turn sent chars=${text.length} text=$text")
+        HeyLog.content(TAG, "turn sent chars=${text.length}", text)
         _state.update { it.copy(turn = TurnState.Thinking, heard = text, reply = "") }
         armWatchdog(id, REPLY_START_TIMEOUT_MILLIS)
     }
