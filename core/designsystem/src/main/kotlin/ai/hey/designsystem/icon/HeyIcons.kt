@@ -73,11 +73,18 @@ object HeyIcons {
     val Minus = icon("minus", "M5 12h14")
     val Link = icon("link", "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1", "M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1")
     val Logout = icon("logout", "M9 4H5v16h4", "M16 8l4 4-4 4", "M20 12H9")
+    val Trash = icon("trash", "M4 7h16", "M9 7V4h6v3", "M6 7l1 13h10l1-13", "M10 11v6", "M14 11v6")
+    val Pause = icon("pause", "M8 5v14", "M16 5v14")
+    val Book = icon("book", "M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V4z", "M5 18a2 2 0 0 1 2-2h12", "M10 4v6l2-1.5 2 1.5V4")
+    val Gear = icon(
+        "gear", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z", "M12 3v3", "M12 18v3", "M3 12h3", "M18 12h3",
+        "M5.6 5.6l2.1 2.1", "M16.3 16.3l2.1 2.1", "M5.6 18.4l2.1-2.1", "M16.3 7.7l2.1-2.1",
+    )
 
     /** Every icon, in the order the gallery shows them. */
     val all: List<ImageVector> = listOf(
         ArrowLeft, ArrowRight, Check, Close, ChevronDown, ChevronRight, Search, Pin, Flag, Door, Mic, VolumeOff, Music,
         ThermometerCool, ThermometerWarm, Car, Clock, Route, Toll, Speaker, Message, Send, User, Users, Globe,
-        Menu, Info, Warning, Error, Refresh, Qr, Card, Plus, Minus, Link, Logout,
+        Menu, Info, Warning, Error, Refresh, Qr, Card, Plus, Minus, Link, Logout, Trash, Pause, Book, Gear,
     )
 }

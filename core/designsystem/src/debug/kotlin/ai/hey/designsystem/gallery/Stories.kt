@@ -1,11 +1,11 @@
 package ai.hey.designsystem.gallery
 
 import ai.hey.designsystem.component.CarFrame
-import ai.hey.designsystem.component.ConditionLine
-import ai.hey.designsystem.component.DropoffCandidateRow
-import ai.hey.designsystem.component.DrivingPanel
+import ai.hey.designsystem.component.CharacterSize
+import ai.hey.designsystem.component.CharacterSlot
+import ai.hey.designsystem.component.CheckRow
 import ai.hey.designsystem.component.EmptyPanel
-import ai.hey.designsystem.component.EtaBlock
+import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyBanner
 import ai.hey.designsystem.component.HeyBannerAction
 import ai.hey.designsystem.component.HeyButton
@@ -20,35 +20,26 @@ import ai.hey.designsystem.component.HeyDivider
 import ai.hey.designsystem.component.HeyIcon
 import ai.hey.designsystem.component.HeyIconButton
 import ai.hey.designsystem.component.HeyIconSize
+import ai.hey.designsystem.component.HeyLayered
+import ai.hey.designsystem.component.HeyNotice
 import ai.hey.designsystem.component.HeyQrCode
+import ai.hey.designsystem.component.HeyScrollColumn
+import ai.hey.designsystem.component.HeySection
 import ai.hey.designsystem.component.HeySegmentOption
 import ai.hey.designsystem.component.HeySegmented
 import ai.hey.designsystem.component.HeyStatusPill
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyStepperRow
-import ai.hey.designsystem.component.HeyScrollColumn
-import ai.hey.designsystem.component.HeySection
-import ai.hey.designsystem.component.HeyNotice
 import ai.hey.designsystem.component.HeySwitchRow
 import ai.hey.designsystem.component.HeyText
-import ai.hey.designsystem.component.HeyWordmark
-import ai.hey.designsystem.component.JoinRequestCard
-import ai.hey.designsystem.component.KoreanSummary
-import ai.hey.designsystem.component.LanguageGreetingStrip
-import ai.hey.designsystem.component.QuickReplyGroup
-import ai.hey.designsystem.component.VoiceConfirmDialog
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import ai.hey.designsystem.component.ProposalState
-import ai.hey.designsystem.component.ProposalStatus
-import ai.hey.designsystem.component.QuickReplyGrid
-import ai.hey.designsystem.component.QuickReplyUi
-import ai.hey.designsystem.component.ReasonChips
-import ai.hey.designsystem.component.RequestKind
-import ai.hey.designsystem.component.RequestRow
-import ai.hey.designsystem.component.RequestState
+import ai.hey.designsystem.component.HeyTextField
+import ai.hey.designsystem.component.OceanBackground
+import ai.hey.designsystem.component.PageHeading
 import ai.hey.designsystem.component.StatusStrip
-import ai.hey.designsystem.component.TripSummaryCard
+import ai.hey.designsystem.component.StopListeningButton
+import ai.hey.designsystem.component.TalkButton
+import ai.hey.designsystem.component.TalkPhase
+import ai.hey.designsystem.component.ToggleRow
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
@@ -59,6 +50,7 @@ import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.designsystem.theme.HeyTone
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -83,35 +75,15 @@ private val PartWidth: Dp = 1200.dp
 /** Parts are shown on a page-coloured plate with the 32dp frame inset a real screen would give them. */
 @Composable
 private fun Plate(content: @Composable () -> Unit) {
-    Box32 { content() }
-}
-
-@Composable
-private fun Box32(content: @Composable () -> Unit) {
-    androidx.compose.foundation.layout.Box(
-        Modifier.width(PartWidth).background(HeyTheme.colors.bgPage).padding(32.dp),
-    ) { content() }
+    Box(Modifier.width(PartWidth).background(HeyTheme.colors.bgPage).padding(32.dp)) { content() }
 }
 
 private fun part(id: String, content: @Composable () -> Unit) = Story(id, StoryFrame.Part) { Plate(content) }
 
-private val conditions4 = listOf(
-    ConditionLine(HeyIcons.Door, "만나기로 한 입구가 있어요: 3번 출구 앞"),
-    ConditionLine(HeyIcons.ThermometerCool, "시원하게 해 주세요", changed = true),
-    ConditionLine(HeyIcons.VolumeOff, "조용히 가고 싶어요"),
-    ConditionLine(HeyIcons.Music, "작게 틀어 주세요"),
-)
-
-private fun stripFor(party: Int, connection: HeyConnection, driving: Boolean = false): @Composable () -> Unit = {
-    StatusStrip(
-        wordmarkParty = party,
-        drivingLabel = if (driving) "주행 중 · 음성으로 알려 드려요" else "정차 중",
-        connection = connection,
-        clock = "오후 11:42",
-    )
-}
-
 private fun screen(id: String, frame: StoryFrame, content: @Composable () -> Unit) = Story(id, frame, content)
+
+/** Long Korean text with no spaces: the design system's worst case, shown at 2x the normal column width. */
+private const val NO_SPACE_KO = "오늘퇴근길에는비가와서조용한음악을틀어드리고내일아침일정도함께알려드릴게요오늘퇴근길에는비가와서조용한음악을틀어드리고내일아침일정도함께알려드릴게요"
 
 // ---------------------------------------------------------------- the stories
 
@@ -135,14 +107,6 @@ object Stories {
             }
         })
         add(part("text-long-ko") { HeyText(GalleryData.LONG_KO, maxLines = 2) })
-        add(part("text-long-ja") { HeyText(GalleryData.LONG_JA, maxLines = 3) })
-        add(part("text-long-zh") { HeyText(GalleryData.LONG_ZH, maxLines = 3) })
-        add(part("text-empty") { HeyCard { HeyText("") } })
-        add(part("wordmark") {
-            VStack(HeyGap.G16) {
-                (1..4).forEach { HStack(HeyGap.G32) { HeyWordmark(it); HeyWordmark(it, large = true) } }
-            }
-        })
         add(part("icons") {
             androidx.compose.foundation.layout.FlowRow(
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
@@ -164,45 +128,41 @@ object Stories {
             add(part("button-${variant.name.lowercase()}") {
                 VStack(HeyGap.G16) {
                     HStack(HeyGap.G16) {
-                        HeyButton("승인할게요", {}, variant = variant)
-                        HeyButton("경로 시작", {}, variant = variant, icon = HeyIcons.Route)
-                        HeyButton("승인할게요", {}, variant = variant, enabled = false)
-                        HeyButton("승인할게요", {}, variant = variant, loading = true)
+                        HeyButton("다시 연결", {}, variant = variant)
+                        HeyButton("기억", {}, variant = variant, icon = HeyIcons.Book)
+                        HeyButton("다시 연결", {}, variant = variant, enabled = false)
+                        HeyButton("다시 연결", {}, variant = variant, loading = true)
                     }
                     HStack(HeyGap.G16) {
-                        HeyButton("승인할게요", {}, variant = variant, size = HeyButtonSize.Large)
-                        HeyButton("승인할게요", {}, variant = variant, size = HeyButtonSize.Large, enabled = false)
-                        HeyButton("승인할게요", {}, variant = variant, size = HeyButtonSize.Large, loading = true)
+                        HeyButton("다시 연결", {}, variant = variant, size = HeyButtonSize.Large)
+                        HeyButton("다시 연결", {}, variant = variant, size = HeyButtonSize.Large, enabled = false)
+                        HeyButton("다시 연결", {}, variant = variant, size = HeyButtonSize.Large, loading = true)
                     }
                 }
             })
         }
         add(part("button-long-label") {
             VStack(HeyGap.G16) {
-                HeyButton("승객이 고른 내릴 곳을 확인하고 이 위치로 경로를 다시 시작할게요", {}, Modifier.width(520.dp), size = HeyButtonSize.Large)
-                HeyButton(GalleryData.LONG_JA, {}, Modifier.width(520.dp), variant = HeyButtonVariant.Secondary)
+                HeyButton(NO_SPACE_KO, {}, Modifier.width(520.dp), size = HeyButtonSize.Large)
             }
         })
         add(part("icon-button") {
             HStack(HeyGap.G16) {
-                HeyIconButton(HeyIcons.Speaker, "다시 듣기", {})
+                HeyIconButton(HeyIcons.Trash, "지우기", {})
                 HeyIconButton(HeyIcons.Close, "닫기", {})
                 HeyIconButton(HeyIcons.Refresh, "새로고침", {}, enabled = false)
             }
         })
         add(part("switch-rows") {
             VStack(HeyGap.G8) {
-                HeySwitchRow("손 흔들기 요청 받기", true, {}, Modifier.fillMaxWidth())
-                HeySwitchRow("창문 요청 받기", false, {}, Modifier.fillMaxWidth())
-                HeySwitchRow("카드 결제 질문 받기", true, {}, Modifier.fillMaxWidth(), enabled = false)
-                HeySwitchRow(GalleryData.LONG_KO, true, {}, Modifier.fillMaxWidth())
+                HeySwitchRow("먼저 말 걸기", true, {}, Modifier.fillMaxWidth())
+                HeySwitchRow("기억 저장", false, {}, Modifier.fillMaxWidth())
+                HeySwitchRow("꺼진 항목", true, {}, Modifier.fillMaxWidth(), enabled = false)
             }
         })
         add(part("stepper-rows") {
             VStack(HeyGap.G8) {
                 HeyStepperRow("음성 간격", 8, 4..30, {}, Modifier.fillMaxWidth(), format = { "${it}초" })
-                HeyStepperRow("음성 간격 (최솟값)", 4, 4..30, {}, Modifier.fillMaxWidth(), format = { "${it}초" })
-                HeyStepperRow("음성 간격 (최댓값)", 30, 4..30, {}, Modifier.fillMaxWidth(), format = { "${it}초" })
             }
         })
         add(part("segmented") {
@@ -210,10 +170,6 @@ object Stories {
                 HeySegmented(
                     listOf(HeySegmentOption("dark", "어둡게"), HeySegmentOption("light", "밝게")),
                     "dark", {}, Modifier.width(520.dp),
-                )
-                HeySegmented(
-                    listOf(HeySegmentOption(1, "느리게"), HeySegmentOption(2, "보통"), HeySegmentOption(3, "빠르게"), HeySegmentOption(4, "아주 빠르게로 읽어 주세요")),
-                    2, {}, Modifier.fillMaxWidth(),
                 )
             }
         })
@@ -232,449 +188,177 @@ object Stories {
         add(part("status-pills") {
             VStack(HeyGap.G16) {
                 HStack(HeyGap.G8) { HeyStatusTone.entries.forEach { HeyStatusPill(it.name, it) } }
-                HStack(HeyGap.G8) {
-                    HeyStatusPill("연결됨", HeyStatusTone.Success, icon = HeyIcons.Check)
-                    HeyStatusPill("주의가 필요한 아주 긴 상태 문구가 들어가요 정말로 길어요", HeyStatusTone.Warning, Modifier.width(520.dp))
-                }
+                HeyStatusPill("연결됨", HeyStatusTone.Success, icon = HeyIcons.Check)
             }
         })
         add(part("banners") {
             VStack(HeyGap.G16) {
                 HeyStatusTone.entries.filter { it != HeyStatusTone.Neutral && it != HeyStatusTone.Accent }.forEach {
-                    HeyBanner(it, "승객이 목적지를 바꿨어요", Modifier.fillMaxWidth(), message = "새 목적지로 경로를 다시 시작해 주세요.")
+                    HeyBanner(it, "연결이 잠시 끊겼어요", Modifier.fillMaxWidth(), message = "연결을 확인한 뒤 다시 이야기해요.")
                 }
-                HeyBanner(HeyStatusTone.Danger, "제목만 있는 배너", Modifier.fillMaxWidth())
                 HeyBanner(
-                    HeyStatusTone.Danger,
-                    "내비가 아직 준비되지 않았어요",
-                    Modifier.width(560.dp),
-                    message = "내비 열기를 누른 뒤 다시 시도해 주세요.",
-                    actions = listOf(HeyBannerAction("내비 열기", {}, primary = true), HeyBannerAction("다시 시도", {})),
+                    HeyStatusTone.Danger, "지금은 답하기 어려워요", Modifier.width(560.dp),
+                    message = "잠시 뒤에 다시 시도해 주세요.",
+                    actions = listOf(HeyBannerAction("다시 시도", {}, primary = true), HeyBannerAction("닫기", {})),
                 )
-                HeyBanner(HeyStatusTone.Warning, "긴 글", Modifier.fillMaxWidth(), message = GalleryData.LONG_KO + GalleryData.LONG_KO)
             }
         })
         add(part("empty-panel") {
-            HStack(HeyGap.G32, align = HeyAlign.Start) {
-                EmptyPanel(HeyIcons.Car, "승객을 기다리고 있어요", Modifier.width(480.dp), message = "QR로 연결 요청이 오면 알려 드려요.")
-                EmptyPanel(HeyIcons.Message, "아직 요청이 없어요", Modifier.width(480.dp))
-            }
+            EmptyPanel(HeyIcons.Book, "저장된 기억이 없어요", Modifier.width(480.dp), message = "대화하면서 기억이 쌓여요.")
         })
         add(part("dialog") {
-            androidx.compose.foundation.layout.Box(Modifier.width(PartWidth).background(HeyTheme.colors.bgPage)) {
-                VStack(HeyGap.G16, modifier = Modifier.padding(32.dp).height(256.dp)) {
-                    HeyText("뒤에 있는 화면")
-                    HeyText("뒤에 있는 화면 글자", tone = HeyTone.Muted)
-                }
+            Box(Modifier.width(PartWidth).background(HeyTheme.colors.bgPage)) {
                 HeyDialog(
-                    title = "운행을 끝낼까요?",
-                    message = "끝내면 이 운행의 승객 연결이 모두 끊어져요.",
-                    confirm = HeyDialogAction("운행 끝내기") {},
-                    dismiss = HeyDialogAction("계속 운행") {},
+                    title = "이 기억을 지울까요?",
+                    message = "지운 기억은 다시 불러올 수 없어요.",
+                    confirm = HeyDialogAction("지우기") {},
+                    dismiss = HeyDialogAction("그대로 둘게요") {},
                     modifier = Modifier.fillMaxWidth().height(320.dp),
                     danger = true,
                 )
             }
         })
-        add(part("dialog-long") {
-            androidx.compose.foundation.layout.Box(Modifier.width(PartWidth).background(HeyTheme.colors.bgPage)) {
-                HeyDialog(
-                    title = "승객이 고른 내릴 곳으로 경로를 바꿀까요?",
-                    message = GalleryData.LONG_KO,
-                    confirm = HeyDialogAction("경로 바꾸기") {},
-                    dismiss = HeyDialogAction("그대로 갈게요") {},
-                    modifier = Modifier.fillMaxWidth().height(480.dp),
-                )
-            }
-        })
-
-        // Strip
         add(part("status-strip") {
             VStack(HeyGap.G24) {
-                (1..4).forEach { StatusStrip(it, "정차 중", HeyConnection.Online, clock = "오후 11:42") }
-                StatusStrip(2, "주행 중 · 음성으로 알려 드려요", HeyConnection.Reconnecting)
-                StatusStrip(1, "정차 중", HeyConnection.Offline, clock = "오후 11:42")
+                StatusStrip("정차 중", HeyConnection.Online, clock = "오후 11:42")
+                StatusStrip("주행 중 · 음성으로 알려 드려요", HeyConnection.Reconnecting)
+                StatusStrip(null, HeyConnection.Offline, clock = "오후 11:42")
             }
         })
-
-        // QR + greeting
-        add(part("qr") {
-            HStack(HeyGap.G32, align = HeyAlign.Start) {
-                HeyQrCode(GalleryData.QR_URL, 360.dp)
-                HeyQrCode(GalleryData.QR_URL + "/very/long/path/to/make/a/denser/code?x=1234567890abcdef", 360.dp)
-            }
-        })
-        add(part("greeting-strip") { LanguageGreetingStrip(GalleryData.greetings, Modifier.width(720.dp)) })
-        add(part("greeting-strip-empty") { LanguageGreetingStrip(emptyList(), Modifier.width(720.dp)) })
-
-        // Join request
-        add(part("join-parked") { JoinRequestCard("English", 2, 252, "47", {}, {}, Modifier.width(720.dp)) })
-        add(part("join-driving") { JoinRequestCard("日本語", 4, 38, "05", {}, {}, Modifier.width(720.dp), enabled = false) })
-        add(part("join-long-lang") { JoinRequestCard("简体中文 Chinese (Simplified) 中文普通话 대륙 표준어", 1, 300, "90", {}, {}, Modifier.width(720.dp)) })
-
-        // Summary
-        add(part("korean-summary-4") {
-            KoreanSummary(GalleryData.DESTINATION_KO, GalleryData.ADDRESS_KO, GalleryData.NAME_LOCAL, conditions4, Modifier.width(900.dp))
-        })
-        add(part("korean-summary-0") {
-            KoreanSummary(GalleryData.DESTINATION_KO, GalleryData.ADDRESS_KO, GalleryData.NAME_LOCAL, emptyList(), Modifier.width(900.dp))
-        })
-        add(part("korean-summary-long") {
-            KoreanSummary(
-                "서울국제금융센터 지하 3층 주차장 B구역 동쪽 엘리베이터 홀",
-                GalleryData.LONG_ADDRESS_KO, GalleryData.LONG_JA, conditions4.take(1), Modifier.width(900.dp),
-            )
-        })
-        add(part("condition-line") {
-            VStack(HeyGap.G8) {
-                HeyCardless(ConditionLine(HeyIcons.VolumeOff, "조용히 가고 싶어요"))
-                HeyCardless(ConditionLine(HeyIcons.ThermometerWarm, "따뜻하게 해 주세요", changed = true))
-                HeyCardless(ConditionLine(HeyIcons.Door, GalleryData.LONG_KO, changed = true))
-            }
-        })
-
-        // Dropoff
-        add(part("dropoff-candidates") {
-            VStack(HeyGap.G8) {
-                DropoffCandidateRow("3번 출구 앞", true, {}, Modifier.fillMaxWidth(), distanceText = "40m")
-                DropoffCandidateRow("1층 택시 승강장", false, {}, Modifier.fillMaxWidth(), distanceText = "120m")
-                DropoffCandidateRow("목적지 기본 위치", false, {}, Modifier.fillMaxWidth())
-                DropoffCandidateRow(GalleryData.LONG_ADDRESS_KO + GalleryData.LONG_ADDRESS_KO, false, {}, Modifier.fillMaxWidth(), distanceText = "1.2km")
-            }
-        })
-        add(part("dropoff-candidates-one") { DropoffCandidateRow("목적지 기본 위치", true, {}, Modifier.fillMaxWidth()) })
-        add(part("reason-chips") { ReasonChips(GalleryData.reasons, 1, {}, Modifier.fillMaxWidth()) })
-        add(part("reason-chips-none-selected") { ReasonChips(GalleryData.reasons, null, {}, Modifier.fillMaxWidth()) })
-        add(part("proposal-status") {
-            VStack(HeyGap.G8) { ProposalState.entries.forEach { ProposalStatus(it) } }
-        })
-
-        // Requests
-        add(part("request-rows") {
-            VStack(HeyGap.G8) {
-                RequestRow("천천히 가 주세요", RequestKind.Notice, RequestState.Spoken, "오후 11:40", {}, Modifier.fillMaxWidth())
-                RequestRow("창문을 열어도 될까요?", RequestKind.Question, RequestState.Received, "오후 11:41", {}, Modifier.fillMaxWidth())
-                RequestRow("카드 결제가 되나요?", RequestKind.Question, RequestState.Answered, "오후 11:42", {}, Modifier.fillMaxWidth())
-                RequestRow(GalleryData.LONG_KO + GalleryData.LONG_KO, RequestKind.Free, RequestState.Spoken, "오후 11:43", {}, Modifier.fillMaxWidth())
-            }
-        })
-        add(part("quick-replies") {
-            QuickReplyGrid(
-                listOf("네", "잠시만요", "5분 걸려요", "여기서 세울게요", "카드 돼요", "어려워요").map { QuickReplyUi(it, it) },
-                {}, Modifier.fillMaxWidth(),
-            )
-        })
-        add(part("quick-replies-disabled") {
-            QuickReplyGrid(
-                listOf("네", "잠시만요", "5분 걸려요", "여기서 세울게요", "카드 돼요", "어려워요").map { QuickReplyUi(it, it) },
-                {}, Modifier.fillMaxWidth(), enabled = false,
-            )
-        })
-        add(part("quick-replies-two") {
-            QuickReplyGrid(listOf(QuickReplyUi("a", "네"), QuickReplyUi("b", "어려워요")), {}, Modifier.fillMaxWidth())
-        })
-        add(part("quick-reply-group-answer") {
-            QuickReplyGroup("답장", listOf("네", "어려워요", "잠시만요").map { QuickReplyUi(it, it) }, {}, Modifier.fillMaxWidth())
-        })
-        add(part("quick-reply-group-driver-first") {
-            QuickReplyGroup("기사님이 먼저", listOf("여기서 세울게요", "5분 걸려요", "카드 돼요").map { QuickReplyUi(it, it) }, {}, Modifier.fillMaxWidth())
-        })
-        add(part("quick-reply-group-loading") {
-            QuickReplyGroup("답장", listOf("네", "어려워요", "잠시만요").map { QuickReplyUi(it, it) }, {}, Modifier.fillMaxWidth(), loadingId = "네")
-        })
-        add(part("voice-confirm") {
-            Box(Modifier.size(900.dp, 420.dp)) {
-                VoiceConfirmDialog("이 내용으로 보낼까요?", "네, 입구 앞에서 기다릴게요.", HeyDialogAction("보내기") {}, HeyDialogAction("다시 말하기") {}, HeyDialogAction("취소") {}, Modifier.fillMaxSize())
-            }
-        })
-        add(part("voice-confirm-long") {
-            Box(Modifier.size(900.dp, 520.dp)) {
-                VoiceConfirmDialog("이 내용으로 보낼까요?", GalleryData.LONG_KO, HeyDialogAction("보내기") {}, HeyDialogAction("다시 말하기") {}, HeyDialogAction("취소") {}, Modifier.fillMaxSize())
-            }
-        })
-        add(part("voice-confirm-sending") {
-            Box(Modifier.size(900.dp, 420.dp)) {
-                VoiceConfirmDialog("이 내용으로 보낼까요?", "네, 입구 앞에서 기다릴게요.", HeyDialogAction("보내기") {}, HeyDialogAction("다시 말하기") {}, HeyDialogAction("취소") {}, Modifier.fillMaxSize(), sending = true)
-            }
-        })
-
-        // Trip glance
-        add(part("eta-block") {
-            VStack(HeyGap.G24) {
-                EtaBlock("23분", "18.4km", stale = false)
-                EtaBlock("23분", "18.4km", stale = true)
-            }
-        })
-        add(part("driving-panel-empty") { DrivingPanel(GalleryData.DESTINATION_KO, "23분", 0, Modifier.fillMaxWidth()) })
-        add(part("driving-panel-pending") {
-            DrivingPanel(GalleryData.DESTINATION_KO, "23분", 2, Modifier.fillMaxWidth(), lastSpokenKo = "창문을 열어도 될까요?")
-        })
-        add(part("driving-panel-long") {
-            DrivingPanel(GalleryData.LONG_ADDRESS_KO, "1시간 48분", 12, Modifier.fillMaxWidth(), lastSpokenKo = GalleryData.LONG_KO)
-        })
-        add(part("trip-summary") {
-            TripSummaryCard(
-                listOf("내릴 곳" to "3번 출구 앞", "이동 시간" to "42분", "이동 거리" to "38.2km", "통행료" to "9,400원"),
-                Modifier.fillMaxWidth(),
-            )
-        })
-        add(part("trip-summary-long") {
-            TripSummaryCard(listOf("내릴 곳" to GalleryData.LONG_ADDRESS_KO, "통행료" to "없음"), Modifier.fillMaxWidth())
-        })
-        add(part("trip-summary-empty") { TripSummaryCard(emptyList(), Modifier.fillMaxWidth()) })
+        add(part("qr") { HeyQrCode(GalleryData.QR_URL, 320.dp) })
         add(part("section") {
             VStack(HeyGap.G24) {
-                HeySection("받을 요청") {
-                    HeySwitchRow("천천히 가 주세요", true, {}, Modifier.fillMaxWidth())
-                    HeySwitchRow("창문 요청 받기", false, {}, Modifier.fillMaxWidth())
+                HeySection("먼저 말 걸기") {
+                    HeySwitchRow("켜기", true, {}, Modifier.fillMaxWidth())
+                    HeySwitchRow("꺼진 항목", false, {}, Modifier.fillMaxWidth())
                 }
-                HeySection("음성") {
-                    HeyStepperRow("음성 간격", 8, 4..30, {}, Modifier.fillMaxWidth(), format = { "${it}초" })
-                }
-                HeySection(GalleryData.LONG_KO) { HeyText("긴 제목 아래 묶음") }
-                HeySection("비어 있는 묶음") {}
             }
         })
         add(part("notice") {
             VStack(HeyGap.G16) {
                 HeyStatusTone.entries.filter { it != HeyStatusTone.Neutral && it != HeyStatusTone.Accent }.forEach {
-                    HeyNotice("승객이 목적지를 바꿨어요", it, Modifier.fillMaxWidth())
+                    HeyNotice("지우지 못했어요. 기억은 그대로 남아 있어요.", it, Modifier.fillMaxWidth())
                 }
-                HeyNotice(GalleryData.LONG_KO, HeyStatusTone.Warning, Modifier.fillMaxWidth())
-            }
-        })
-        add(part("scroll-column-short") {
-            HeyScrollColumn(HeyGap.G8, Modifier.fillMaxWidth().height(240.dp)) {
-                DropoffCandidateRow("3번 출구 앞", true, {}, Modifier.fillMaxWidth(), distanceText = "40m")
             }
         })
         add(part("text-field") {
-            VStack(HeyGap.G16) {
-                ai.hey.designsystem.component.HeyTextField("차량 번호 뒤 4자리", "1234", {}, Modifier.fillMaxWidth())
-                ai.hey.designsystem.component.HeyTextField("서버 주소", "", {}, Modifier.fillMaxWidth(), placeholder = "https://서버주소/api")
-                ai.hey.designsystem.component.HeyTextField("차량 번호 뒤 4자리", "12가34567890", {}, Modifier.fillMaxWidth(), error = "글자나 숫자 1~8자로 써 주세요")
-                ai.hey.designsystem.component.HeyTextField("차량 번호 뒤 4자리", "1234", {}, Modifier.fillMaxWidth(), enabled = false)
-                ai.hey.designsystem.component.HeyTextField("중계 서버 주소", GalleryData.LONG_ADDRESS_KO + GalleryData.LONG_ADDRESS_KO, {}, Modifier.fillMaxWidth())
-            }
-        })
-        add(part("qr-block") { ai.hey.designsystem.component.QrBlock(GalleryData.QR_URL) })
-        add(part("quick-replies-loading") {
-            QuickReplyGrid(
-                listOf("네", "잠시만요", "5분 걸려요", "여기서 세울게요", "카드 돼요", "어려워요").map { QuickReplyUi(it, it) },
-                {}, Modifier.fillMaxWidth(), loadingId = "잠시만요",
-            )
+            HeyTextField("서버 주소", "https://hey.lastmile.ltd", {}, Modifier.fillMaxWidth())
         })
         add(part("layered-dialog") {
-            ai.hey.designsystem.component.HeyLayered(
+            HeyLayered(
                 Modifier.width(PartWidth).height(320.dp),
                 overlay = {
-                    HeyDialog("운행을 끝낼까요", "끝내면 승객 화면도 닫혀요", HeyDialogAction("끝내기") {}, HeyDialogAction("취소") {}, Modifier.fillMaxSize())
+                    HeyDialog("동의를 철회할까요?", "기억과 대화 요약을 모두 지워요.", HeyDialogAction("철회") {}, HeyDialogAction("취소") {}, Modifier.fillMaxSize())
                 },
-                notice = { HeyNotice("운행 끝내기를 먼저 눌러 주세요", HeyStatusTone.Info) },
+                notice = { HeyNotice("저장했어요", HeyStatusTone.Success) },
             ) { VStack(HeyGap.G16, modifier = Modifier.padding(32.dp)) { HeyText("뒤에 있는 화면"); HeyText("뒤에 있는 화면 글자", tone = HeyTone.Muted) } }
         })
+
+        // ---- v0.5 companion components (PR1)
+        add(part("talk-button-states") {
+            VStack(HeyGap.G16) {
+                HStack(HeyGap.G16) {
+                    TalkButton(TalkPhase.Idle, {})
+                    TalkButton(TalkPhase.Listening, {})
+                    TalkButton(TalkPhase.Thinking, {})
+                    TalkButton(TalkPhase.Speaking, {})
+                }
+                HStack(HeyGap.G16) {
+                    TalkButton(TalkPhase.Idle, {}, driving = true)
+                    TalkButton(TalkPhase.Listening, {}, driving = true)
+                    TalkButton(TalkPhase.Idle, {}, enabled = false)
+                    StopListeningButton({})
+                }
+            }
+        })
+        add(part("talk-button-big") {
+            VStack(HeyGap.G16) {
+                TalkButton(TalkPhase.Idle, {}, big = true, driving = true)
+                TalkButton(TalkPhase.Listening, {}, big = true, driving = true)
+            }
+        })
+        add(part("talk-button-long") {
+            TalkButton(TalkPhase.Idle, {}, Modifier.width(520.dp), label = NO_SPACE_KO)
+        })
+        add(part("page-heading") {
+            VStack(HeyGap.G24) {
+                PageHeading("기억", subtitle = "남기고 싶은 것만 남겨도 괜찮아요.")
+                PageHeading("오늘은 어떤 하루였어요?", hero = true)
+                PageHeading(NO_SPACE_KO, Modifier.width(600.dp), subtitle = NO_SPACE_KO)
+            }
+        })
+        add(part("toggle-rows") {
+            VStack(HeyGap.G8) {
+                ToggleRow("먼저 말 걸기", true, {}, Modifier.fillMaxWidth(), description = "운전 중에는 말을 걸지 않아요.")
+                ToggleRow("기억 저장", false, {}, Modifier.fillMaxWidth())
+                ToggleRow("먼저 말 걸기", true, {}, Modifier.fillMaxWidth(), enabled = false)
+                ToggleRow("기억 저장", true, {}, Modifier.fillMaxWidth(), saving = true)
+                ToggleRow(NO_SPACE_KO, true, {}, Modifier.width(600.dp), description = NO_SPACE_KO)
+            }
+        })
+        add(part("check-rows") {
+            VStack(HeyGap.G8) {
+                CheckRow("음성 대화 처리에 동의해요", true, {}, Modifier.fillMaxWidth())
+                CheckRow("기억을 저장해도 좋아요", false, {}, Modifier.fillMaxWidth())
+                CheckRow("꺼진 항목", false, {}, Modifier.fillMaxWidth(), enabled = false)
+                CheckRow("음성 대화 처리에 동의해요", false, {}, Modifier.fillMaxWidth(), error = "필수 동의예요")
+                CheckRow(NO_SPACE_KO, true, {}, Modifier.width(600.dp))
+            }
+        })
+        add(part("header-bar") {
+            VStack(HeyGap.G24) {
+                HeaderBar("헤이파리", stateLabel = "정차 중", trailing = {
+                    HeyButton("기억", {}, icon = HeyIcons.Book)
+                    HeyButton("설정", {}, icon = HeyIcons.Gear)
+                })
+                HeaderBar("헤이파리", onBack = {}, backLabel = "뒤로", stateLabel = "정차 중")
+            }
+        })
+        CharacterSize.entries.forEach { size ->
+            add(Story("character-${size.name.lowercase()}", StoryFrame.Part) {
+                Plate { CharacterSlot(size) }
+            })
+        }
     }
 
     val screens: List<Story> = buildList {
         listOf(StoryFrame.Screen1600, StoryFrame.Screen1280).forEach { frame ->
             val tag = if (frame == StoryFrame.Screen1600) "1600" else "1280"
-            add(screen("d1-waiting-$tag", frame) { WaitingScreen(party = 1, connection = HeyConnection.Online) })
-            add(screen("d1-waiting-offline-$tag", frame) { WaitingScreen(party = 1, connection = HeyConnection.Offline) })
-            add(screen("d2-join-parked-$tag", frame) { JoinScreen(driving = false) })
-            add(screen("d2-join-driving-$tag", frame) { JoinScreen(driving = true) })
-            add(screen("d3-card-$tag", frame) { CardScreen(conditions4) })
-            add(screen("d3-card-long-$tag", frame) { CardScreen(conditions4, long = true) })
-            add(screen("d5-driving-$tag", frame) { DrivingScreen(pending = 2) })
-            add(screen("d5-driving-none-$tag", frame) { DrivingScreen(pending = 0) })
-            add(screen("d6-requests-$tag", frame) { RequestsScreen(many = false) })
-            add(screen("d6-requests-many-$tag", frame) { RequestsScreen(many = true) })
-            add(screen("d4-dropoff-$tag", frame) { DropoffScreen() })
-            add(screen("d7-arrived-$tag", frame) { ArrivedScreen() })
-            add(screen("empty-$tag", frame) { EmptyScreen() })
-            add(screen("banner-long-title-$tag", frame) { BannerLongTitleScreen() })
+            add(screen("c3-home-$tag", frame) { HomeSheet(TalkPhase.Idle) })
+            add(screen("c5-driving-$tag", frame) { DrivingSheet() })
         }
     }
 
     val all: List<Story> get() = parts + screens
 }
 
+/** C3 composed from the parts only: header, greeting, character, talk button over the ocean background. */
 @Composable
-private fun HeyCardless(line: ConditionLine) {
-    ai.hey.designsystem.component.ConditionLineRow(line, Modifier.fillMaxWidth())
-}
-
-/** The D3 right column at its real width, with the exact titles that wrapped badly ("…않았어 / 요") and undersized actions. */
-@Composable
-private fun BannerLongTitleScreen() {
-    CarFrame(statusStrip = stripFor(2, HeyConnection.Online), driving = false) {
-        HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillMaxSize()) {
-            VStack(HeyGap.G16, modifier = Modifier.grow(3f)) { HeyText("롯데호텔 서울", variant = HeyTextVariant.Hero, maxLines = 1) }
-            VStack(HeyGap.G16, modifier = Modifier.grow(2f)) {
-                HeyBanner(
-                    HeyStatusTone.Danger,
-                    "내비가 아직 준비되지 않았어요",
-                    Modifier.fillMaxWidth(),
-                    message = "내비 열기를 누른 뒤 다시 시도해 주세요.",
-                    actions = listOf(HeyBannerAction("내비 열기", {}, primary = true), HeyBannerAction("다시 시도", {})),
-                )
-                HeyBanner(
-                    HeyStatusTone.Info,
-                    "내비에서 안내 시작을 눌러 주세요",
-                    Modifier.fillMaxWidth(),
-                    actions = listOf(HeyBannerAction("취소", {})),
-                )
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------- screen-level compositions
-
-@Composable
-private fun WaitingScreen(party: Int, connection: HeyConnection) {
-    CarFrame(statusStrip = stripFor(party, connection), driving = false, actionRail = {
-        HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillMaxWidth()) {
-            HeyButton("설정", {}, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Menu)
-        }
-    }) {
-        HStack(HeyGap.G32, align = HeyAlign.Center, modifier = Modifier.fillMaxSize()) {
-            HeyQrCode(GalleryData.QR_URL, 400.dp)
-            VStack(HeyGap.G24, modifier = Modifier.grow()) {
-                VStack(HeyGap.G8) {
-                    HeyText("승객이 QR을 찍으면 연결돼요", variant = HeyTextVariant.Hero, maxLines = 2)
-                    HeyText("조수석 뒤 QR을 안내해 주세요", variant = HeyTextVariant.Heading, tone = HeyTone.Muted, maxLines = 1)
+private fun HomeSheet(phase: TalkPhase) {
+    OceanBackground(Modifier.fillMaxSize(), animated = false) {
+        VStack(HeyGap.G24, modifier = Modifier.fillMaxSize().padding(horizontal = 80.dp, vertical = 40.dp)) {
+            HeaderBar("헤이파리", stateLabel = "정차 중", trailing = {
+                HeyButton("기억", {}, icon = HeyIcons.Book)
+                HeyButton("설정", {}, icon = HeyIcons.Gear)
+            })
+            HStack(HeyGap.G32, modifier = Modifier.fillMaxWidth().grow(), arrange = HeyArrange.SpaceBetween) {
+                VStack(HeyGap.G24, modifier = Modifier.fillMaxSize().grow(), arrange = HeyArrange.SpaceBetween) {
+                    PageHeading("오늘은 어떤 하루였어요?", hero = true)
+                    TalkButton(phase, {})
                 }
-                LanguageGreetingStrip(GalleryData.greetings, Modifier.fillMaxWidth())
+                CharacterSlot(ai.hey.designsystem.component.CharacterSize.Stage)
             }
         }
     }
 }
 
+/** C5: still character and the big talk button on the plain page background (no bubbles). */
 @Composable
-private fun JoinScreen(driving: Boolean) {
-    CarFrame(statusStrip = stripFor(2, HeyConnection.Online, driving), driving = false) {
-        VStack(HeyGap.G24, arrange = HeyArrange.Center, modifier = Modifier.fillMaxSize()) {
-            JoinRequestCard("English", 2, 252, "47", {}, {}, Modifier.fillMaxWidth(), enabled = !driving)
+private fun DrivingSheet() {
+    CarFrame(statusStrip = {}, driving = true) {
+        VStack(HeyGap.G32, modifier = Modifier.fillMaxSize(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
+            CharacterSlot(ai.hey.designsystem.component.CharacterSize.Driving)
+            TalkButton(TalkPhase.Idle, {}, big = true, driving = true)
         }
-    }
-}
-
-@Composable
-private fun CardScreen(conditions: List<ConditionLine>, long: Boolean = false) {
-    CarFrame(
-        statusStrip = stripFor(2, HeyConnection.Online),
-        driving = false,
-        actionRail = {
-            HStack(HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
-                HeyButton("다시 확인 요청", {}, variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, icon = HeyIcons.Refresh)
-                HeyButton("내릴 곳 제안", {}, variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large, icon = HeyIcons.Flag)
-                HeyButton("다시 듣기", {}, variant = HeyButtonVariant.Ghost, size = HeyButtonSize.Large, icon = HeyIcons.Speaker)
-                HeyButton("경로 시작", {}, Modifier.grow(), variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large, icon = HeyIcons.Route)
-            }
-        },
-    ) {
-        HeyScrollColumn(HeyGap.G16, modifier = Modifier.fillMaxSize()) {
-            if (long) {
-                KoreanSummary("서울국제금융센터 지하 3층 주차장 B구역 동쪽 엘리베이터 홀", GalleryData.LONG_ADDRESS_KO, GalleryData.LONG_JA, conditions)
-            } else {
-                KoreanSummary(GalleryData.DESTINATION_KO, GalleryData.ADDRESS_KO, GalleryData.NAME_LOCAL, conditions)
-            }
-        }
-    }
-}
-
-@Composable
-private fun DrivingScreen(pending: Int) {
-    CarFrame(statusStrip = stripFor(2, HeyConnection.Online, driving = true), driving = true, actionRail = {
-        HeyButton("이 버튼은 주행 중 그려지지 않아요", {})
-    }) {
-        VStack(HeyGap.G24, arrange = HeyArrange.Center, modifier = Modifier.fillMaxSize()) {
-            DrivingPanel(
-                GalleryData.DESTINATION_KO,
-                "23분",
-                pending,
-                Modifier.fillMaxWidth(),
-                lastSpokenKo = if (pending > 0) "창문을 열어도 될까요?" else null,
-            )
-        }
-    }
-}
-
-@Composable
-private fun RequestsScreen(many: Boolean) {
-    CarFrame(statusStrip = stripFor(2, HeyConnection.Online), driving = false, actionRail = {
-        QuickReplyGrid(
-            listOf("네", "잠시만요", "5분 걸려요", "여기서 세울게요", "카드 돼요", "어려워요").map { QuickReplyUi(it, it) },
-            {}, Modifier.fillMaxWidth(),
-        )
-    }) {
-        HeyScrollColumn(HeyGap.G16, modifier = Modifier.fillMaxSize()) {
-            RequestRow("창문을 열어도 될까요?", RequestKind.Question, RequestState.Spoken, "오후 11:41", {}, Modifier.fillMaxWidth())
-            RequestRow("천천히 가 주세요", RequestKind.Notice, RequestState.Spoken, "오후 11:40", {}, Modifier.fillMaxWidth())
-            if (many) {
-                RequestRow(GalleryData.LONG_KO, RequestKind.Free, RequestState.Received, "오후 11:39", {}, Modifier.fillMaxWidth())
-                RequestRow("카드 결제가 되나요?", RequestKind.Question, RequestState.Answered, "오후 11:38", {}, Modifier.fillMaxWidth())
-                RequestRow("에어컨을 조금 약하게 해 주세요", RequestKind.Notice, RequestState.Spoken, "오후 11:37", {}, Modifier.fillMaxWidth())
-            } else {
-                HeyText("승객이 기다리고 있어요", tone = HeyTone.Muted)
-            }
-        }
-    }
-}
-
-@Composable
-private fun DropoffScreen() {
-    CarFrame(
-        statusStrip = stripFor(1, HeyConnection.Online),
-        driving = false,
-        actionRail = {
-            HStack(HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
-                ProposalStatus(ProposalState.Pending)
-                
-                HeyButton("이 위치로 보내기", {}, Modifier.grow(), size = HeyButtonSize.Large, icon = HeyIcons.Send)
-            }
-        },
-    ) {
-        HStack(HeyGap.G32, align = HeyAlign.Start, modifier = Modifier.fillMaxSize()) {
-            HeyScrollColumn(HeyGap.G8, modifier = Modifier.grow()) {
-                HeyText("내릴 곳 고르기", variant = HeyTextVariant.Title)
-                DropoffCandidateRow("3번 출구 앞", true, {}, Modifier.fillMaxWidth(), distanceText = "40m")
-                DropoffCandidateRow("1층 택시 승강장", false, {}, Modifier.fillMaxWidth(), distanceText = "120m")
-                DropoffCandidateRow("목적지 기본 위치", false, {}, Modifier.fillMaxWidth())
-            }
-            VStack(HeyGap.G16, modifier = Modifier.grow()) {
-                HeyText("이유", variant = HeyTextVariant.Title)
-                ReasonChips(GalleryData.reasons, 1, {}, Modifier.fillMaxWidth())
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArrivedScreen() {
-    CarFrame(
-        statusStrip = stripFor(2, HeyConnection.Online),
-        driving = false,
-        actionRail = {
-            HStack(HeyGap.G16, arrange = HeyArrange.End, modifier = Modifier.fillMaxWidth()) {
-                HeyButton("다음 승객 받기", {}, variant = HeyButtonVariant.Secondary, size = HeyButtonSize.Large)
-                HeyButton("운행 끝내기", {}, size = HeyButtonSize.Large, icon = HeyIcons.Check)
-            }
-        },
-    ) {
-        VStack(HeyGap.G24, modifier = Modifier.fillMaxSize()) {
-            HeyBanner(HeyStatusTone.Success, "도착했어요", Modifier.fillMaxWidth(), message = "승객이 내리면 운행 끝내기를 눌러 주세요.")
-            TripSummaryCard(
-                listOf("내릴 곳" to "3번 출구 앞", "이동 시간" to "42분", "이동 거리" to "38.2km", "통행료" to "9,400원"),
-                Modifier.fillMaxWidth(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyScreen() {
-    CarFrame(statusStrip = stripFor(1, HeyConnection.Online), driving = false) {
-        EmptyPanel(HeyIcons.Car, "승객을 기다리고 있어요", Modifier.fillMaxSize(), message = "연결 요청이 오면 바로 알려 드려요.")
     }
 }

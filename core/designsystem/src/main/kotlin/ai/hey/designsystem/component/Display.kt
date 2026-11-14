@@ -197,11 +197,11 @@ enum class HeyConnection { Online, Reconnecting, Offline }
 
 @Composable
 fun StatusStrip(
-    wordmarkParty: Int,
-    /** Null when the screen's own title already says it (D8), so one fact is not on screen twice. */
+    /** Null when the screen's own title already says it, so one fact is not on screen twice. */
     drivingLabel: String?,
     connection: HeyConnection,
     modifier: Modifier = Modifier,
+    title: String? = stringResource(R.string.hey_app_name),
     clock: String? = null,
 ) {
     val colors = HeyTheme.colors
@@ -211,7 +211,7 @@ fun StatusStrip(
         HeyConnection.Offline -> HeyStatusTone.Danger to stringResource(R.string.hey_connection_offline)
     }
     HStack(gap = HeyGap.G24, arrange = HeyArrange.SpaceBetween, modifier = modifier.fillMaxWidth()) {
-        HeyWordmark(wordmarkParty)
+        if (title != null) InkText(title, colors.fgDefault, variant = HeyTextVariant.Title, maxLines = 1)
         if (drivingLabel != null) HeyStatusPill(drivingLabel, HeyStatusTone.Neutral, icon = HeyIcons.Car)
         HStack(gap = HeyGap.G16) {
             HeyStatusPill(label, tone)
@@ -279,37 +279,6 @@ fun HeyQrCode(content: String, size: Dp, modifier: Modifier = Modifier) {
                 if (matrix.get(x, y)) {
                     drawRect(QrInk, Offset(origin + x * cell, origin + y * cell), Size(cell, cell))
                 }
-            }
-        }
-    }
-}
-
-/**
- * The same greeting in each passenger language, as a compact grid of [columns] columns (2 columns x 3 rows for the six
- * passenger languages) so it fits beside the plate card at 1280x720 without scrolling. Each cell wraps to two lines.
- */
-@Composable
-fun LanguageGreetingStrip(lines: List<String>, modifier: Modifier = Modifier, columns: Int = 2) {
-    val colors = HeyTheme.colors
-    val shape = RoundedCornerShape(HeyTokens.Radius.lg)
-    VStack(
-        gap = HeyGap.G16,
-        modifier = modifier
-            .clip(shape)
-            .background(colors.bgSurface, shape)
-            .border(HeyTokens.Border.hairline, colors.borderDefault, shape)
-            .padding(HeyTokens.Space.s16),
-    ) {
-        lines.chunked(columns).forEach { row ->
-            HStack(gap = HeyGap.G16, modifier = Modifier.fillMaxWidth()) {
-                row.forEach { line ->
-                    HStack(gap = HeyGap.G8, align = HeyAlign.Start, modifier = Modifier.grow()) {
-                        // The dot sits on the first line (a caption line is 24dp high; the 8dp dot is centred on it), not on the cell's middle.
-                        Box(Modifier.padding(top = HeyTokens.Space.s8).size(HeyTokens.Space.s8).clip(CircleShape).background(colors.accent))
-                        HeyText(line, Modifier.grow(), variant = HeyTextVariant.Caption, maxLines = 2)
-                    }
-                }
-                repeat(columns - row.size) { Box(Modifier.grow()) }
             }
         }
     }

@@ -88,7 +88,7 @@ fun HeySection(
 
 /** Reduced motion on Android is the system animator scale being 0. */
 @Composable
-private fun rememberReducedMotion(): Boolean {
+internal fun rememberReducedMotion(): Boolean {
     val resolver = LocalContext.current.contentResolver
     return remember(resolver) {
         Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f

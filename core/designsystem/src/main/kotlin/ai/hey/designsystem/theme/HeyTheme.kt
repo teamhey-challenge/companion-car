@@ -47,16 +47,23 @@ internal val HeyFontFamily = FontFamily(
 )
 
 internal val LocalHeyColors = staticCompositionLocalOf<HeyColors> { error("HeyTheme is missing above this composable") }
+internal val LocalHeyDark = staticCompositionLocalOf { true }
 
 object HeyTheme {
     val colors: HeyColors
         @Composable @ReadOnlyComposable get() = LocalHeyColors.current
+    val dark: Boolean
+        @Composable @ReadOnlyComposable get() = LocalHeyDark.current
 }
 
 /** Car default is dark (night driving, glare). */
 @Composable
 fun HeyTheme(dark: Boolean = true, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalHeyColors provides if (dark) HeyDarkColors else HeyLightColors, content = content)
+    CompositionLocalProvider(
+        LocalHeyColors provides if (dark) HeyDarkColors else HeyLightColors,
+        LocalHeyDark provides dark,
+        content = content,
+    )
 }
 
 internal fun HeyTone.resolve(colors: HeyColors): Color = when (this) {
