@@ -109,7 +109,7 @@ class PleosVehicleGateway(
     private val tripMutex = Mutex()
     private val pendingTrip = AtomicReference<CompletableDeferred<TripInfo?>?>(null)
 
-    private val guidance = NaviGuidance { g -> signal { it.copy(naviGuiding = g) } }
+    private val guidance = NaviGuidance { g -> signal { it.copy(naviGuiding = g, destKm = if (g) it.destKm else null) } }
 
     private val naviListener = object : NaviHelperEventListener {
 
@@ -136,9 +136,14 @@ class PleosVehicleGateway(
             guard("destination query") { navi?.getDestinationInfo() }
         }
 
-        override fun onDestinationInfo(destinationInfo: ai.pleos.playground.navi.data.DestinationInfo) =
-            guidance.destination(destinationInfo.name.isNotBlank() || destinationInfo.address.isNotBlank() ||
-                destinationInfo.latitude != 0.0 || destinationInfo.longitude != 0.0)
+        override fun onDestinationInfo(destinationInfo: ai.pleos.playground.navi.data.DestinationInfo) {
+            val present = destinationInfo.name.isNotBlank() || destinationInfo.address.isNotBlank() ||
+                destinationInfo.latitude != 0.0 || destinationInfo.longitude != 0.0
+            guidance.destination(present)
+            // Meters left to the destination, as whole km for the range comparison (scenario 2); no destination = no key.
+            val km = destinationInfo.remainDistance.toLong().takeIf { present && it > 0 }?.let { ((it + 500) / 1000).toInt() }
+            signal { it.copy(destKm = km) }
+        }
 
         override fun onRouteStateInfo(routeStateInfo: ai.pleos.playground.navi.data.RouteStateInfo) {
             // RouteStateInfo.isRouting stays false while the emulator guides a real route (probe 2026-11-09); the navi mode is the signal.
