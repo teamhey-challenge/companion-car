@@ -39,6 +39,15 @@ import ai.hey.designsystem.component.StatusStrip
 import ai.hey.designsystem.component.StopListeningButton
 import ai.hey.designsystem.component.TalkButton
 import ai.hey.designsystem.component.TalkPhase
+import ai.hey.designsystem.component.ChoiceRow
+import ai.hey.designsystem.component.ConfirmDialog
+import ai.hey.designsystem.component.ErrorKind
+import ai.hey.designsystem.component.ErrorPanel
+import ai.hey.designsystem.component.MemoryRow
+import ai.hey.designsystem.component.QrPanel
+import ai.hey.designsystem.component.SkeletonRow
+import ai.hey.designsystem.component.StatusBadge
+import ai.hey.designsystem.component.Subtitle
 import ai.hey.designsystem.component.ToggleRow
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
@@ -314,6 +323,71 @@ object Stories {
                     HeyButton("설정", {}, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Gear)
                 })
                 HeaderBar("헤이파리", onBack = {}, backLabel = "뒤로", stateLabel = "정차 중")
+            }
+        })
+        // ---- PR2 components
+        add(part("choice-rows") {
+            VStack(HeyGap.G24) {
+                ChoiceRow(
+                    listOf(HeySegmentOption(20, "적게"), HeySegmentOption(10, "보통"), HeySegmentOption(5, "자주"), HeySegmentOption(0, "끄기")),
+                    10, {}, Modifier.fillMaxWidth(), label = "먼저 말 걸기",
+                )
+                ChoiceRow(listOf(HeySegmentOption(1, "반말"), HeySegmentOption(2, "존댓말")), 2, {}, Modifier.fillMaxWidth())
+                ChoiceRow(listOf(HeySegmentOption(1, "반말"), HeySegmentOption(2, "존댓말")), 1, {}, Modifier.fillMaxWidth(), enabled = false)
+                ChoiceRow(listOf(HeySegmentOption(1, NO_SPACE_KO), HeySegmentOption(2, "존댓말"), HeySegmentOption(3, "반말")), 1, {}, Modifier.width(600.dp))
+            }
+        })
+        add(part("memory-rows") {
+            VStack(HeyGap.G16) {
+                MemoryRow("좋아하는 것", "비 오는 날, 잔잔한 음악을 좋아해요.", {}, "이 기억 지우기", Modifier.fillMaxWidth(), date = "11월 13일", tint = 0)
+                MemoryRow("일상", "퇴근길에는 조용한 대화를 좋아해요.", {}, "이 기억 지우기", Modifier.fillMaxWidth(), date = "11월 12일", tint = 1)
+                MemoryRow("다가오는 일", "금요일에 중요한 발표가 있어요.", {}, "이 기억 지우기", Modifier.fillMaxWidth(), date = "11월 11일", tint = 2)
+                MemoryRow("일상", NO_SPACE_KO, {}, "이 기억 지우기", Modifier.width(600.dp), enabled = false)
+            }
+        })
+        add(part("skeleton-rows") {
+            VStack(HeyGap.G16) { SkeletonRow(); SkeletonRow(); SkeletonRow() }
+        })
+        add(part("confirm-dialog") {
+            Box(Modifier.width(PartWidth).background(HeyTheme.colors.bgPage)) {
+                ConfirmDialog("이 기억을 지울까요?", "지운 기억은 다시 불러올 수 없어요.", "지우기", "취소", {}, {}, Modifier.fillMaxWidth().height(420.dp), danger = true)
+            }
+        })
+        add(part("confirm-dialog-long") {
+            Box(Modifier.width(PartWidth).background(HeyTheme.colors.bgPage)) {
+                ConfirmDialog(NO_SPACE_KO, NO_SPACE_KO, "지우기", "취소", {}, {}, Modifier.width(600.dp).height(640.dp), busy = true)
+            }
+        })
+        add(part("status-badge") {
+            VStack(HeyGap.G16) {
+                StatusBadge(TalkPhase.Idle, animated = false)
+                StatusBadge(TalkPhase.Listening, animated = false)
+                StatusBadge(TalkPhase.Thinking)
+                StatusBadge(TalkPhase.Speaking, animated = false)
+                StatusBadge(TalkPhase.Thinking, driving = true)
+                StatusBadge(TalkPhase.Idle, connection = HeyConnection.Reconnecting)
+                StatusBadge(TalkPhase.Idle, connection = HeyConnection.Offline)
+            }
+        })
+        ErrorKind.entries.forEach { kind ->
+            add(part("error-panel-${kind.name.lowercase()}") { ErrorPanel(kind, {}, Modifier.width(600.dp)) })
+        }
+        add(part("error-panel-long") {
+            ErrorPanel(ErrorKind.Server, {}, Modifier.width(600.dp), title = NO_SPACE_KO, message = NO_SPACE_KO, actionLabel = NO_SPACE_KO)
+        })
+        add(part("error-panel-no-action") { ErrorPanel(ErrorKind.Offline, null, Modifier.width(600.dp)) })
+        add(part("subtitle") {
+            VStack(HeyGap.G16) {
+                Subtitle("어제 준비하던 발표는 잘 마쳤어요?")
+                Subtitle(GalleryData.LONG_KO + GalleryData.LONG_KO, Modifier.width(600.dp))
+                Subtitle(NO_SPACE_KO, Modifier.width(600.dp))
+                Subtitle("주행 중에는 그려지지 않아요", driving = true)
+            }
+        })
+        add(part("qr-panel") {
+            HStack(HeyGap.G32, align = HeyAlign.Start) {
+                QrPanel(GalleryData.QR_URL, "K7M3Q9XD", "폰에서 QR을 찍어 주세요")
+                QrPanel(GalleryData.QR_URL, NO_SPACE_KO, NO_SPACE_KO, Modifier.width(400.dp), qrSize = 240.dp)
             }
         })
         CharacterSize.entries.forEach { size ->

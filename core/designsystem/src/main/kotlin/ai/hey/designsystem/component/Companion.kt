@@ -87,7 +87,7 @@ private const val BUBBLE_CLOCK_S = 1200f
 fun OceanBackground(
     modifier: Modifier = Modifier,
     animated: Boolean = true,
-    content: @Composable BoxScope.() -> Unit,
+    content: @Composable () -> Unit,
 ) {
     val colors = HeyTheme.colors
     val dark = HeyTheme.dark
@@ -478,4 +478,10 @@ fun CheckRow(
         }
         if (error != null) HeyText(error, variant = HeyTextVariant.Caption, tone = HeyTone.Danger, maxLines = 2)
     }
+}
+
+/** Flat page-colour background for C5 and any screen that must not draw decoration. */
+@Composable
+fun PageBackground(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(modifier.background(HeyTheme.colors.bgPage)) { content() }
 }
