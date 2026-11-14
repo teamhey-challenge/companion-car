@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
@@ -36,8 +39,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      # main always runs the full gate. PRs add the configuration cache; the Gradle build cache (restored from main,
+      # org.gradle.caching=true) already skips compile/test/snapshot-verify of every module the diff did not touch.
       - name: Gate
-        run: ./check.sh
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then ./check.sh --configuration-cache; else ./check.sh; fi
       - name: Upload debug APK
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
