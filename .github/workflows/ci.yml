@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags: the release version below derives from the latest car-v* tag
       - name: Checkout shared submodule (read-only deploy key)
         env:
           SHARED_SSH_KEY: ${{ secrets.SHARED_SSH_KEY }}
@@ -51,9 +53,21 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       # main always runs the full gate. PRs add the configuration cache; the Gradle build cache (restored from main,
       # org.gradle.caching=true) already skips compile/test/snapshot-verify of every module the diff did not touch.
+      # Release version (PLEOS-164), same scheme as ops/devbot/release.ts in pleos-challenge: next after the latest car-vX.Y.Z tag
+      # (the deploy job tags what it ships). MINOR when a commit since then is titled feat / new screen, else PATCH; 0.1.0 without a tag.
+      - name: Release version
+        if: github.event_name != 'pull_request'
+        run: |
+          last=$(git tag -l 'car-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | sed -n 1p)
+          if [ -z "$last" ]; then ver=0.1.0; else
+            IFS=. read -r ma mi pa <<< "${last#car-v}"
+            if git log "$last..HEAD" --format=%s | grep -Eiq '^([A-Z]+-[0-9]+[: ]+)?(feat(ure)?(\([^)]*\))?!?[: ]|\[feat(ure)?\]|new screen|새 화면)'; then ver="$ma.$((mi+1)).0"; else ver="$ma.$mi.$((pa+1))"; fi
+          fi
+          echo "release version $ver (code $GITHUB_RUN_NUMBER)"
+          echo "GRADLE_VERSION_ARGS=-Phey.versionName=$ver -Phey.versionCode=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
       - name: Gate
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then ./check.sh --configuration-cache; else ./check.sh; fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then ./check.sh --configuration-cache; else ./check.sh $GRADLE_VERSION_ARGS; fi
       - name: Assert APK is signed with the team debug key
         run: |
           want=$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android | awk '/SHA256:/{print $2}' | tr -d ':[:space:]' | tr 'A-F' 'a-f')
