@@ -107,6 +107,8 @@ data class VehicleSignals(
     val speedKmh: Int? = null,
     val wiper: String? = null,
     val doorOpen: Boolean? = null,
+    /** Front-left (driver) door only: the server detects the trip end from gear P + this door opening. */
+    val driverDoorOpen: Boolean? = null,
     val rangeKm: Int? = null,
     val fuelType: String? = null,
     val headlight: Boolean? = null,
