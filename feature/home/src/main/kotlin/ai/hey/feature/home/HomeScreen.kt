@@ -30,6 +30,8 @@ import ai.hey.designsystem.layout.carBodyTop
 import ai.hey.designsystem.layout.carGutter
 import ai.hey.designsystem.layout.carMargin
 import ai.hey.designsystem.layout.carSideColumn
+import ai.hey.designsystem.layout.carSideColumnWidth
+import ai.hey.designsystem.layout.carStageMax
 import ai.hey.designsystem.layout.fillHeight
 import ai.hey.designsystem.layout.heroWidth
 import ai.hey.designsystem.theme.HeyGap
@@ -147,11 +149,12 @@ fun HomeScreen(
                         VStack(HeyGap.G24, modifier = Modifier.grow().fillSize().carGutter(), arrange = HeyArrange.SpaceBetween) {
                             HomeLeft(ui, onTalk, onEndConversation, onFaultAction)
                         }
-                        VStack(HeyGap.G8, modifier = Modifier.carSideColumn().fillHeight(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
+                        VStack(HeyGap.G8, modifier = Modifier.carSideColumn(maxWidth).fillHeight(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
                             HomeCharacter(
                                 ui = ui,
                                 reducedMotion = reducedMotion,
                                 size = CharacterSize.Stage,
+                                modifier = Modifier.carStageMax(carSideColumnWidth(maxWidth)),
                                 description = stringResource(if (ui.inTalk) R.string.home_character else R.string.home_character_idle),
                             )
                         }

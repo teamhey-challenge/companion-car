@@ -158,14 +158,19 @@ fun Modifier.carCaptionTop(): Modifier = padding(top = 13.dp)
 /** Mockup parked grid: columns 1.05fr / 1fr with a 48 gutter. [HeyGap] stops at 32, so the left column adds the missing 16 here. */
 fun Modifier.carGutter(): Modifier = padding(end = 16.dp)
 
-/** Mockup parked grid right column: (1440 - 48) / 2.05 = 679 wide; the character stage is centred in it. */
-fun Modifier.carSideColumn(): Modifier = width(679.dp)
+/** Mockup parked grid right column: (window - 160 margins - 48 gutter) / 2.05 wide (679 at 1600, 509 at 1251); the character stage is centred in it. */
+fun carSideColumnWidth(windowWidth: Dp): Dp = (windowWidth - 208.dp) / 2.05f
+
+fun Modifier.carSideColumn(windowWidth: Dp): Modifier = width(carSideColumnWidth(windowWidth))
+
+/** The character stage never wider than its column (580 at 1600, 509 at 1251). */
+fun Modifier.carStageMax(columnWidth: Dp): Modifier = widthIn(max = columnWidth)
 
 /** The home greeting wraps in a 460 px column (mockup C3 breaks "오늘은 어떤 / 하루였어요?"). */
 fun Modifier.heroWidth(): Modifier = widthIn(max = 460.dp)
 
-/** Mockup C5: the stage's top edge is at 178 whatever the phase (character ink 224 on C5, measured on C5, -listening, -thinking, -speaking). */
-fun Modifier.driveTop(): Modifier = padding(top = 178.dp)
+/** Studio C5 (spec car-drive@1251x900): the 480 dp character canvas starts at y=87 whatever the phase. */
+fun Modifier.driveTop(): Modifier = padding(top = 87.dp)
 
-/** Mockup C5: the status line has a fixed 87 dp slot (label top 33 into it, 4 gap each side in the stack) so the button stays at 573. */
-fun Modifier.driveStatusSlot(): Modifier = height(87.dp).padding(top = 33.dp)
+/** Studio C5: canvas bottom 567 to button top 661 is 94 = 4 gap + this 86 dp status slot + 4 gap, so the button stays at 661; the label sits 33 into it. */
+fun Modifier.driveStatusSlot(): Modifier = height(86.dp).padding(top = 33.dp)
