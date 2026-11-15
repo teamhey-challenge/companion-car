@@ -2,8 +2,8 @@
  "screen": "car/home",
  "pass": false,
  "shas": {
-  "app": "e2fbccd5c50090dd659ef8acae2edabec2d4fa63",
-  "appDirty": false,
+  "app": "c8618ce333f0f2b4c61bb36a7bea827a71fdd4f5",
+  "appDirty": true,
   "studio": "4dc8ad3",
   "sharedTag": "v0.5.2"
  },
@@ -22,10 +22,10 @@
   "color": "exact"
  },
  "pixel": {
-  "badPixels": 27052,
+  "badPixels": 25601,
   "total": 1125900
  },
- "failingValues": 5,
+ "failingValues": 1,
  "rows": [
   {
    "text": "Hey",
@@ -183,9 +183,9 @@
     {
      "name": "x",
      "design": "716",
-     "app": "725",
-     "delta": "9",
-     "ok": false
+     "app": "715",
+     "delta": "-1",
+     "ok": true
     },
     {
      "name": "y (line-box top)",
@@ -258,9 +258,9 @@
     {
      "name": "x",
      "design": "900",
-     "app": "905",
-     "delta": "5",
-     "ok": false
+     "app": "899",
+     "delta": "-1",
+     "ok": true
     },
     {
      "name": "y (line-box top)",
@@ -333,8 +333,8 @@
     {
      "name": "x",
      "design": "1084",
-     "app": "1085",
-     "delta": "1",
+     "app": "1083",
+     "delta": "-1",
      "ok": true
     },
     {
@@ -422,8 +422,8 @@
     {
      "name": "width (ink)",
      "design": "339.25",
-     "app": "342.2",
-     "delta": "2.95",
+     "app": "343.2",
+     "delta": "3.95",
      "ok": true
     },
     {
@@ -450,9 +450,9 @@
     {
      "name": "font-weight",
      "design": "450",
-     "app": "400",
-     "delta": "-50",
-     "ok": false
+     "app": "450",
+     "delta": "0",
+     "ok": true
     },
     {
      "name": "letter-spacing em",
@@ -490,8 +490,8 @@
     {
      "name": "y (line-box top)",
      "design": "766.5",
-     "app": "768",
-     "delta": "1.5",
+     "app": "767",
+     "delta": "0.5",
      "ok": true
     },
     {
@@ -539,9 +539,9 @@
     {
      "name": "line-height",
      "design": "42",
-     "app": "40",
-     "delta": "-2",
-     "ok": false
+     "app": "42",
+     "delta": "0",
+     "ok": true
     },
     {
      "name": "color",

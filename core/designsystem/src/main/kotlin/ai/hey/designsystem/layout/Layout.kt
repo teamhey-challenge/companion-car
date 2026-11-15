@@ -216,4 +216,4 @@ fun Modifier.heroWidth(): Modifier = widthIn(max = 460.dp)
 fun Modifier.driveTop(): Modifier = padding(top = 87.dp)
 
 /** Studio C5: canvas bottom 567 to button top 661 is 94 = 4 gap + this 86 dp status slot + 4 gap, so the button stays at 661; the label sits 33 into it. */
-fun Modifier.driveStatusSlot(): Modifier = height(86.dp).padding(top = 33.dp)
+fun Modifier.driveStatusSlot(): Modifier = height(106.dp).padding(top = 33.dp)

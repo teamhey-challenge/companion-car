@@ -2,8 +2,8 @@
  "screen": "car/drive",
  "pass": false,
  "shas": {
-  "app": "e2fbccd5c50090dd659ef8acae2edabec2d4fa63",
-  "appDirty": false,
+  "app": "c8618ce333f0f2b4c61bb36a7bea827a71fdd4f5",
+  "appDirty": true,
   "studio": "4dc8ad3",
   "sharedTag": "v0.5.2"
  },
@@ -22,10 +22,10 @@
   "color": "exact"
  },
  "pixel": {
-  "badPixels": 3922,
+  "badPixels": 3941,
   "total": 1125900
  },
- "failingValues": 4,
+ "failingValues": 1,
  "rows": [
   {
    "text": "말하기",
@@ -40,9 +40,9 @@
     {
      "name": "y (line-box top)",
      "design": "708",
-     "app": "689",
-     "delta": "-19",
-     "ok": false
+     "app": "708",
+     "delta": "0",
+     "ok": true
     },
     {
      "name": "width (ink)",
@@ -61,9 +61,9 @@
     {
      "name": "baseline y",
      "design": "739.5",
-     "app": "719",
-     "delta": "-20.5",
-     "ok": false
+     "app": "739",
+     "delta": "-0.5",
+     "ok": true
     },
     {
      "name": "font-size",
@@ -89,9 +89,9 @@
     {
      "name": "line-height",
      "design": "42",
-     "app": "40",
-     "delta": "-2",
-     "ok": false
+     "app": "42",
+     "delta": "0",
+     "ok": true
     },
     {
      "name": "color",
