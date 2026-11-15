@@ -36,6 +36,7 @@ internal fun ProactiveUi.level() = when (this) {
  * time, so that is the field whose save is running.
  */
 fun settingsUi(state: CompanionState, lastField: SettingField?): SettingsUi = SettingsUi(
+    name = state.settings.nickname,
     proactive = state.settings.proactive.ui(),
     memoryEnabled = state.settings.memoryEnabled,
     speech = if (state.settings.speech == SpeechStyle.Jondaetmal) SpeechUi.Jondaetmal else SpeechUi.Banmal,
@@ -72,6 +73,7 @@ fun SettingsRoute(
             last = SettingField.Speech
             commands.updateSettings { it.copy(speech = if (style == SpeechUi.Jondaetmal) SpeechStyle.Jondaetmal else SpeechStyle.Banmal) }
         },
+        onName = { name -> last = SettingField.Name; commands.updateSettings { it.copy(nickname = name) } },
         onLook = { look ->
             last = SettingField.Look
             commands.updateSettings { it.copy(bodyColor = look.bodyColor, hat = look.hat, neck = look.neck) }

@@ -16,7 +16,8 @@ import org.junit.Test
 private class Shot(val settings: SettingsUi, val notice: String? = null, val server: ServerAddress? = null)
 
 private val shots: List<Pair<String, Shot>> = listOf(
-    "c7-settings" to Shot(SettingsUi(phonePaired = true)),
+    "c7-settings" to Shot(SettingsUi(name = "민수", phonePaired = true)),
+    "c7-name-unknown" to Shot(SettingsUi()),
     "c7-unpaired" to Shot(SettingsUi()),
     "c7-proactive-off" to Shot(SettingsUi(proactive = ProactiveUi.Off, memoryEnabled = false, speech = SpeechUi.Jondaetmal)),
     "c7-saving" to Shot(SettingsUi(phonePaired = true, saving = setOf(SettingField.Memory))),
@@ -32,6 +33,18 @@ private val lookShots: List<Pair<String, CharacterLook>> = listOf(
 )
 
 private fun CarPaparazzi.recordAll() {
+    // The name editor (draft + the error line) sits at the top of C7 and is only reachable by tapping, so it gets its own frames.
+    listOf("c7-name-edit" to "하늘", "c7-name-edit-error" to "12345").forEach { (name, draft) ->
+        listOf(true, false).forEach { dark ->
+            snapshot("$name-${if (dark) "dark" else "light"}") {
+                HeyTheme(dark) {
+                    PageBackground(modifier = Modifier.fillSize().carMargin()) {
+                        NameSection("민수", enabled = true, onSave = {}, initialEditing = true, initialDraft = draft)
+                    }
+                }
+            }
+        }
+    }
     shots.forEach { (name, shot) ->
         listOf(true, false).forEach { dark ->
             snapshot("$name-${if (dark) "dark" else "light"}") {
@@ -59,6 +72,7 @@ private fun Screen(shot: Shot) {
         onProactive = {},
         onMemoryEnabled = {},
         onSpeech = {},
+        onName = {},
         onLook = {},
         onOpenMemory = {},
         onOpenPair = {},

@@ -56,9 +56,11 @@ enum class AccountFailureUi { None, Withdraw }
 enum class SettingsPending { None, Withdraw }
 
 /** The settings fields that can have a save in flight (each saves on its own, PRD 4.7.5 Partial = n/a). */
-enum class SettingField { Proactive, Memory, Speech, Look }
+enum class SettingField { Proactive, Memory, Speech, Look, Name }
 
 data class SettingsUi(
+    /** The one name heyri calls the driver and friends see (server `nickname`); null until it is known. */
+    val name: String? = null,
     val proactive: ProactiveUi = ProactiveUi.Normal,
     val memoryEnabled: Boolean = true,
     val speech: SpeechUi = SpeechUi.Banmal,
@@ -91,6 +93,7 @@ fun SettingsScreen(
     onProactive: (ProactiveUi) -> Unit,
     onMemoryEnabled: (Boolean) -> Unit,
     onSpeech: (SpeechUi) -> Unit,
+    onName: (String) -> Unit,
     onLook: (CharacterLook) -> Unit,
     onOpenMemory: () -> Unit,
     /** 폰 연결 opens the phone-connection screen (D-33), linked or not. */
@@ -157,6 +160,7 @@ fun SettingsScreen(
                         )
                     }
                 }
+                NameSection(settings.name, enabled = SettingField.Name !in settings.saving, onSave = onName)
                 LookSection(settings.look, onLook, enabled = SettingField.Look !in settings.saving)
                 val proactiveSaving = SettingField.Proactive in settings.saving
                 ToggleRow(
@@ -230,6 +234,65 @@ fun SettingsScreen(
     }
 }
 
+/** 이름 1~10자, 숫자만은 안 됨(서버와 같은 규칙). 앞뒤 공백은 뗀 값을 받는다. */
+internal fun validName(trimmed: String): Boolean = trimmed.isNotEmpty() && trimmed.codePointCount(0, trimmed.length) <= NAME_MAX && !trimmed.all { it.isDigit() }
+
+internal const val NAME_MAX = 10
+
+/**
+ * 부를 이름 (parked only like all of C7): the one name heyri calls the driver, shown with an edit action that opens the text
+ * field in place. The voice route is named under it ("나를 ○○라고 불러 줘"). [initialEditing] only lets a snapshot open the editor.
+ */
+@Composable
+internal fun NameSection(
+    name: String?,
+    enabled: Boolean,
+    onSave: (String) -> Unit,
+    initialEditing: Boolean = false,
+    initialDraft: String? = null,
+) {
+    var editing by remember { mutableStateOf(initialEditing) }
+    var draft by remember(name, editing) { mutableStateOf(initialDraft ?: name.orEmpty()) }
+    val value = draft.trim()
+    VStack(HeyGap.G16, modifier = Modifier.fillWidth()) {
+        HeyText(stringResource(R.string.settings_name), variant = HeyTextVariant.Heading)
+        if (!editing) {
+            HStack(HeyGap.G16, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
+                HeyText(
+                    name ?: stringResource(R.string.settings_name_none),
+                    tone = if (name == null) HeyTone.Muted else HeyTone.Default,
+                    maxLines = 1,
+                    modifier = Modifier.grow(),
+                )
+                HeyButton(
+                    stringResource(R.string.settings_name_edit),
+                    { editing = true },
+                    variant = HeyButtonVariant.Soft,
+                    icon = HeyIcons.User,
+                    enabled = enabled,
+                )
+            }
+        } else {
+            HStack(HeyGap.G16, align = HeyAlign.End, modifier = Modifier.fillWidth()) {
+                HeyTextField(
+                    label = stringResource(R.string.settings_name_label),
+                    value = draft,
+                    onValueChange = { if (it.codePointCount(0, it.length) <= NAME_MAX + 1) draft = it },
+                    modifier = Modifier.grow(),
+                    error = if (value.isNotEmpty() && !validName(value)) stringResource(R.string.settings_name_error) else null,
+                )
+                HeyButton(stringResource(R.string.settings_cancel), { editing = false }, variant = HeyButtonVariant.Secondary)
+                HeyButton(
+                    stringResource(R.string.settings_name_save),
+                    { onSave(value); editing = false },
+                    variant = HeyButtonVariant.Primary,
+                    enabled = enabled && validName(value) && value != name,
+                )
+            }
+        }
+        HeyText(stringResource(R.string.settings_name_voice), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+    }
+}
 /**
  * 꾸미기 (D-41, parked only like all of C7): the Rive file's two bodies, two hats and the scarf, picked with the same choice
  * pills as the other settings and previewed on the still of exactly that combination. No shop, no payment.
