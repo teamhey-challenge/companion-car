@@ -82,11 +82,11 @@ interface CompanionApi {
     /** GET /v1/messages: what friends sent me, newest first (the sent ones are dropped here). */
     suspend fun messages(): List<ReceivedMessage>
 
-    /** POST /v1/messages/{id}/report: the server hides the message (D-53). */
+    /** POST /v1/messages/{id}/report: the server hides the message. */
     suspend fun reportMessage(id: String)
 }
 
-/** Every companion REST call is the driver waiting at C6/C7: the whole call (connect + read) ends within this (PLEOS-148). */
+/** Every companion REST call is the driver waiting at C6/C7: the whole call (connect + read) ends within this. */
 const val REST_TIMEOUT_MS = 4_000L
 
 class HttpCompanionApi(
@@ -274,7 +274,7 @@ class HttpCompanionApi(
     }
 }
 
-/** PLEOS-141: a 200 body that is not the expected JSON (proxy page, wrong deploy) is a failed call, never an uncaught crash. */
+/** a 200 body that is not the expected JSON (proxy page, wrong deploy) is a failed call, never an uncaught crash. */
 internal inline fun <T> decodeBody(block: () -> T): T =
     try {
         block()

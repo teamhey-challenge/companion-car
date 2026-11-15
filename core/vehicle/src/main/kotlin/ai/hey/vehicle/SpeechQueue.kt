@@ -79,7 +79,7 @@ class SpeechQueue(
         dropped.forEach { emit(VehicleEvent.SpeechDropped(it, SpeechDropReason.QueueOverflow)) }
         wake.trySend(Unit)
     }
-    /** Drops everything waiting and cuts what is being read: the driver pressed the button, or the focus went (D-14, D-24). Nothing is read again. */
+    /** Drops everything waiting and cuts what is being read: the driver pressed the button, or the focus went. Nothing is read again. */
     fun stopAll() {
         synchronized(lock) { pending.clear() }
         engine.stop()

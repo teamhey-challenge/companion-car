@@ -12,7 +12,7 @@ import org.junit.Test
 import java.io.IOException
 import java.net.ServerSocket
 
-/** PLEOS-148: C6/C7 REST calls on a dead link fail at once, and on a silent server within the timeout. */
+/** C6/C7 REST calls on a dead link fail at once, and on a silent server within the timeout. */
 class SettingsSaveFailFastTest {
     private val patch = CompanionSettings() to CompanionSettings(proactive = ProactiveLevel.High)
 

@@ -2,7 +2,7 @@ package ai.hey.vehicle
 
 import kotlin.math.sqrt
 
-/** Mouth openness 0..3 (D-13: `mouth_0`..`mouth_3`). */
+/** Mouth openness 0..3 (`mouth_0`..`mouth_3`). */
 const val MOUTH_MAX = 3
 
 /**
@@ -34,7 +34,7 @@ data class MouthThresholds(val t1: Double, val t2: Double, val t3: Double) {
     }
 }
 
-/** Window the mouth follows: 30 ms of audio (D-13). */
+/** Window the mouth follows: 30 ms of audio. */
 const val MOUTH_WINDOW_MS = 30
 
 object PcmRms {

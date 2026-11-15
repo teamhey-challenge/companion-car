@@ -110,7 +110,7 @@ object AndroidReverbFactory : ReverbFactory {
 
 /**
  * USAGE_ASSISTANT focus with GAIN_TRANSIENT_MAY_DUCK. Any loss, ducking included, calls [onLoss]: the app stops and does
- * not rely on the system ducking it (D-14).
+ * not rely on the system ducking it.
  */
 class AudioFocusGateAndroid(context: Context) : FocusGate {
     private val audio = context.applicationContext.getSystemService(AudioManager::class.java)
@@ -152,7 +152,7 @@ class AndroidOtherAudioProbe(context: Context) : OtherAudioProbe {
         HeldAudio.blocks(audio.activePlaybackConfigurations.map { it.audioAttributes.usage })
 }
 
-/** Which active playback usages stop the character from starting a line (PLEOS-171). USAGE_ASSISTANT, our own voice, never does. */
+/** Which active playback usages stop the character from starting a line. USAGE_ASSISTANT, our own voice, never does. */
 object HeldAudio {
     private val HELD_USAGES = setOf(
         AudioAttributes.USAGE_UNKNOWN,

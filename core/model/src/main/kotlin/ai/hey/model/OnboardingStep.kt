@@ -1,7 +1,7 @@
 package ai.hey.model
 
 /**
- * The first-run flow (D-48, D-52), in the planner's order: title -> whale intro -> consent sheet -> lights -> three questions ->
+ * The first-run flow, in the planner's order: title -> whale intro -> consent sheet -> lights -> three questions ->
  * found -> long press -> heyri's greeting -> memory cards -> first look -> phone link -> farewell -> home.
  *
  * A step with a [wire] name is spoken by the server over the talk socket and works in every driving state (motion and sound
@@ -77,7 +77,7 @@ enum class OnboardingStep(
     }
 }
 
-/** What the driver said to the three whale questions; null = skipped (that polaroid is dropped, D-52/17:57 answer). */
+/** What the driver said to the three whale questions; null = skipped (that polaroid is dropped, /17:57 answer). */
 data class OnboardingAnswers(val name: String? = null, val trips: String? = null, val topics: String? = null) {
     val any: Boolean get() = name != null || trips != null || topics != null
 }

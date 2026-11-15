@@ -14,7 +14,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * PLEOS-199: dumps every HeyText (bounds in dp, TextStyle) to `build/reports/design-diff/<name>@<w>x<h>.json` for
+ * dumps every HeyText (bounds in dp, TextStyle) to `build/reports/design-diff/<name>@<w>x<h>.json` for
  * `ops/design-diff/screens.json`. 1251x900 is the real Pleos window, 1600x900 the studio canvas. Runs only with `-Pdesign-diff`;
  * nothing is recorded or verified.
  */

@@ -95,7 +95,7 @@ import ai.hey.designsystem.icon.HeyIcons
 import kotlinx.coroutines.launch
 
 /*
- * D-48 onboarding scene parts (PLEOS-190), ported from the studio's stage.tsx / Onboarding.tsx / onboarding.css.
+ * onboarding scene parts, ported from the studio's stage.tsx / Onboarding.tsx / onboarding.css.
  * One living scene (a video over its still), a few overlays and side panels on top. The scene is always the night sea, so
  * every overlay is drawn in the dark palette whatever the car theme is. Parents decide size and place (nothing here has
  * outer margin); the screens in :feature:onboarding only fill the slots.
@@ -121,7 +121,7 @@ private val Halo = Color(0xFFFFDE96)
 // ---------------------------------------------------------------- scene
 
 /**
- * The bundled shots, each with the still that stays when the video cannot play or motion is reduced (D-48: "영상을 못
+ * The bundled shots, each with the still that stays when the video cannot play or motion is reduced ("영상을 못
  * 불러옴 → 같은 장면의 정지 그림"). Each cut starts on the previous cut's last frame; a one-shot video holds its last frame.
  */
 enum class OnbShot(@DrawableRes val still: Int, @RawRes val video: Int?, val loop: Boolean) {
@@ -815,7 +815,7 @@ fun OnbGhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modif
 
 // ---------------------------------------------------------------- dress-up sheet
 
-/** One dress-up choice (D-41): a colour dot and its name. */
+/** One dress-up choice: a colour dot and its name. */
 class OnbDressChoice(val label: String, val swatch: Color, val selected: Boolean, val onClick: () -> Unit)
 
 /** The colour dots of the five choices as they look on the character (aqua, peach, beanie, bucket, scarf). */

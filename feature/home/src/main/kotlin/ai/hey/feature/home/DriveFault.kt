@@ -10,7 +10,7 @@ import androidx.compose.ui.res.stringResource
 
 /**
  * `car/error` while driving (screens-and-flows 4.9): the drive screen does not change, the problem is spoken
- * (see [FaultAnnouncer]) and this one icon sits in the status slot. No words on the road (D-25). Faults that are not a
+ * (see [FaultAnnouncer]) and this one icon sits in the status slot. No words on the road. Faults that are not a
  * lasting condition (connecting, a turn that heard nothing) show nothing.
  */
 @Composable

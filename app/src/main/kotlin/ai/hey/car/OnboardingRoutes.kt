@@ -50,7 +50,7 @@ private const val CAR_SPEED = "android.car.permission.CAR_SPEED"
 private const val CLAIMED_HOLD_MS = 1500L
 
 /**
- * O2 of the first-run flow (D-48, D-58): the consent sheet. It is the only consent screen: a first run, a car that withdrew the
+ * O2 of the first-run flow: the consent sheet. It is the only consent screen: a first run, a car that withdrew the
  * consent and a server that refused for a missing consent all come here (the gate puts the flow back at this step). Consent goes
  * to the server first; only after the server said yes (needsOnboarding turns false) are the runtime permissions asked. Back
  * leaves the app without recording anything (AC-4.1-03).
@@ -137,7 +137,7 @@ private fun ConsentStepRoute(
 }
 
 /**
- * The first-run flow (D-48, D-52, D-58): one screen per stored step, in the planner's order. The spoken steps are driven by the
+ * The first-run flow: one screen per stored step, in the planner's order. The spoken steps are driven by the
  * talk repository (they run while driving too, then the driving screen is on); this route draws them and handles the press steps:
  * title, the consent sheet, the long press, dress-up and the phone link. Nothing else shows the consent or the phone link on first
  * run: a drive in the middle leaves this route (the gate) and the stored step is picked up again when parked.

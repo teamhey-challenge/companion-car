@@ -111,7 +111,7 @@ sealed interface AcceptUi {
     data class Failed(val reason: Reason) : AcceptUi
 }
 
-/** Friend section of settings: the friends (adding and removing are on the phone, D-47), plus friend requests by code. */
+/** Friend section of settings: the friends (adding and removing are on the phone), plus friend requests by code. */
 data class FriendsState(
     val items: List<Friend> = emptyList(),
     val loaded: Boolean = false,
@@ -176,7 +176,7 @@ interface CompanionCommands {
 
     fun updateSettings(transform: (CompanionSettings) -> CompanionSettings)
 
-    /** Settings opened: reads the friend list (read-only on the car, D-47). */
+    /** Settings opened: reads the friend list (read-only on the car). */
     fun loadFriends()
 
     /** Settings "내 친구 코드": asks the server for a new invite (parked screen only). */
@@ -195,7 +195,7 @@ interface CompanionCommands {
     /** Received messages opened: reads what friends sent me. */
     fun loadMessages()
 
-    /** "이 말 신고하기": the server hides the message (D-53); on success it leaves [MessagesState.items]. */
+    /** "이 말 신고하기": the server hides the message; on success it leaves [MessagesState.items]. */
     fun reportMessage(id: String)
     fun clearReportFailure()
 }
@@ -377,7 +377,7 @@ class CompanionRepository(
         scope.launch {
             try {
                 api.reportMessage(id)
-                // The server hides a reported message from the list for good (D-53): the car drops it the same way.
+                // The server hides a reported message from the list for good: the car drops it the same way.
                 _state.update { s -> s.copy(messages = s.messages.copy(items = s.messages.items.filter { it.id != id }, reporting = false)) }
             } catch (e: IOException) {
                 log("report", e)
@@ -398,7 +398,7 @@ class CompanionRepository(
                 val required = listOf(ConsentType.Terms, ConsentType.Privacy, ConsentType.Record, ConsentType.ExternalAi)
                 for (t in required) withRetry { api.postConsent(t, CONSENT_VERSION, true) }
                 withRetry { api.postConsent(ConsentType.Memory, CONSENT_VERSION, memory) }
-                // D-48: the consent sheet is a step of the first-run flow; with the server's yes the flow goes on to the whale's
+                // the consent sheet is a step of the first-run flow; with the server's yes the flow goes on to the whale's
                 // lights and questions. The step is stored before the consent flips needsOnboarding: no empty moment.
                 if (storage.onboardingStep.value == OnboardingStep.Consent) storage.setOnboardingStep(OnboardingStep.Lights)
                 for (t in required) storage.setConsent(t, true)
@@ -574,7 +574,7 @@ class CompanionRepository(
         val before = _state.value.settings
         val after = transform(before)
         if (after == before) return
-        // The server stores and recalls memory only while the memory consent is granted (PLEOS-129): turning it on
+        // The server stores and recalls memory only while the memory consent is granted: turning it on
         // after C1 left it off must grant it first.
         val needsMemoryConsent = after.memoryEnabled && !before.memoryEnabled && ConsentType.Memory !in storage.consents.value.granted
         // The screen shows the new value at once; a failed write puts the old one back and says so.

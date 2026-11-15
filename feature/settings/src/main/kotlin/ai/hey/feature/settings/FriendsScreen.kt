@@ -46,7 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 
-/** One friend on the read-only car list (D-47): the last thing they sent, and whether I tell them when I arrive. */
+/** One friend on the read-only car list: the last thing they sent, and whether I tell them when I arrive. */
 data class FriendRowUi(val id: String, val name: String, val arrivalOn: Boolean, val lastMessage: String? = null)
 
 /** One received message; [time] is already words ("오늘 오전 8:40"). */
@@ -104,7 +104,7 @@ class FriendsActions(
 )
 
 /**
- * 친구 (parked only): friend list (read-only), 내 친구 코드, 받은 말 and one message with 신고하기 (D-47, D-53). Adding,
+ * 친구 (parked only): friend list (read-only), 내 친구 코드, 받은 말 and one message with 신고하기. Adding,
  * removing and 도착 알리기 are phone-only. While driving this screen does not exist: the friend's line is only read aloud.
  */
 @Composable

@@ -27,14 +27,14 @@ interface PcmSink {
     fun release()
 }
 
-/** Audio focus for the assistant voice. [onLoss] fires on ANY loss, ducking included: the app does not rely on ducking (D-14). */
+/** Audio focus for the assistant voice. [onLoss] fires on ANY loss, ducking included: the app does not rely on ducking. */
 interface FocusGate {
     /** True when the focus is held. */
     fun request(onLoss: () -> Unit): Boolean
     fun abandon()
 }
 
-/** Whether another app is playing audio right now (music, guidance, a call): the character never starts a line over it (PLEOS-171). */
+/** Whether another app is playing audio right now (music, guidance, a call): the character never starts a line over it. */
 fun interface OtherAudioProbe {
     fun otherAppPlaying(): Boolean
 }
@@ -43,10 +43,10 @@ fun interface OtherAudioProbe {
  * Plays the server's PCM reply (s16le mono) and reports the mouth level. Pure JVM so the stop-on-focus-loss and
  * RMS rules are unit tested; Android supplies [PcmSink] and [FocusGate].
  *
- * - The output is fed in 30 ms windows; each window's RMS is turned into a mouth level (D-13) and the level shown is the
+ * - The output is fed in 30 ms windows; each window's RMS is turned into a mouth level and the level shown is the
  *   one of the window under the play position, not the one being written.
  * - Focus lost at any time: the output is cut at once ([PcmSink.stopNow]), the listener hears [PlaybackEnd.FocusLost],
- *   and nothing is resumed (D-14).
+ *   and nothing is resumed.
  */
 class StreamingReplyAudio(
     private val newSink: (ReplyVoice) -> PcmSink,

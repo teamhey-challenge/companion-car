@@ -20,7 +20,7 @@ android {
 // Samples and previews live in the debug source set; Paparazzi renders the debug variant only.
 androidComponents { beforeVariants(selector().withBuildType("release")) { it.enableUnitTest = false } }
 
-// PLEOS-199: the design-diff dump tests run only when asked for (`-Pdesign-diff`), so record/verify never see them.
+// the design-diff dump tests run only when asked for (`-Pdesign-diff`), so record/verify never see them.
 tasks.withType<Test>().configureEach { providers.gradleProperty("design-diff").orNull?.let { systemProperty("design-diff", it) } }
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }

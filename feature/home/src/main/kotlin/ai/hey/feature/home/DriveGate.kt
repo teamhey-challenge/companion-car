@@ -4,7 +4,7 @@ import ai.hey.session.CarFault
 
 /** The routes of PRD 3.2 that this app has. One NavHost, these names. */
 object Routes {
-    /** D-48/D-58: the first-run flow (title, whale, consent sheet, questions, long press, greeting, cards, dress-up, phone link). */
+    /** the first-run flow (title, whale, consent sheet, questions, long press, greeting, cards, dress-up, phone link). */
     const val Flow = "onboarding-flow"
     const val Home = "home"
     const val Drive = "drive"
@@ -23,9 +23,9 @@ object Routes {
  * Where the app must be, given where it is. Fail-closed: [parked] is true only for a positively known Park + speed 0
  * (`DrivingStatus.Parked`); unknown counts as moving. Returns null when [current] is already right.
  *
- *  - not parked: /drive from anywhere (AC-3.5-01, AC-3.5-04, AC-4.5-08). The spoken first-run steps run there too (D-48);
+ *  - not parked: /drive from anywhere (AC-3.5-01, AC-3.5-04, AC-4.5-08). The spoken first-run steps run there too;
  *    the steps that need a press simply wait, the stored step is kept.
- *  - parked while the first-run flow is [flowActive]: /onboarding-flow from every other screen. D-58: there is no separate consent
+ *  - parked while the first-run flow is [flowActive]: /onboarding-flow from every other screen. there is no separate consent
  *    or phone-link screen; the consent sheet (O2) and the phone link (O8) are steps of the flow, and a car whose record consent
  *    is missing (first run, or withdrawn in settings) is [flowActive] too, so it lands on the O2 sheet
  *  - parked and on /drive or the finished flow: /home

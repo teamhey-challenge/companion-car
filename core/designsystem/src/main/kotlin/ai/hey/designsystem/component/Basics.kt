@@ -116,7 +116,7 @@ internal fun InkText(
 /**
  * What one text node looks like after layout, in dp (px at the 160 dpi car display). [x]/[w] are the ink extent of the lines (not the
  * box a parent gave), [baselineY] is where the first line's baseline sits, [lines] the number of lines. Consumed only by the
- * design-conformance dump (PLEOS-199).
+ * design-conformance dump.
  */
 class HeyTextRecord(
     val text: String,
