@@ -32,6 +32,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -84,16 +87,57 @@ internal fun InkText(
     lineHeight: androidx.compose.ui.unit.TextUnit? = null,
 ) {
     val base = variant.spec.style(color).copy(textAlign = align.toCompose())
+    val style = base.copy(
+        fontWeight = weight ?: base.fontWeight,
+        letterSpacing = if (trackingEm != null) androidx.compose.ui.unit.TextUnit(trackingEm, androidx.compose.ui.unit.TextUnitType.Em) else base.letterSpacing,
+    ).let { if (size != null) it.copy(fontSize = size, lineHeight = size * 1.4f) else it }
+        .let { if (lineHeight != null) it.copy(lineHeight = lineHeight) else it }
+    val probe = LocalHeyTextProbe.current
+    val layout = remember { arrayOfNulls<androidx.compose.ui.text.TextLayoutResult>(1) }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
     BasicText(
         text = remember(text) { keepKoreanWords(text) },
-        modifier = modifier,
-        style = base.copy(
-            fontWeight = weight ?: base.fontWeight,
-            letterSpacing = if (trackingEm != null) androidx.compose.ui.unit.TextUnit(trackingEm, androidx.compose.ui.unit.TextUnitType.Em) else base.letterSpacing,
-        ).let { if (size != null) it.copy(fontSize = size, lineHeight = size * 1.4f) else it }
-            .let { if (lineHeight != null) it.copy(lineHeight = lineHeight) else it },
+        modifier = modifier.probeText(probe, text, style, maxLines, density, layout),
+        style = style,
         overflow = TextOverflow.Ellipsis,
         maxLines = maxLines,
+        onTextLayout = { if (probe != null) layout[0] = it },
+    )
+}
+
+/**
+ * What one text node looks like after layout, in dp (px at the 160 dpi car display). [x]/[w] are the ink extent of the lines (not the
+ * box a parent gave), [baselineY] is where the first line's baseline sits, [lines] the number of lines. Consumed only by the
+ * design-conformance dump (PLEOS-199).
+ */
+class HeyTextRecord(
+    val text: String,
+    val x: Float, val y: Float, val w: Float, val baselineY: Float, val lines: Int,
+    val fontSizeSp: Float, val fontWeight: Int,
+    val letterSpacing: Float, val letterSpacingUnit: String,
+    val lineHeightSp: Float, val colorHex: String, val maxLines: Int,
+)
+
+fun interface HeyTextProbe { fun onText(record: HeyTextRecord) }
+
+/** Null in the app. A test installs a probe to read back every HeyText/InkText as laid out; nothing else reads it. */
+val LocalHeyTextProbe = androidx.compose.runtime.staticCompositionLocalOf<HeyTextProbe?> { null }
+
+private fun Modifier.probeText(
+    probe: HeyTextProbe?, text: String, style: androidx.compose.ui.text.TextStyle, maxLines: Int, density: Float,
+    layout: Array<androidx.compose.ui.text.TextLayoutResult?>,
+): Modifier = if (probe == null) this else onGloballyPositioned { c ->
+    val t = layout[0] ?: return@onGloballyPositioned
+    val b = c.boundsInRoot()
+    val left = (0 until t.lineCount).minOf { t.getLineLeft(it) }
+    val right = (0 until t.lineCount).maxOf { t.getLineRight(it) }
+    probe.onText(
+        HeyTextRecord(
+            text, (b.left + left) / density, b.top / density, (right - left) / density, (b.top + t.firstBaseline) / density, t.lineCount,
+            style.fontSize.value, style.fontWeight?.weight ?: 400,
+            style.letterSpacing.value, if (style.letterSpacing.isEm) "em" else "sp",
+            style.lineHeight.value, "#%06X".format(style.color.toArgb() and 0xFFFFFF), maxLines,
+        ),
     )
 }
 
