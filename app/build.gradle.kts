@@ -13,8 +13,12 @@ android {
         applicationId = "ai.hey.car"
         minSdk = 28
         targetSdk = 34
-        // The one place for the version: hey.versionCode / hey.versionName in gradle.properties.
-        versionCode = providers.gradleProperty("hey.versionCode").get().toInt()
+        // Monotonic and identical for CI and local builds of the same commit: the commit count (CI checks out with fetch-depth 0).
+        // -Phey.versionCode=N overrides; without git history it falls back to 1. versionName comes from gradle.properties.
+        versionCode = providers.gradleProperty("hey.versionCode").map { it.toInt() }.orElse(
+            providers.exec { commandLine("git", "rev-list", "--count", "HEAD"); isIgnoreExitValue = true }
+                .standardOutput.asText.map { it.trim().toIntOrNull() ?: 1 }
+        ).get()
         versionName = providers.gradleProperty("hey.versionName").get()
     }
     // Release signing. CI (release-apk job) and local builds can pass HEYPARRI_STORE_FILE / HEYPARRI_STORE_PASSWORD /
