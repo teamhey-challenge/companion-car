@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -140,6 +141,7 @@ fun HeyIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     bare: Boolean = false,
+    glyph: Dp = 56.dp,
 ) {
     val colors = HeyTheme.colors
     PressSurface(
@@ -153,7 +155,7 @@ fun HeyIconButton(
             else colors.ink(HeyButtonVariant.Secondary, pressed, enabled)
         },
         radius = if (bare) HeyTokens.Radius.full else HeyTokens.Radius.md,
-    ) { ink -> InkIcon(icon, null, ink.content, if (bare) Modifier.size(56.dp) else Modifier) }
+    ) { ink -> InkIcon(icon, null, ink.content, if (bare) Modifier.size(glyph) else Modifier) }
 }
 
 /** Header touch size of the mockups (ui-spec "헤더 84"): header pills are 84 high, the back button is an 84 circle. */

@@ -25,23 +25,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.Alignment
+import ai.hey.designsystem.component.HeyCardList
+import ai.hey.designsystem.component.HeyCardRow
+import ai.hey.designsystem.component.HeyIconButton
+import ai.hey.designsystem.component.HeyListCard
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import ai.hey.designsystem.component.HeyCardList
-import ai.hey.designsystem.component.HeyCardRow
-import ai.hey.designsystem.component.HeyIcon
-import ai.hey.designsystem.component.HeyListCard
 
 enum class MemoryKindUi { Fact, Summary }
 
@@ -131,7 +123,7 @@ fun MemoryScreen(
                     onBack = onBack,
                     backLabel = stringResource(R.string.memory_back),
                     stateLabel = stringResource(R.string.memory_parked),
-                    modifier = Modifier.offset(y = (-45.5).dp),
+                    modifier = Modifier.shifted(y = (-45.5).dp),
                 )
             },
             driving = false,
@@ -173,18 +165,11 @@ fun MemoryScreen(
                                         title = row.text,
                                         line = row.date?.let { stringResource(R.string.memory_date_line, it) },
                                         trailing = {
-                                            // 28 dp glyph (studio), 76 dp touch target centred on it.
-                                            Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-                                                Box(
-                                                    Modifier
-                                                        .requiredSize(76.dp)
-                                                        .semantics { contentDescription = deleteLabel }
-                                                        .clickable(enabled = enabled, role = Role.Button) { pendingId = row.id },
-                                                    contentAlignment = Alignment.Center,
-                                                ) {
-                                                    HeyIcon(HeyIcons.Trash, null, tone = if (enabled) HeyTone.Default else HeyTone.Muted)
-                                                }
-                                            }
+                                            // Studio glyph is 28 dp at the card's right padding; the 76 dp touch target is centred on it.
+                                            HeyIconButton(
+                                                HeyIcons.Trash, deleteLabel, { pendingId = row.id },
+                                                modifier = Modifier.shifted(x = 24.dp), enabled = enabled, bare = true, glyph = 28.dp,
+                                            )
                                         },
                                     )
                                 }
@@ -216,4 +201,10 @@ private fun Modifier.widenForStudioMargin(): Modifier = layout { m, c ->
     val w = c.maxWidth + extra
     val p = m.measure(c.copy(minWidth = w, maxWidth = w))
     layout(c.maxWidth, p.height) { p.place(-left, 0) }
+}
+
+/** Moves the drawing without changing the space the node takes. */
+private fun Modifier.shifted(x: Dp = 0.dp, y: Dp = 0.dp): Modifier = layout { m, c ->
+    val p = m.measure(c)
+    layout(p.width, p.height) { p.place(x.roundToPx(), y.roundToPx()) }
 }
