@@ -44,7 +44,7 @@
     <string name="settings_unpair_confirm">해제</string>
     <string name="settings_withdraw">녹음 동의 철회</string>
     <string name="settings_withdraw_title">동의를 철회할까요?</string>
-    <string name="settings_withdraw_message">기억과 대화 요약이 모두 지워져요.</string>
+    <string name="settings_withdraw_message">기억, 대화 요약, 운행 일기, 친구 메시지가 모두 지워져요.</string>
     <string name="settings_withdraw_confirm">철회</string>
     <string name="settings_cancel">취소</string>
     <string name="settings_save_failed">저장하지 못했어요</string>

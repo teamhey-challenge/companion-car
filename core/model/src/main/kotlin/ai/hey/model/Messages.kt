@@ -86,6 +86,9 @@ sealed interface ServerFrame {
 
     /** A friend arrived (spoken only): same audio path as [FriendMessage]. */
     data class FriendArrived(val id: String, val fromName: String, val place: String?) : ServerFrame
+
+    /** The trip ended (D-52 2): only the car notification centre uses it; [text] is the server's one-line farewell. */
+    data class TripDone(val id: String, val text: String, val date: String, val at: String) : ServerFrame
     data class Settings(val settings: CompanionSettings) : ServerFrame
 
     /** The pairing status changed on the server (a phone or the car ended it: [phase] None). */
@@ -128,6 +131,7 @@ private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
         "proactive" -> ServerFrame.Proactive(s("id") ?: return null, s("reason").orEmpty())
         "friend_message" -> ServerFrame.FriendMessage(s("id") ?: return null, s("fromName").orEmpty(), s("text") ?: return null)
         "friend_arrived" -> ServerFrame.FriendArrived(s("id") ?: return null, s("fromName").orEmpty(), s("place"))
+        "trip_done" -> ServerFrame.TripDone(s("id") ?: return null, s("text") ?: return null, s("date").orEmpty(), s("at").orEmpty())
         "settings" -> ServerFrame.Settings(parseCompanionSettings(o["settings"]?.jsonObject ?: return null) ?: return null)
         "pairing" -> ServerFrame.Pairing(
             when (s("status")) {

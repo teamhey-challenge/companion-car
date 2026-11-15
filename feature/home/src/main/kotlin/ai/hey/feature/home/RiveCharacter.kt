@@ -37,21 +37,40 @@ fun riveStateFor(ui: HomeUi): Int = when {
     }
 }
 
-/** Frames per second Rive draws at most (D-31): every second vsync of a 60 Hz display. */
+/** Frames per second Rive draws at most (D-31). */
 internal const val RIVE_FPS_CAP = 30
 
 /**
- * Rive draws at most 30 frames per second (D-31): every second vsync is skipped. The base view re-arms the Choreographer
- * itself (scheduleFrame), so a skipped frame costs one callback and no drawing.
+ * Decides by frame timestamp whether a vsync may be drawn: at least 1/[RIVE_FPS_CAP] s (33.3 ms) after the last drawn frame.
+ * Unlike "every second vsync" this keeps 30 fps on 60, 90 and 120 Hz displays and after a skipped vsync. A tolerance of
+ * one millisecond lets a 60 Hz vsync pair (33.33 ms apart, jittered) through.
+ */
+internal class FrameThrottle(private val minIntervalNanos: Long = 1_000_000_000L / RIVE_FPS_CAP - TOLERANCE_NANOS) {
+    private var lastDrawn = Long.MIN_VALUE
+
+    fun shouldDraw(frameTimeNanos: Long): Boolean {
+        if (lastDrawn != Long.MIN_VALUE && frameTimeNanos - lastDrawn < minIntervalNanos) return false
+        lastDrawn = frameTimeNanos
+        return true
+    }
+
+    private companion object {
+        const val TOLERANCE_NANOS = 1_000_000L
+    }
+}
+
+/**
+ * Rive draws at most 30 frames per second (D-31): a vsync closer than 33.3 ms to the last drawn frame is skipped. The base
+ * view re-arms the Choreographer itself (scheduleFrame), so a skipped frame costs one callback and no drawing.
  */
 private class CompanionRiveView(context: Context) : RiveAnimationView(context, null) {
     override fun createRenderer(): Renderer =
         object : RiveArtboardRenderer(false, Rive.defaultRendererType, controller) {
-            private var n = 0
+            private val throttle = FrameThrottle()
             private var drawn = 0
             private var windowStart = 0L
             override fun doFrame(frameTimeNanos: Long) {
-                if (n++ % 2 == 1) { scheduleFrame(); return }
+                if (!throttle.shouldDraw(frameTimeNanos)) { scheduleFrame(); return }
                 super.doFrame(frameTimeNanos)
                 // Debug aid for the CPU measurement (D-48 8): drawn frames per 5 s window, expected ~RIVE_FPS_CAP per second.
                 if (windowStart == 0L) windowStart = frameTimeNanos

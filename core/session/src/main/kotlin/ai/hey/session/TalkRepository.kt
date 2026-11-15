@@ -221,6 +221,7 @@ class TalkRepository(
                 is ServerFrame.Proactive -> onProactive(frame)
                 is ServerFrame.FriendMessage -> onFriend(frame.id, frame.fromName, frame.text, showText = true)
                 is ServerFrame.FriendArrived -> onFriend(frame.id, frame.fromName, frame.place.orEmpty(), showText = false)
+                is ServerFrame.TripDone -> Unit // the notification centre ([FrameNotifier]) reads it; the repository has nothing to do
                 is ServerFrame.Settings -> companion?.onServerSettings(frame.settings)
                 is ServerFrame.Pairing -> companion?.onServerPairing(frame.phase)
             }
