@@ -17,23 +17,23 @@
     <string name="hey_status_connecting">연결 중</string>
     <string name="hey_status_offline">오프라인</string>
 
-    <string name="hey_error_offline_title">잠시 연결이 끊겼어요</string>
-    <string name="hey_error_offline_message">연결을 확인한 뒤 다시 이야기해요.</string>
+    <string name="hey_error_offline_title">연결이 끊겼어요</string>
+    <string name="hey_error_offline_message">잠시 뒤에 다시 이야기해요</string>
     <string name="hey_error_offline_action">다시 연결</string>
     <string name="hey_error_connecting_title">다시 연결하고 있어요</string>
     <string name="hey_error_connecting_message">잠시만 기다려 주세요. 연결되면 이야기를 이어가요.</string>
     <string name="hey_error_connecting_action">연결 중</string>
     <string name="hey_error_microphone_title">목소리를 들을 수 없어요</string>
     <string name="hey_error_microphone_message">마이크 사용을 허용하면 다시 대화할 수 있어요.</string>
-    <string name="hey_error_microphone_action">권한 열기</string>
-    <string name="hey_error_server_title">지금은 답하기 어려워요</string>
+    <string name="hey_error_microphone_action">권한 다시 요청</string>
+    <string name="hey_error_server_title">지금은 대답하지 못해요</string>
     <string name="hey_error_server_message">잠시 뒤에 다시 시도해 주세요.</string>
     <string name="hey_error_server_action">다시 시도</string>
-    <string name="hey_error_recognition_title">잘 듣지 못했어요</string>
-    <string name="hey_error_recognition_message">다시 한 번 이야기해 주세요.</string>
+    <string name="hey_error_recognition_title">잘 못 들었어</string>
+    <string name="hey_error_recognition_message">다시 말해 줄래?</string>
     <string name="hey_error_recognition_action">다시 말하기</string>
     <string name="hey_error_audio_title">소리를 낼 수 없어요</string>
-    <string name="hey_error_audio_message">소리를 다시 연결한 뒤 이야기를 이어가요.</string>
+    <string name="hey_error_audio_message">멈춘 뒤에 확인해 주세요</string>
     <string name="hey_error_audio_action">다시 시도</string>
 
     <string name="hey_saving">저장 중</string>
