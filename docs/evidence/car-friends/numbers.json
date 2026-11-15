@@ -2,10 +2,10 @@
  "screen": "car/friends",
  "pass": false,
  "shas": {
-  "app": "639b705317f83de9dab88e238cd2399d247b343f",
-  "appDirty": false,
-  "studio": "919aee7",
-  "sharedTag": "v0.5.1"
+  "app": "f6381e9b8be22987acf1239ac45849d6212b533b",
+  "appDirty": true,
+  "studio": "4dc8ad3",
+  "sharedTag": "v0.5.0"
  },
  "viewport": [
   1600,
@@ -22,34 +22,34 @@
   "color": "exact"
  },
  "pixel": {
-  "badPixels": 13846,
+  "badPixels": 22905,
   "total": 831744
  },
- "failingValues": 40,
+ "failingValues": 43,
  "rows": [
   {
    "text": "정차 중",
    "checks": [
     {
      "name": "x",
-     "design": "247",
+     "design": "371",
      "app": "378",
-     "delta": "131",
+     "delta": "7",
      "ok": false
     },
     {
      "name": "y (line-box top)",
-     "design": "54.21",
+     "design": "73.18",
      "app": "87",
-     "delta": "32.79",
+     "delta": "13.82",
      "ok": false
     },
     {
      "name": "width (ink)",
-     "design": "66",
+     "design": "99",
      "app": "99",
-     "delta": "33",
-     "ok": false
+     "delta": "0",
+     "ok": true
     },
     {
      "name": "lines",
@@ -60,17 +60,17 @@
     },
     {
      "name": "baseline y",
-     "design": "78",
+     "design": "118.25",
      "app": "119",
-     "delta": "41",
-     "ok": false
+     "delta": "0.75",
+     "ok": true
     },
     {
      "name": "font-size",
-     "design": "22",
+     "design": "33",
      "app": "33",
-     "delta": "11",
-     "ok": false
+     "delta": "0",
+     "ok": true
     },
     {
      "name": "font-weight",
@@ -88,10 +88,10 @@
     },
     {
      "name": "line-height",
-     "design": "24",
+     "design": "49.5",
      "app": "50",
-     "delta": "26",
-     "ok": false
+     "delta": "0.5",
+     "ok": true
     },
     {
      "name": "color",
@@ -114,9 +114,9 @@
     },
     {
      "name": "y (line-box top)",
-     "design": "148.63",
+     "design": "188.63",
      "app": "204",
-     "delta": "55.37",
+     "delta": "15.37",
      "ok": false
     },
     {
@@ -135,9 +135,9 @@
     },
     {
      "name": "baseline y",
-     "design": "188",
+     "design": "228",
      "app": "247",
-     "delta": "59",
+     "delta": "19",
      "ok": false
     },
     {
@@ -189,9 +189,9 @@
     },
     {
      "name": "y (line-box top)",
-     "design": "255.3",
+     "design": "290.46",
      "app": "366",
-     "delta": "110.7",
+     "delta": "75.54",
      "ok": false
     },
     {
@@ -210,9 +210,9 @@
     },
     {
      "name": "baseline y",
-     "design": "271.59",
+     "design": "318.59",
      "app": "389",
-     "delta": "117.41",
+     "delta": "70.41",
      "ok": false
     },
     {
@@ -238,9 +238,9 @@
     },
     {
      "name": "line-height",
-     "design": "24",
+     "design": "42",
      "app": "32",
-     "delta": "8",
+     "delta": "-10",
      "ok": false
     },
     {
@@ -257,16 +257,16 @@
    "checks": [
     {
      "name": "x",
-     "design": "874",
+     "design": "632",
      "app": "356",
-     "delta": "-518",
+     "delta": "-276",
      "ok": false
     },
     {
      "name": "y (line-box top)",
-     "design": "255.3",
+     "design": "290.46",
      "app": "366",
-     "delta": "110.7",
+     "delta": "75.54",
      "ok": false
     },
     {
@@ -285,9 +285,9 @@
     },
     {
      "name": "baseline y",
-     "design": "271.59",
+     "design": "318.59",
      "app": "389",
-     "delta": "117.41",
+     "delta": "70.41",
      "ok": false
     },
     {
@@ -313,9 +313,9 @@
     },
     {
      "name": "line-height",
-     "design": "24",
+     "design": "42",
      "app": "32",
-     "delta": "8",
+     "delta": "-10",
      "ok": false
     },
     {
@@ -332,16 +332,16 @@
    "checks": [
     {
      "name": "x",
-     "design": "184",
+     "design": "208",
      "app": "196",
-     "delta": "12",
+     "delta": "-12",
      "ok": false
     },
     {
      "name": "y (line-box top)",
-     "design": "375.71",
+     "design": "412.12",
      "app": "473",
-     "delta": "97.29",
+     "delta": "60.88",
      "ok": false
     },
     {
@@ -360,9 +360,9 @@
     },
     {
      "name": "baseline y",
-     "design": "417.19",
+     "design": "453.59",
      "app": "504",
-     "delta": "86.81",
+     "delta": "50.41",
      "ok": false
     },
     {
@@ -404,8 +404,15 @@
   }
  ],
  "onlyDesign": [
-  "\"Hey\" @156,54.21 75×31.58 42px/700",
-  "\"유진\" @924,375.71 58×58.95 32px/600"
+  "\"Hey\" @204,64.05 78×82.89 42px/600",
+  "\"받은 알림\" @1369,76.39 120×59.21 30px/400",
+  "\"받은 초대\" @1116,290.46 111×55.26 28px/400",
+  "\"1\" @1249,298.36 12×39.47 20px/400",
+  "\"고마워! 끝나고 연락할게.\" @208,470.71 244×47.37 24px/400",
+  "\"유진\" @940,412.12 58×58.95 32px/600",
+  "\"주말에 같이 산책하자!\" @940,470.71 216×47.37 24px/400",
+  "\"도착 알리기 켬\" @976,521.15 118×39.47 20px/400",
+  "\"친구 추가·끊기·도착 알리기 설정은 폰에서 할 수 있어요.\" @80,608.51 497×47.76 22px/400"
  ],
  "onlyApp": [
   "헤이리",

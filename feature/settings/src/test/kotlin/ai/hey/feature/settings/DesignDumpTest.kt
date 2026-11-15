@@ -29,6 +29,12 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
         dump.write()
     }
     dump("car-settings-phone") { PhoneLinkScreen(PhoneLinkUi.Code("K7M2QX9P"), onBack = {}, onUnpair = {}, onRetry = {}) }
+    dump("car-settings") {
+        SettingsScreen(
+            SettingsUi(name = "민수", phonePaired = true), onBack = {}, onProactive = {}, onMemoryEnabled = {}, onSpeech = {}, onName = {},
+            onLook = {}, onOpenMemory = {}, onOpenPair = {}, onWithdraw = {},
+        )
+    }
     val noop = FriendsActions({}, {}, {}, {}, {}, {}, {})
     val ui = FriendsUi(
         friends = listOf(
