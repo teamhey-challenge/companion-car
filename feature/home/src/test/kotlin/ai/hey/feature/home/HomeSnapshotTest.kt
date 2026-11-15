@@ -28,6 +28,7 @@ private val online = HomeUi(online = true)
 private val homeShots: List<Pair<String, HomeUi>> = listOf(
     "c3-idle" to online,
     "c3-connecting" to HomeUi(online = false, fault = CarFault.Connecting),
+    "c4-proactive" to online.copy(phase = HomePhase.Listening, source = ai.hey.session.TurnSource.AutoListen, reply = "비 오네, 와이퍼 켰어. 오늘 발표 날이죠?"),
     "c4-listening" to online.copy(phase = HomePhase.Listening),
     "c4-followup" to online.copy(phase = HomePhase.Listening, source = ai.hey.session.TurnSource.AutoListen),
     "c4-thinking" to online.copy(phase = HomePhase.Thinking, heard = "오늘 날씨 어때?"),
@@ -47,6 +48,15 @@ private val driveShots: List<Pair<String, HomeUi>> = listOf(
     "c5-speaking" to online.copy(phase = HomePhase.Speaking, reply = LONG_REPLY),
 )
 
+/** C5 with the live rig allowed (ocean background and status wave move; Paparazzi has no Rive runtime so the slot shows the still). */
+private val driveMotionShots: List<Pair<String, HomeUi>> = listOf(
+    "c5-motion-idle" to online,
+    "c5-motion-listening" to online.copy(phase = HomePhase.Listening),
+    "c5-motion-speaking" to online.copy(phase = HomePhase.Speaking, reply = LONG_REPLY),
+    // A proactive line is parked-only: driving shows no text, only the listening state (PLEOS-194, D-25).
+    "c5-proactive" to online.copy(phase = HomePhase.Listening, source = ai.hey.session.TurnSource.AutoListen, reply = "비 오네, 와이퍼 켰어. 오늘 발표 날이죠?"),
+)
+
 private fun Paparazzi.recordAll() {
     listOf(true, false).forEach { dark ->
         val theme = if (dark) "dark" else "light"
@@ -59,7 +69,12 @@ private fun Paparazzi.recordAll() {
         }
         driveShots.forEach { (name, ui) ->
             snapshot("$name-$theme") {
-                HeyTheme(dark) { DriveScreen(ui, onTalk = {}, onEndConversation = {}) }
+                HeyTheme(dark) { DriveScreen(ui, onTalk = {}, onEndConversation = {}, reducedMotion = true) }
+            }
+        }
+        driveMotionShots.forEach { (name, ui) ->
+            snapshot("$name-$theme") {
+                HeyTheme(dark) { DriveScreen(ui, onTalk = {}, onEndConversation = {}, reducedMotion = false) }
             }
         }
     }

@@ -30,6 +30,12 @@ data class HomeUi(
 ) {
     /** C4 is C3 with a turn on it. */
     val inTalk: Boolean get() = phase != HomePhase.Idle || reply.isNotEmpty() || heard != null
+
+    /**
+     * The automatic listening that follows the character's own opening line (PLEOS-194 "선제 발화"): the driver said nothing in
+     * this turn ([heard] is null) and the line is still [reply]. A listening after a driver turn is the follow-up instead.
+     */
+    val proactivePrompt: Boolean get() = phase == HomePhase.Listening && source == TurnSource.AutoListen && heard == null && reply.isNotEmpty()
 }
 
 fun homeUi(s: CarUiState): HomeUi {

@@ -184,10 +184,15 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
                 VStack(HeyGap.G16, modifier = Modifier.carCaptionTop()) {
                     if (ui.phase == HomePhase.Listening) {
                         val followUp = ui.source == TurnSource.AutoListen
-                        Subtitle(
-                            text = stringResource(if (followUp) R.string.talk_followup_caption else R.string.talk_listening_caption),
-                            hint = stringResource(if (followUp) R.string.talk_followup_hint else R.string.talk_listening_hint),
-                        )
+                        if (ui.proactivePrompt) {
+                            // The character spoke first: its line stays up as the prompt above the listening hint.
+                            Subtitle(text = ui.reply, hint = stringResource(R.string.talk_listening_hint))
+                        } else {
+                            Subtitle(
+                                text = stringResource(if (followUp) R.string.talk_followup_caption else R.string.talk_listening_caption),
+                                hint = stringResource(if (followUp) R.string.talk_followup_hint else R.string.talk_listening_hint),
+                            )
+                        }
                     } else {
                         if (ui.phase == HomePhase.Thinking) ui.heard?.let { Subtitle(text = "“$it”") }
                         if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)

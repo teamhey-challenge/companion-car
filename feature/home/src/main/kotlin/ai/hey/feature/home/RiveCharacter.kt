@@ -1,6 +1,10 @@
 package ai.hey.feature.home
 
 import ai.hey.model.HeyLog
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -86,15 +90,33 @@ private class CompanionRiveView(context: Context) : RiveAnimationView(context, n
 
 private class Binding(val view: CompanionRiveView, val instance: ViewModelInstance)
 
+/** C5 renders the rig at this fraction of the slot size (about 1 pixel per dp on the 2560 px Pleos display) and the GPU scales it up. */
+internal const val DRIVING_RENDER_SCALE = 0.625f
+
+/** Measures the child at [scale] of the available size and draws it scaled back up, so a texture view renders fewer pixels. */
+private fun Modifier.renderedAt(scale: Float): Modifier = if (scale >= 1f) this else layout { measurable, constraints ->
+    val w = constraints.maxWidth
+    val h = constraints.maxHeight
+    val placeable = measurable.measure(Constraints.fixed((w * scale).roundToInt(), (h * scale).roundToInt()))
+    layout(w, h) {
+        placeable.placeWithLayer(0, 0) {
+            transformOrigin = TransformOrigin(0f, 0f)
+            scaleX = 1f / scale
+            scaleY = 1f / scale
+        }
+    }
+}
+
 /**
  * The live character: artboard Companion / state machine Companion of `hey_companion.riv`, driven only through the
  * `state`, `mouth`, `driving` and `bodyColor` properties of the Companion view model. [onFailure] is called once when
  * the file cannot be loaded or bound; the caller then shows the still image (rive-rig.md; C3/C4/C5 never go blank).
  *
  * Composed on C3/C4 and, since D-48 8 (cancels D-45), on C5 too: the rig's `driving` property stays false so the idle
- * animation keeps running while the car moves. [whileDriving] only labels the debug log line of the fps cap
- * ([RIVE_FPS_CAP] = 30, every second vsync skipped), so the emulator CPU measurement can tell the two screens apart.
- * Reduced motion and failure use the still image instead.
+ * animation keeps running while the car moves. [whileDriving] labels the debug log line of the fps cap
+ * ([RIVE_FPS_CAP] = 30) and lowers the render resolution (PLEOS-195: pixel ratio at most 1 on C5, 2 parked): the Rive
+ * Android view has no pixel-ratio setting, so the texture is laid out at [DRIVING_RENDER_SCALE] of the slot and scaled
+ * back up by the GPU. Reduced motion, a hidden app, the motion budget flag and failure use the still image instead.
  */
 @Composable
 fun RiveCharacter(
@@ -108,8 +130,9 @@ fun RiveCharacter(
     whileDriving: Boolean = false,
 ) {
     var binding by remember { mutableStateOf<Binding?>(null) }
+    val renderScale = if (whileDriving) DRIVING_RENDER_SCALE else 1f
     AndroidView(
-        modifier = modifier,
+        modifier = modifier.renderedAt(renderScale),
         factory = { ctx ->
             runCatching {
                 Rive.init(ctx, Rive.defaultRendererType)

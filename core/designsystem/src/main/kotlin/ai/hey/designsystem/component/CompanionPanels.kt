@@ -311,9 +311,12 @@ fun StatusBadge(
         modifier = modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) {
         if (online && !driving && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)) {
+            // Design `.status[data-visual=waveform]`: the wave, then the small phase word (PLEOS-194 "파형 + 듣는 중/말하는 중").
             Waveform(color, moving, speaking = phase == TalkPhase.Speaking)
-            // The waveform stands for the label on screen; TalkBack still reads it.
-            Box(Modifier.size(1.dp).semantics { contentDescription = label })
+            InkText(
+                label, colors.fgMuted, Modifier.padding(start = 16.dp),
+                weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 20.sp, lineHeight = 30.sp, maxLines = 1,
+            )
         } else if (driving && online && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)) {
             InkText(label, if (phase == TalkPhase.Listening) colors.fgDefault else colors.fgMuted, size = 20.sp, lineHeight = 30.sp, maxLines = 1)
         } else {
