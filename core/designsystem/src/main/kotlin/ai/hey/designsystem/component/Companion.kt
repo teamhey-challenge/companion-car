@@ -1,6 +1,7 @@
 package ai.hey.designsystem.component
 
 import ai.hey.designsystem.R
+import kotlinx.coroutines.withTimeoutOrNull
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
@@ -18,6 +19,10 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -215,6 +220,42 @@ fun CharacterSlot(
     }
 }
 
+/**
+ * A clearly named, EMPTY place for art that has not arrived yet (D-49: whale picture, backgrounds, new outfits come from the
+ * planner later). It draws only a sunken outline and the [name] of the asset, never a stand-in picture, so a screen can swap it
+ * for the real art without touching its logic. Same box as [CharacterSlot] of [size].
+ */
+@Composable
+fun AssetSlot(name: String, size: CharacterSize, modifier: Modifier = Modifier, contentDescription: String? = null) {
+    val colors = HeyTheme.colors
+    val shape = RoundedCornerShape(HeyTokens.Radius.lg)
+    Box(
+        modifier
+            .size(size.width, size.height)
+            .clip(shape)
+            .background(colors.bgSunken, shape)
+            .border(HeyTokens.Border.hairline, colors.borderDefault, shape)
+            .let { if (contentDescription != null) it.semantics { this.contentDescription = contentDescription } else it },
+        contentAlignment = Alignment.Center,
+    ) {
+        HeyText(name, tone = HeyTone.Muted, maxLines = 2, align = HeyTextAlign.Center)
+    }
+}
+
+/** Fades [content] in over [millis] when it first appears (heyri showing up after the long press); instant under reduced motion. */
+@Composable
+fun HeyFadeIn(modifier: Modifier = Modifier, millis: Int = 900, content: @Composable () -> Unit) {
+    val reduced = rememberReducedMotion()
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val alpha by animateFloatAsState(
+        targetValue = if (shown || reduced) 1f else 0f,
+        animationSpec = if (reduced) snap() else tween(millis),
+        label = "heyFadeIn",
+    )
+    Box(modifier.graphicsLayer { this.alpha = alpha }) { content() }
+}
+
 /** The still plus an optional caption under it (C1/C2 "당신의 이야기가 머무는 곳"). */
 @Composable
 fun CharacterStill(
@@ -288,6 +329,10 @@ private fun TalkPill(
     onHoldEnd: (() -> Unit)? = null,
     /** Blocked look but still pressable. */
     dimmed: Boolean = false,
+    /** A long press (D-48 3c "길게 눌러 헤이리 만나기"): a plain tap does nothing; the accessibility action runs it at once. */
+    onLongPress: (() -> Unit)? = null,
+    /** How long the press must be held before [onLongPress] fires (planner: 1.8 s). */
+    longPressMillis: Long = 1_800L,
 ) {
     var pressed by remember { mutableStateOf(false) }
     val ink = glassInk(phase, pressed, blocked || dimmed)
@@ -296,22 +341,31 @@ private fun TalkPill(
     val latestClick by rememberUpdatedState(onClick)
     val latestStart by rememberUpdatedState(onHoldStart)
     val latestEnd by rememberUpdatedState(onHoldEnd)
+    val latestLong by rememberUpdatedState(onLongPress)
     val press = if (blocked) {
         Modifier
     } else {
-        Modifier.pointerInput(hold) {
+        Modifier.pointerInput(hold, onLongPress != null, longPressMillis) {
             detectTapGestures(
                 onPress = {
                     pressed = true
                     latestStart?.invoke()
                     try {
-                        tryAwaitRelease()
+                        if (latestLong != null) {
+                            // Held for [longPressMillis] (the system long-press time is too short for "길게 눌러 만나기"): fires once.
+                            if (withTimeoutOrNull(longPressMillis) { tryAwaitRelease() } == null) {
+                                latestLong?.invoke()
+                                tryAwaitRelease()
+                            }
+                        } else {
+                            tryAwaitRelease()
+                        }
                     } finally {
                         pressed = false
                         latestEnd?.invoke()
                     }
                 },
-                onTap = if (hold) null else { _ -> latestClick() },
+                onTap = if (hold || onLongPress != null) null else { _ -> latestClick() },
             )
         }
     }
@@ -390,6 +444,8 @@ fun GlassButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     enabled: Boolean = true,
     dimmed: Boolean = false,
+    onLongPress: (() -> Unit)? = null,
+    longPressMillis: Long = 1_800L,
 ) {
     TalkPill(
         label = text,
@@ -399,6 +455,8 @@ fun GlassButton(
         onClick = onClick,
         modifier = modifier,
         dimmed = dimmed,
+        onLongPress = onLongPress,
+        longPressMillis = longPressMillis,
     )
 }
 

@@ -13,7 +13,7 @@
     <string name="onboard_character">헤이리 캐릭터</string>
     <string name="onboard_header">정차 중</string>
 
-    <string name="onboard_notice_collect">수집: 말한 내용(마이크 소리는 차 안에서 글자로만 바꾸고 차 밖으로 나가지 않아요), 대화 요약과 기억, 차량 신호</string>
+    <string name="onboard_notice_collect">수집: 말한 내용(마이크 소리는 차 안에서 글자로만 바꾸고 차 밖으로 나가지 않아요), 대화 요약과 기억, 친구 메시지, 운행 일기, 내비게이션 목적지 이름, 차량 신호</string>
     <string name="onboard_notice_purpose">목적: 대화하고, 기억을 바탕으로 먼저 말 걸기</string>
     <string name="onboard_notice_retention">보관: 대화 원문은 저장하지 않고, 요약과 사실만 기억으로 남겨요. 폰이나 차에서 언제든 지울 수 있어요</string>
     <string name="onboard_notice_refuse">거부할 수 있어요. 거부하면 대화 기능을 쓸 수 없어요</string>
@@ -40,4 +40,47 @@
     <string name="pair_code_label">연결 코드 %1$s</string>
     <string name="pair_retry">새 QR 만들기</string>
     <string name="pair_later">나중에</string>
+
+    <string name="step_title_name">Hey</string>
+    <string name="step_title_subtitle">길 위의 단짝, 헤이리를 만나러 가요</string>
+    <string name="step_whale_title">안녕, 나는 빛바다를 지키는 고래야. 여기 헤이리들은 길을 함께 달릴 사람 단짝을 찾고 있어. 너랑 꼭 맞는 헤이리를 찾아 줄게.</string>
+    <string name="step_lights_title">여기 빛 하나하나가 너의 헤이리가 될 수 있어. 이제 너에 대해 알려 줘.</string>
+    <string name="step_q1_title">먼저, 뭐라고 불러 줄까?</string>
+    <string name="step_q2_title">이 차로 주로 어디 다녀?</string>
+    <string name="step_q3_title">차 안에서는 어떤 얘기가 좋아?</string>
+    <string name="step_found_title">찾았다. 너랑 꼭 맞는 헤이리야. 길게 눌러서 만나 봐.</string>
+    <string name="step_greeting_title">헤이리가 인사해요</string>
+    <string name="step_farewell_title">좋아, 이제 같이 가자!</string>
+    <string name="step_answer_hint">말로 대답해 주세요</string>
+    <string name="step_skip">넘어갈래</string>
+    <string name="step_summon_title">헤이리 찾는 중</string>
+    <string name="step_summon_subtitle">버튼을 길게 눌러 주세요</string>
+    <string name="step_summon_button">길게 눌러 헤이리 만나기</string>
+    <string name="step_cards_title">너를 이만큼 알아</string>
+    <string name="step_cards_subtitle">헤이리가 알게 된 이야기예요</string>
+    <string name="step_cards_empty">아직 기억한 이야기가 없어요</string>
+    <string name="step_cards_memory_off">기억 저장을 켜면 이렇게 기억해요</string>
+    <string name="step_cards_kind">기억</string>
+    <string name="step_card_name">이름은 %1$s</string>
+    <string name="step_card_trips">주로 다니는 곳은 %1$s</string>
+    <string name="step_card_topics">차에서는 %1$s 이야기가 좋아요</string>
+    <string name="step_next">다음</string>
+    <string name="step_look_title">처음 꾸미기</string>
+    <string name="step_look_subtitle">나중에 설정에서 바꿀 수 있어요</string>
+    <string name="step_look_done">다 골랐어요</string>
+    <string name="step_look_body">몸 색</string>
+    <string name="step_look_hat">모자</string>
+    <string name="step_look_neck">목</string>
+    <string name="step_look_aqua">아쿠아</string>
+    <string name="step_look_peach">피치</string>
+    <string name="step_look_none">없음</string>
+    <string name="step_look_beanie">비니</string>
+    <string name="step_look_bucket">버킷</string>
+    <string name="step_look_scarf">스카프</string>
+    <string name="asset_whale">고래 (whale_loop · whale_still)</string>
+    <string name="asset_whale_description">고래</string>
+    <string name="asset_summon">금빛 고리와 헤이리 실루엣 (eclipse)</string>
+    <string name="asset_summon_description">헤이리가 나타날 자리</string>
+    <string name="asset_title_coast">타이틀 해안 도로 (title_coast)</string>
+    <string name="asset_title_coast_description">타이틀 그림 자리</string>
 </resources>

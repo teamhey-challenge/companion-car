@@ -6,10 +6,18 @@ import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.media.audiofx.EnvironmentalReverb
 
-/** [PcmSink] on an [AudioTrack]: USAGE_ASSISTANT, s16le mono, streaming. */
-class AudioTrackSink : PcmSink {
+/**
+ * [PcmSink] on an [AudioTrack]: USAGE_ASSISTANT, s16le mono, streaming. The whale's voice goes through a light
+ * [EnvironmentalReverb] (planner request 506, `whale_voice.json`); heyri's voice is never given one.
+ */
+class AudioTrackSink(
+    private val voice: ReplyVoice = ReplyVoice.Heyri,
+    private val reverb: VoiceReverb = VoiceReverb(AndroidReverbFactory),
+) : PcmSink {
     @Volatile private var track: AudioTrack? = null
+    @Volatile private var effect: ReverbHandle? = null
 
     override fun start(sampleRate: Int) {
         val min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
@@ -29,6 +37,7 @@ class AudioTrackSink : PcmSink {
             .build()
         check(t.state == AudioTrack.STATE_INITIALIZED) { "AudioTrack not initialised" }
         track = t
+        effect = reverb.attach(voice) { id -> t.attachAuxEffect(id) == AudioTrack.SUCCESS && t.setAuxEffectSendLevel(1f) == AudioTrack.SUCCESS }
         t.play()
     }
 
@@ -55,7 +64,11 @@ class AudioTrackSink : PcmSink {
     override fun release() {
         val t = track
         track = null
-        try { t?.release() } catch (e: IllegalStateException) { }
+        val e = effect
+        effect = null
+        try { t?.attachAuxEffect(0) } catch (ex: IllegalStateException) { }
+        try { e?.release() } catch (ex: RuntimeException) { }
+        try { t?.release() } catch (ex: IllegalStateException) { }
     }
 
     companion object {
@@ -63,6 +76,35 @@ class AudioTrackSink : PcmSink {
             .setUsage(AudioAttributes.USAGE_ASSISTANT)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
             .build()
+    }
+}
+
+/**
+ * The whale's reverb as an auxiliary [EnvironmentalReverb] (session 0) with the values of `whale_voice.json`
+ * ("android_EnvironmentalReverb_approx"): a short, dark, light room.
+ */
+object AndroidReverbFactory : ReverbFactory {
+    override fun create(send: AuxSend): ReverbHandle? {
+        val fx = EnvironmentalReverb(0, 0)
+        try {
+            fx.decayTime = 900
+            fx.reflectionsDelay = 55
+            fx.reverbDelay = 30
+            fx.roomLevel = -1000
+            fx.roomHFLevel = -1500
+            fx.reverbLevel = -1400
+            fx.diffusion = 1000
+            fx.density = 1000
+            fx.enabled = true
+            if (!send.attach(fx.id)) {
+                fx.release()
+                return null
+            }
+        } catch (t: Throwable) {
+            fx.release()
+            throw t
+        }
+        return ReverbHandle { fx.release() }
     }
 }
 

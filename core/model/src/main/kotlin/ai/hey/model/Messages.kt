@@ -42,6 +42,13 @@ object ClientFrames {
 
     fun turnCancel(turnId: String): String = obj { put("type", "turn.cancel"); put("turnId", turnId) }
 
+    /** D-48 onboarding: "speak this step now" (the wire names of [OnboardingStep] plus the whale's `skip`). */
+    fun onboarding(step: String): String = obj { put("type", "onboarding"); put("step", step) }
+
+    /** The recognized answer to a whale question (`q1`..`q3`); `reply` asks the server for the whale's short answer line. */
+    fun onboardingAnswer(step: String, text: String): String =
+        obj { put("type", "onboarding.answer"); put("step", step); put("text", text); put("reply", true) }
+
     /** Vehicle context; null values are left out. Keys follow contract.md. */
     fun ctx(s: VehicleSignals): String = obj {
         put("type", "ctx")
@@ -84,11 +91,22 @@ sealed interface ServerFrame {
     /** A friend's message: the spoken line follows as `reply.*` + PCM with turn id [id]; [text] is only shown when parked. */
     data class FriendMessage(val id: String, val fromName: String, val text: String) : ServerFrame
 
-    /** A friend arrived (spoken only): same audio path as [FriendMessage]. */
-    data class FriendArrived(val id: String, val fromName: String, val place: String?) : ServerFrame
-
     /** The trip ended (D-52 2): only the car notification centre uses it; [text] is the server's one-line farewell. */
     data class TripDone(val id: String, val text: String, val date: String, val at: String) : ServerFrame
+
+    /** A friend arrived (spoken only): same audio path as [FriendMessage]. D-52: the frame never carries, and the app never reads, a place. */
+    data class FriendArrived(val id: String, val fromName: String) : ServerFrame
+
+    /**
+     * The spoken onboarding line follows as `reply.*` + PCM with turn id [id], like a friend line. [whale] is `voice: "whale"`
+     * (the car adds the reverb to that playback; heyri stays dry). Also sent as `step: "ack"` (the whale's short answer to a
+     * question) and `step: "skip"` (an answer that was not understood).
+     */
+    data class Onboarding(val step: String, val id: String, val text: String, val whale: Boolean = false) : ServerFrame
+
+    /** The server's verdict on an answer; [skipped] = it was not usable and the server goes on without asking again. */
+    data class OnboardingAck(val step: String, val ok: Boolean, val name: String?, val skipped: Boolean = false) : ServerFrame
+
     data class Settings(val settings: CompanionSettings) : ServerFrame
 
     /** The pairing status changed on the server (a phone or the car ended it: [phase] None). */
@@ -130,8 +148,16 @@ private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
         )
         "proactive" -> ServerFrame.Proactive(s("id") ?: return null, s("reason").orEmpty())
         "friend_message" -> ServerFrame.FriendMessage(s("id") ?: return null, s("fromName").orEmpty(), s("text") ?: return null)
-        "friend_arrived" -> ServerFrame.FriendArrived(s("id") ?: return null, s("fromName").orEmpty(), s("place"))
         "trip_done" -> ServerFrame.TripDone(s("id") ?: return null, s("text") ?: return null, s("date").orEmpty(), s("at").orEmpty())
+        "friend_arrived" -> ServerFrame.FriendArrived(s("id") ?: return null, s("fromName").orEmpty())
+        "onboarding" -> ServerFrame.Onboarding(s("step") ?: return null, s("id") ?: return null, s("text").orEmpty(), whale = s("voice") == "whale")
+        "onboarding.ack" -> ServerFrame.OnboardingAck(
+            step = s("step") ?: return null,
+            ok = o["ok"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: return null,
+            name = s("name"),
+            skipped = o["skipped"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false,
+        )
+
         "settings" -> ServerFrame.Settings(parseCompanionSettings(o["settings"]?.jsonObject ?: return null) ?: return null)
         "pairing" -> ServerFrame.Pairing(
             when (s("status")) {

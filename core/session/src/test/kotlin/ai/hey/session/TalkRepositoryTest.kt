@@ -10,6 +10,8 @@ import ai.hey.vehicle.FocusGate
 import ai.hey.vehicle.PlaybackEnd
 import ai.hey.vehicle.PlaybackListener
 import ai.hey.vehicle.ReplyAudio
+import ai.hey.vehicle.ReplyVoice
+import ai.hey.model.OnboardingStep
 import ai.hey.vehicle.ScriptedVoiceInput
 import ai.hey.vehicle.VoiceInput
 import ai.hey.vehicle.VoiceResult
@@ -42,7 +44,8 @@ private class FakeReplyAudio : ReplyAudio {
     var writes = 0
     var finishes = 0
     var stops = 0
-    override fun begin(spec: AudioSpec) { begins++ }
+    var lastVoice: ReplyVoice? = null
+    override fun begin(spec: AudioSpec, voice: ReplyVoice) { begins++; lastVoice = voice }
     override fun write(pcm: ByteArray) { writes++ }
     override fun finish() { finishes++ }
     override fun stop() { stops++ }
@@ -67,13 +70,16 @@ class TalkRepositoryTest {
         consented: Boolean = true,
         autoListenMillis: Long = 5_000,
         otherAudio: OtherAudioProbe? = null,
+        step: ai.hey.model.OnboardingStep = ai.hey.model.OnboardingStep.Done,
+        driving: Boolean = false,
     ) {
-        val vehicle = FakeVehicleGateway(scope, speechMillis = speechMillis)
+        val vehicle = FakeVehicleGateway(scope, speechMillis = speechMillis).also { if (driving) it.setDriving(true) }
         lateinit var transport: FakeTransport
+        lateinit var storage: InMemoryCarStorage
         val repo = TalkRepository(
             scope = scope,
             vehicle = vehicle,
-            storage = InMemoryCarStorage(initialConsents = if (consented) ConsentMirror(setOf(ConsentType.Record)) else ConsentMirror()),
+            storage = InMemoryCarStorage(initialConsents = if (consented) ConsentMirror(setOf(ConsentType.Record)) else ConsentMirror(), initialStep = step).also { storage = it },
             voiceInput = voice,
             transport = { FakeTransport(it).also { t -> transport = t } },
             newTurnId = { "t1" },
@@ -632,11 +638,11 @@ class TalkRepositoryTest {
         val rig = Rig(cs, voice)
         rig.vehicle.setDriving(false)
         val l = rig.transport.listener
-        l.onFrame(ServerFrame.FriendArrived("fa1", "지은", "집"))
+        l.onFrame(ServerFrame.FriendArrived("fa1", "지은"))
         l.onFrame(ServerFrame.ReplyStart("fa1", AudioSpec.None))
-        l.onFrame(ServerFrame.ReplyEnd("fa1", "지은이 집에 도착했대?", 100, 900))
+        l.onFrame(ServerFrame.ReplyEnd("fa1", "지은이 도착했대?", 100, 900))
         testScheduler.advanceUntilIdle()
-        assertEquals(listOf("지은이 집에 도착했대?"), rig.vehicle.spoken)
+        assertEquals(listOf("지은이 도착했대?"), rig.vehicle.spoken)
         assertNull(rig.repo.state.value.friendNote)
         assertEquals(0, voice.listens) // the line ends with a question mark, yet the microphone stays closed
         assertEquals(TurnState.Idle, rig.repo.state.value.turn)
@@ -723,6 +729,239 @@ class TalkRepositoryTest {
         rig.vehicle.setSignals { it.copy(naviGuiding = false, destKm = null) }
         testScheduler.advanceTimeBy(1100)
         assertTrue(!rig.transport.sent.last { it.contains("\"type\":\"ctx\"") }.contains("destKm"))
+        cs.cancel()
+    }
+
+    // ---------------------------------------------------------------- D-48 onboarding step machine
+
+    private fun onboardingFrame(rig: Rig, step: String, id: String, text: String, whale: Boolean = true) {
+        rig.transport.listener.onFrame(ServerFrame.Onboarding(step, id, text, whale))
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart(id, AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd(id, text, 100, 900))
+    }
+
+    private fun asked(rig: Rig, step: String) = rig.transport.sent.count { it.contains("\"type\":\"onboarding\"") && it.contains("\"$step\"") }
+
+    @Test fun `D-48 the whale intro is asked at once, spoken, and moves on to the consent sheet`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "뚱"), step = OnboardingStep.WhaleIntro, consented = false)
+        testScheduler.runCurrent()
+        // the intro comes BEFORE the consent sheet: it needs no consent
+        assertEquals(1, asked(rig, "whale_intro"))
+        onboardingFrame(rig, "whale_intro", "o1", "여기는 바다 같은 곳이야")
+        testScheduler.advanceUntilIdle()
+        assertEquals(OnboardingStep.Consent, rig.storage.onboardingStep.value)
+        assertEquals("여기는 바다 같은 곳이야", rig.repo.state.value.onboarding.line)
+        assertTrue(rig.repo.state.value.onboarding.whale)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a question opens the microphone by itself, sends the answer with reply and moves on after the whale's answer line`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "뚱")
+        val rig = Rig(cs, voice, step = OnboardingStep.Q1)
+        testScheduler.runCurrent()
+        onboardingFrame(rig, "q1", "o1", "먼저, 뭐라고 불러 줄까?")
+        testScheduler.runCurrent()
+        assertEquals(1, voice.listens) // no tap
+        assertTrue(rig.transport.sent.any { it.contains("onboarding.answer") && it.contains("\"q1\"") && it.contains("뚱") && it.contains("\"reply\":true") })
+        rig.transport.listener.onFrame(ServerFrame.OnboardingAck("q1", true, "뚱"))
+        onboardingFrame(rig, "ack", "o2", "뚱, 반가워.")
+        testScheduler.runCurrent()
+        assertEquals(OnboardingStep.Q2, rig.storage.onboardingStep.value)
+        assertEquals("뚱", rig.repo.state.value.onboarding.answers.name)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 an answer the server could not use is not asked again - the whale says skip and the answer is dropped`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "음"), step = OnboardingStep.Q2)
+        testScheduler.runCurrent()
+        onboardingFrame(rig, "q2", "o1", "이 차로 주로 어디 다녀?")
+        testScheduler.runCurrent()
+        rig.transport.listener.onFrame(ServerFrame.OnboardingAck("q2", false, null, skipped = true))
+        onboardingFrame(rig, "skip", "o2", "괜찮아, 다음에 알려 줘.")
+        testScheduler.runCurrent()
+        assertEquals(1, asked(rig, "q2"))
+        assertEquals(OnboardingStep.Q3, rig.storage.onboardingStep.value)
+        assertNull(rig.repo.state.value.onboarding.answers.trips)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 the skip button on a listening question says the skip line and moves on`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, hangingVoice(), step = OnboardingStep.Q3)
+        testScheduler.runCurrent()
+        onboardingFrame(rig, "q3", "o1", "차 안에서는 어떤 얘기가 좋아?")
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Listening, rig.repo.state.value.turn)
+        rig.repo.skipOnboardingQuestion()
+        testScheduler.runCurrent()
+        assertEquals(1, asked(rig, "skip"))
+        onboardingFrame(rig, "skip", "o2", "괜찮아, 다음에 알려 줘.")
+        testScheduler.runCurrent()
+        assertEquals(OnboardingStep.Found, rig.storage.onboardingStep.value)
+        cs.cancel()
+    }
+
+    private fun hangingVoice(): VoiceInput = object : VoiceInput {
+        override fun hasPermission() = true
+        override suspend fun listen(): VoiceResult { kotlinx.coroutines.awaitCancellation() }
+        override fun release() = Unit
+    }
+
+    @Test fun `D-48 spoken steps run while driving and the long press waits for park and is not lost`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "회사랑 집")
+        val rig = Rig(cs, voice, step = OnboardingStep.Q2, driving = true)
+        testScheduler.runCurrent()
+        onboardingFrame(rig, "q2", "o1", "이 차로 주로 어디 다녀?")
+        testScheduler.runCurrent()
+        assertEquals(1, voice.listens) // listening opened while driving
+        rig.transport.listener.onFrame(ServerFrame.OnboardingAck("q2", true, null))
+        onboardingFrame(rig, "ack", "o2", "그렇구나.")
+        testScheduler.runCurrent()
+        assertEquals(OnboardingStep.Q3, rig.storage.onboardingStep.value)
+        assertEquals("회사랑 집", rig.repo.state.value.onboarding.answers.trips)
+        // the long press needs the driver's hand: parked-only, nothing is asked for it while driving, and it is kept
+        rig.storage.setOnboardingStep(OnboardingStep.Summon)
+        testScheduler.runCurrent()
+        assertEquals(0, asked(rig, "greeting"))
+        assertEquals(OnboardingStep.Summon, rig.repo.state.value.onboardingStep)
+        rig.vehicle.setDriving(false)
+        testScheduler.runCurrent()
+        assertEquals(OnboardingStep.Summon, rig.storage.onboardingStep.value) // still waits for the press itself
+        cs.cancel()
+    }
+
+    @Test fun `D-48 resume after driving - a press step waits while the car moves and its line is asked when parked`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(), step = OnboardingStep.Dress, driving = true)
+        testScheduler.runCurrent()
+        assertEquals(0, asked(rig, "dress"))
+        rig.vehicle.setDriving(false)
+        testScheduler.runCurrent()
+        assertEquals(1, asked(rig, "dress"))
+        assertEquals(OnboardingStep.Dress, rig.storage.onboardingStep.value) // the press finishes it, not the line
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a restart resumes at the stored step and the long press is finished from the screen`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(), step = OnboardingStep.Summon)
+        testScheduler.runCurrent()
+        assertEquals(OnboardingStep.Summon, rig.repo.state.value.onboardingStep)
+        assertEquals(0, rig.transport.sent.count { it.contains("\"type\":\"onboarding\"") })
+        rig.repo.finishOnboardingStep(OnboardingStep.Summon)
+        testScheduler.runCurrent()
+        assertEquals(OnboardingStep.Greeting, rig.storage.onboardingStep.value)
+        assertEquals(1, asked(rig, "greeting")) // a spoken step: asked at once
+        cs.cancel()
+    }
+
+    @Test fun `D-48 the greeting text comes in reply end and reaches the subtitle`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(), step = OnboardingStep.Greeting, speechMillis = 10_000)
+        testScheduler.runCurrent()
+        rig.transport.listener.onFrame(ServerFrame.Onboarding("greeting", "g1", "", false))
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart("g1", AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd("g1", "반가워, 민수!", 100, 900))
+        assertEquals("반가워, 민수!", rig.repo.state.value.onboarding.line)
+        assertFalse(rig.repo.state.value.onboarding.whale)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a line that never arrives is tried twice and the flow goes on - no endless re-request`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(), step = OnboardingStep.WhaleIntro)
+        testScheduler.advanceUntilIdle() // no frame ever comes back
+        assertEquals(2, asked(rig, "whale_intro"))
+        assertEquals(OnboardingStep.Consent, rig.storage.onboardingStep.value)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a missing microphone permission gives up the questions only, the rest of the flow still runs`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(permission = false), step = OnboardingStep.Q1)
+        testScheduler.runCurrent()
+        onboardingFrame(rig, "q1", "o1", "먼저, 뭐라고 불러 줄까?")
+        testScheduler.runCurrent()
+        assertEquals(OnboardingStep.Found, rig.storage.onboardingStep.value)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 the whale line is played in the whale voice and a driver turn is dry`() = runTest {
+        val cs = rigScope(testScheduler)
+        val audio = FakeReplyAudio()
+        val rig = Rig(cs, ScriptedVoiceInput(), audio = audio, step = OnboardingStep.Lights)
+        testScheduler.runCurrent()
+        rig.transport.listener.onFrame(ServerFrame.Onboarding("lights", "o1", "여기 빛 하나하나가", whale = true))
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart("o1", AudioSpec.Pcm(24_000, 1)))
+        assertEquals(ReplyVoice.Whale, audio.lastVoice)
+        cs.cancel()
+        val dryScope = rigScope(testScheduler)
+        val dryAudio = FakeReplyAudio()
+        val dry = Rig(dryScope, ScriptedVoiceInput(text = "안녕"), audio = dryAudio)
+        dry.repo.startTalk()
+        dry.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.Pcm(24_000, 1)))
+        assertEquals(ReplyVoice.Heyri, dryAudio.lastVoice)
+        dryScope.cancel()
+    }
+
+    @Test fun `D-48 a tap on the talk button during the first-run flow does not open a second turn`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"), step = OnboardingStep.Q1)
+        testScheduler.runCurrent()
+        rig.repo.startTalk()
+        testScheduler.runCurrent()
+        assertTrue(rig.transport.sent.none { it.contains("turn.start") })
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a proactive line is refused while the first-run flow runs`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(), step = OnboardingStep.Dress)
+        rig.transport.listener.onFrame(ServerFrame.Proactive("p1", "wiper"))
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertTrue(rig.transport.sent.any { it.contains("turn.cancel") && it.contains("p1") })
+        cs.cancel()
+    }
+
+    // ---------------------------------------------------------------- H1: a friend line is never lost
+
+    @Test fun `friend_message during auto-listen is read and never cancelled`() = runTest {
+        val cs = rigScope(testScheduler)
+        val (voice, _) = askThenHang()
+        val rig = Rig(cs, voice)
+        rig.vehicle.setDriving(false)
+        rig.repo.startTalk()
+        replyWith(rig, "t1", "오늘 어땠어?")
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Listening, rig.repo.state.value.turn)
+        assertEquals(TurnSource.AutoListen, rig.repo.state.value.source)
+        rig.transport.listener.onFrame(ServerFrame.FriendMessage("fm1", "민수", "저녁에 보자"))
+        assertEquals(TurnSource.Friend, rig.repo.state.value.source)
+        assertEquals(FriendNote("민수", "저녁에 보자"), rig.repo.state.value.friendNote)
+        replyWith(rig, "fm1", "민수가 그러는데, 저녁에 보자")
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("오늘 어땠어?", "민수가 그러는데, 저녁에 보자"), rig.vehicle.spoken)
+        assertTrue(rig.transport.sent.none { it.contains("turn.cancel") })
+        cs.cancel()
+    }
+
+    @Test fun `friend_message while the character talks waits and is read after it`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(silentAfterReply = true, text = "안녕"))
+        rig.vehicle.setDriving(true)
+        rig.repo.startTalk()
+        testScheduler.runCurrent()
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.FriendMessage("fm1", "민수", "저녁에 보자"))
+        assertTrue(rig.transport.sent.none { it.contains("turn.cancel") })
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", "응", 100, 900))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("응", "민수가 그러는데, 저녁에 보자"), rig.vehicle.spoken)
+        assertTrue(rig.transport.sent.none { it.contains("turn.cancel") })
         cs.cancel()
     }
 }

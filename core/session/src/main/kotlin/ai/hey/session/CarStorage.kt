@@ -2,6 +2,7 @@ package ai.hey.session
 
 import ai.hey.model.CarSettings
 import ai.hey.model.ConsentType
+import ai.hey.model.OnboardingStep
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,16 +58,24 @@ interface CarStorage {
     suspend fun loadCarToken(serverUrl: String): String?
     suspend fun saveCarToken(serverUrl: String, token: String)
     suspend fun forgetCarToken(serverUrl: String)
+
+    /** D-48 onboarding: the step the first-run flow is at. [OnboardingStep.Done] for installs that never started it. */
+    val onboardingStep: StateFlow<OnboardingStep>
+    suspend fun setOnboardingStep(step: OnboardingStep)
 }
 
 class InMemoryCarStorage(
     initial: CarSettings = CarSettings(),
     private val install: String = "test-install-0001",
     initialConsents: ConsentMirror = ConsentMirror(),
+    initialStep: OnboardingStep = OnboardingStep.Done,
 ) : CarStorage {
     private val _settings = MutableStateFlow(initial)
     private val _consents = MutableStateFlow(initialConsents)
     private val tokens = HashMap<String, String>()
+    private val _step = MutableStateFlow(initialStep)
+    override val onboardingStep: StateFlow<OnboardingStep> = _step.asStateFlow()
+    override suspend fun setOnboardingStep(step: OnboardingStep) { _step.value = step }
     override val settings: StateFlow<CarSettings> = _settings.asStateFlow()
     override val consents: StateFlow<ConsentMirror> = _consents.asStateFlow()
     override suspend fun setConsent(type: ConsentType, granted: Boolean) {

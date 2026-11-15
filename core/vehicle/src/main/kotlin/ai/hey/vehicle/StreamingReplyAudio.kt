@@ -49,7 +49,7 @@ fun interface OtherAudioProbe {
  *   and nothing is resumed (D-14).
  */
 class StreamingReplyAudio(
-    private val newSink: () -> PcmSink,
+    private val newSink: (ReplyVoice) -> PcmSink,
     private val focus: FocusGate,
     private val thresholds: MouthThresholds = MouthThresholds.PCM,
 ) : ReplyAudio {
@@ -58,8 +58,8 @@ class StreamingReplyAudio(
     private val lock = Any()
     private var session: Session? = null
 
-    private inner class Session(val sampleRate: Int) {
-        val sink: PcmSink = newSink()
+    private inner class Session(val sampleRate: Int, voice: ReplyVoice) {
+        val sink: PcmSink = newSink(voice)
         val chunks = LinkedBlockingQueue<ByteArray>()
         val windowBytes = PcmRms.windowBytes(sampleRate)
         val windowFrames = windowBytes / 2
@@ -84,10 +84,10 @@ class StreamingReplyAudio(
         }
     }
 
-    override fun begin(spec: AudioSpec) {
+    override fun begin(spec: AudioSpec, voice: ReplyVoice) {
         stop()
         if (spec !is AudioSpec.Pcm || spec.channels != 1) return
-        val s = Session(spec.sampleRate)
+        val s = Session(spec.sampleRate, voice)
         synchronized(lock) { session = s }
         if (!focus.request { s.end(PlaybackEnd.FocusLost) }) {
             HeyLog.w(TAG, "audio focus refused, not playing")

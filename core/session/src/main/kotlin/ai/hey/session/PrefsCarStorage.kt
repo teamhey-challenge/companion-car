@@ -2,6 +2,7 @@ package ai.hey.session
 
 import ai.hey.model.CarSettings
 import ai.hey.model.ConsentType
+import ai.hey.model.OnboardingStep
 import android.content.Context
 import android.content.SharedPreferences
 import kotlinx.coroutines.Dispatchers
@@ -72,7 +73,20 @@ class PrefsCarStorage(context: Context, private val defaultServerUrl: String = C
         withContext(Dispatchers.IO) { prefs.edit().remove(tokenKey(serverUrl)).commit() }
     }
 
+    // A first run (no stored step and no consent yet) starts the flow at the title; an install from before the flow is Done.
+    private val _step = MutableStateFlow(
+        prefs.getString(KEY_STEP, null)?.let { OnboardingStep.fromName(it) }
+            ?: if (ConsentType.Record in _consents.value.granted) OnboardingStep.Done else OnboardingStep.Title,
+    )
+    override val onboardingStep: StateFlow<OnboardingStep> = _step.asStateFlow()
+
+    override suspend fun setOnboardingStep(step: OnboardingStep) {
+        _step.value = step
+        withContext(Dispatchers.IO) { prefs.edit().putString(KEY_STEP, step.name).commit() }
+    }
+
     private companion object {
+        const val KEY_STEP = "onboarding_step"
         const val KEY_GAP = "speech_gap"
         const val KEY_DARK = "dark"
         const val KEY_SERVER = "server"
