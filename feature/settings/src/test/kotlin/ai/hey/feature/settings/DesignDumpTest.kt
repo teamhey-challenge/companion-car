@@ -29,6 +29,17 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
         dump.write()
     }
     dump("car-settings-phone") { PhoneLinkScreen(PhoneLinkUi.Code("K7M2QX9P"), onBack = {}, onUnpair = {}, onRetry = {}) }
+    val noop = FriendsActions({}, {}, {}, {}, {}, {}, {})
+    val ui = FriendsUi(
+        friends = listOf(
+            FriendRowUi("f1", "민수", arrivalOn = false, lastMessage = "오늘 발표 잘할 거야. 응원할게!"),
+            FriendRowUi("f2", "지은", arrivalOn = true, lastMessage = "저녁에 보자"),
+        ),
+        friendsLoaded = true,
+        code = FriendCodeUi.Shown("K7M2QX", "https://hey.lastmile.ltd/f/K7M2QX"),
+    )
+    dump("car-friends") { FriendsScreen(ui, FriendsView.List, noop) }
+    dump("car-friends-code") { FriendsScreen(ui, FriendsView.Code, noop) }
 }
 
 class SettingsDesignDump1600Test {
