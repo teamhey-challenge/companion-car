@@ -1,86 +1,116 @@
-# companion-car
+<p align="center">
+  <img src="app/src/main/res/drawable-nodpi/heyri_launcher_artwork.png" alt="헤이리" width="128">
+</p>
 
-앱 이름 **Hey**(캐릭터 헤이리), 팀 **Team Hey**. 저장소 이름 `companion-*`은 그대로다.
+<h1 align="center">Hey 차량 앱</h1>
 
-차 안에 사는 캐릭터 AI 컴패니언 "헤이리"의 **차량 앱** 저장소다. Pleos(Android Automotive) 차 화면에서 동작하며, 음성으로 대화하고 차량 상태(주행 상태·기어·문·내비 목적지까지 남은 거리 등)를 읽어 먼저 말을 걸고, 사용자를 기억한다(기억은 폰 앱에서 보고 지울 수 있다). 주행 중에는 음성만 쓰고 화면은 큰 글자·큰 버튼으로 단순하게 둔다. 패키지 `ai.hey.car`, minSdk 28 / targetSdk 34.
+<p align="center">
+  차 안에 사는 캐릭터 AI 친구 "헤이리"의 Pleos 차량 앱.<br>
+  음성으로 대화하고, 차량 상태를 읽어 먼저 말을 걸고, 나를 기억합니다.
+</p>
 
-## 제출물과 주소
+<p align="center">
+  <img src="feature/home/src/test/snapshots/images/ai.hey.feature.home_Home1600SnapshotTest_screens_c5-idle-light.png" alt="홈 화면" width="32%">
+  <img src="feature/home/src/test/snapshots/images/ai.hey.feature.home_Home1600SnapshotTest_screens_c4-speaking-light.png" alt="대화 화면" width="32%">
+  <img src="feature/settings/src/test/snapshots/images/ai.hey.feature.settings_Settings1600SnapshotTest_screens_c7-settings-light.png" alt="설정 화면" width="32%">
+</p>
 
-| 항목 | 위치 |
+Team Hey가 만든 Pleos(Android Automotive) 차량용 앱입니다. 패키지는 `ai.hey.car`, minSdk 28 / targetSdk 34입니다. 위 화면은 Paparazzi 스냅숏입니다(홈, 대화, 설정).
+
+## 주요 기능
+
+- **음성 대화**: 차량의 온디바이스 음성 인식(Pleos STT)으로 듣고, 서버가 만든 답과 캐릭터 목소리로 말합니다. 서버 음성이 없으면 Pleos TTS가 읽습니다.
+- **먼저 말 걸기**: 주행 상태·기어·문·내비 목적지까지 남은 거리를 읽고, 새로운 일이 생기면 먼저 말을 겁니다. 빈도는 설정에서 고릅니다.
+- **기억**: 대화에서 기억한 것을 화면에서 보고 지울 수 있습니다.
+- **친구**: 친구 코드로 연결해 친구의 메시지를 읽어 줍니다.
+- **폰 연결**: 설정에서 QR로 폰 앱과 연결합니다.
+- **운전 중 화면**: 주행 중에는 음성만 쓰고 화면은 큰 글자·큰 버튼(76dp 이상, 주요 동작 96dp)으로 단순하게 둡니다.
+- **분할 화면**: 1600×900dp 기준 화면을 창 너비에 맞춰 늘이고 줄이며, 내비 옆 분할(840dp, 560dp)도 지원합니다.
+
+## 구조
+
+| 모듈 | 내용 |
 |---|---|
-| 차량 앱 APK(릴리스 키 서명) | `apk/TeamHey_Hey_release.apk`, 항상 최신본은 https://hey.lastmile.ltd/download/latest.apk |
-| 폰 앱 APK | companion-phone 저장소 `apk/TeamHey_Hey-phone_release.apk`, 최신본은 https://hey.lastmile.ltd/download/phone/latest.apk |
-| 서버 | https://hey.lastmile.ltd/api (앱 기본값) |
-| 파일 목록·SHA-256 | https://hey.lastmile.ltd/download/ |
+| `app` | `MainActivity`, 서비스, 의존성 연결 |
+| `core/vehicle` | Pleos 차량 게이트웨이, Pleos TTS·STT, 음성 큐(`SpeechQueue`) |
+| `core/session` | 서버 `/v1/talk` 클라이언트(등록 → 세션 → WebSocket, 재연결 1·2·4·8·15초) |
+| `core/designsystem` | Compose 부품, 테마, 부품별 스냅숏 시험 |
+| `core/model` | 설정·메시지 모델 |
+| `feature/home` | 홈, 대화, 주행 중 화면, 캐릭터 |
+| `feature/onboarding` | 첫 실행 안내 |
+| `feature/memory` | 기억 보기·지우기 |
+| `feature/settings` | 설정, 친구, 폰 연결 |
+| `shared/` | [companion-shared](https://github.com/teamhey-challenge/companion-shared) 서브모듈(디자인 토큰, 프로토콜) |
 
-APK를 다시 만들려면 `scripts/stage-apk.sh --release TeamHey Hey`(마지막 성공한 `release-apk` 실행의 산출물을 받는다).
+화면 모듈은 디자인 시스템 부품만 씁니다. 원시 위젯과 색·크기 리터럴을 쓰면 `checkDesignSystemUsage`가 빌드를 실패시킵니다.
 
-## 화면 규격
+## 사용한 Pleos SDK
 
-- 디자인 기준 캔버스는 **1600x900 dp** 가로 화면이다. 앱은 창 너비를 이 캔버스에 맞춰 한 번 스케일한다(`MainActivity`).
-- Pleos 에뮬레이터의 실제 앱 창은 1682x1210 px이며 스케일 후 **1251x900 dp**다.
-- 멀티윈도우(내비 옆 분할)는 **840 dp**(1/2 너비)와 **560 dp**(1/3 너비)를 지원한다. 높이는 900 dp 기준이다. 1600·1251·840·560 네 너비 모두 화면별 스냅숏 시험이 있다.
-- 버튼은 76 dp 이상, 주요 액션은 96 dp이고, 주행 중에는 음성만 쓴다.
+`ai.pleos.playground` 라이브러리를 씁니다. 버전은 `gradle/libs.versions.toml`에 있습니다.
 
-## 테스트 환경
+| SDK | 쓰는 곳 |
+|---|---|
+| Vehicle | 주행 상태·기어·문 등 차량 신호 읽기 |
+| NaviHelper | 목적지 유무, 남은 거리, 도착 이벤트 |
+| SpeechToText | 음성 인식(ON_DEVICE, `Locale.KOREA`) |
+| TextToSpeech | 서버 음성이 없을 때 답을 읽기 |
 
-- 에뮬레이터: Pleos Connect 에뮬레이터 `pleos_connect_v2_1`(Android Automotive). 실차 시험 결과는 이 저장소에 없다.
-- Pleos SDK(`ai.pleos.playground`): Vehicle 2.3.2, NaviHelper 3.0.5, TextToSpeech 3.3.1, SpeechToText 3.3.1(`gradle/libs.versions.toml`).
-- 빌드: JDK 17, Gradle 8.13(래퍼), Android Gradle Plugin 8.11.2, Kotlin 2.1.0, compileSdk 36. JDK 17과 Android SDK가 있으면 Android Studio 없이도 빌드된다.
-- 마이크가 없는 환경에서는 디버그·e2e 빌드의 텍스트 주입(`DemoVoice`)으로 음성 입력을 대신한다. 릴리스에는 주입 경로가 없다.
+SDK 파일은 이 저장소에 없고, 빌드할 때 Pleos Playground 저장소에서 받습니다. 받으려면 Playground 계정과 이용약관 동의가 필요합니다. 자세한 내용은 [THIRD_PARTY.md](THIRD_PARTY.md)를 보세요.
 
 ## 빌드와 실행
+
+필요한 것: JDK 17, Android SDK(compileSdk 36), Pleos Playground 접근 권한. Android Studio 없이도 빌드됩니다.
 
 ```sh
 git clone --recurse-submodules https://github.com/teamhey-challenge/companion-car.git
 cd companion-car
-./check.sh                      # 조립 + 단위 시험 + Paparazzi 스냅숏 검증
-./gradlew :app:assembleDebug    # 디버그 APK
+./gradlew :app:assembleDebug     # 디버그 APK: app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease   # 릴리스 APK
+```
+
+서브모듈 없이 클론했다면 `git submodule update --init`을 먼저 실행하세요.
+
+실행은 Pleos Connect 에뮬레이터 `pleos_connect_v2_1`(Android Automotive)에서 확인했습니다. 설치 뒤 앱 목록에서 Hey를 엽니다.
+
+```sh
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-`shared/`는 `companion-shared`를 고정한 서브모듈이다. 제출용 APK를 그대로 쓰려면 `adb install -r apk/TeamHey_Hey_release.apk`로 설치하고 Pleos 에뮬레이터 앱 목록에서 Hey를 연다.
+서버 주소를 바꾸려면 `-PserverUrl=https://...`를 붙입니다(https만 허용). 마이크가 없는 환경에서는 디버그 빌드의 텍스트 주입(`DemoVoice`)으로 음성 입력을 대신합니다. 릴리스 빌드에는 이 경로가 없습니다.
 
-## 사용하는 Pleos SDK
+## 테스트
 
-| SDK | 쓰는 곳 |
+```sh
+./check.sh                        # 조립 + 단위 시험 + 디자인 시스템 검사 + 스냅숏 검증
+./gradlew :core:session:test      # 한 모듈만
+```
+
+- 단위 시험: 서버 연결·재연결, 음성 큐, 온보딩 흐름, 설정·친구·기억 화면 상태.
+- 스냅숏: [Paparazzi](https://github.com/cashapp/paparazzi)로 화면 상태마다 라이트·다크, 폭 1600·1251·840·560dp를 찍어 `*/src/test/snapshots/images/`와 비교합니다. 기준 이미지는 CI의 `record-snapshots` 워크플로가 만들며 로컬에서 기록하지 않습니다.
+- CI(`.github/workflows/ci.yml`)는 main에서 같은 `./check.sh`를 돌립니다.
+
+## APK
+
+| 항목 | 위치 |
 |---|---|
-| Vehicle | 주행 상태·기어·문 등 차량 신호 읽기(`core/vehicle`) |
-| NaviHelper | 목적지 유무·남은 거리·도착 이벤트(`core/vehicle`) |
-| SpeechToText | 음성 인식. ON_DEVICE, `Locale.KOREA` |
-| TextToSpeech | 서버 음성이 없을 때(`reply.start.audio`가 `none`) 답을 읽는다 |
+| 제출용 릴리스 APK | [`apk/TeamHey_Hey_release.apk`](apk/TeamHey_Hey_release.apk) |
+| 최신 APK | https://hey.lastmile.ltd/download/latest.apk |
+| 파일 목록과 SHA-256 | https://hey.lastmile.ltd/download/ |
 
-답변 생성과 캐릭터 목소리(서버 TTS)는 서버가 맡는다. Pleos SDK는 이 저장소에 들어 있지 않고 Playground 약관을 따른다.
+폰 앱은 [companion-phone](https://github.com/teamhey-challenge/companion-phone)에 있습니다.
+
+## 서버
+
+기본 서버는 `https://hey.lastmile.ltd/api`입니다. 서버 코드는 [companion-server](https://github.com/teamhey-challenge/companion-server), 폰 웹은 [companion-web](https://github.com/teamhey-challenge/companion-web)에 있습니다.
 
 ## 개인정보
 
-- 음성 인식은 차량의 Pleos **온디바이스 STT**가 하며 마이크 오디오는 서버로 보내지 않는다. 서버에는 인식된 문장 글자만 간다.
-- **좌표는 저장하지 않는다.** 내비 목적지 좌표는 "목적지가 있는가"를 판단하는 데만 쓰고, 서버에는 남은 거리(km)와 목적지 이름만 보낸다. 서버도 `ctx`의 좌표 키(`lat`·`lon`·`gps`·`location` 등)를 버린다.
-- 기억은 사용자가 폰 앱에서 보고 지울 수 있다.
+- 음성 인식은 차량 안에서 처리됩니다. 마이크 오디오는 서버로 보내지 않고 인식된 문장 글자만 보냅니다.
+- 내비 좌표는 저장하지 않습니다. "목적지가 있는가" 판단에만 쓰고, 서버에는 남은 거리(km)와 목적지 이름만 보냅니다.
+- 기억은 사용자가 보고 지울 수 있습니다.
 
-## 저장소 구성
-
-| 저장소 | 내용 |
-|---|---|
-| [companion-car](https://github.com/teamhey-challenge/companion-car) | 차량 앱(이 저장소) |
-| [companion-phone](https://github.com/teamhey-challenge/companion-phone) | 폰 앱(QR 연결·동의·기억 관리) |
-| [companion-server](https://github.com/teamhey-challenge/companion-server) | 대화·기억·TTS 서버 |
-| [companion-web](https://github.com/teamhey-challenge/companion-web) | 폰 웹(폰 앱의 백업)·디자인 시스템 Storybook |
-| [companion-shared](https://github.com/teamhey-challenge/companion-shared) | 디자인 토큰·프로토콜(서브모듈 `shared/`) |
-
-| 모듈 | 내용 |
-|---|---|
-| `core/vehicle` | Pleos 차량 게이트웨이, Pleos TTS·STT, `SpeechQueue` |
-| `core/session` | `/v1/talk` 클라이언트(등록 → 세션 → 티켓 WebSocket, 재연결 1·2·4·8·15초) |
-| `core/designsystem` | Compose 부품·테마·Paparazzi 시험(토큰은 `shared/android`) |
-| `core/model` | 설정·메시지 모델 |
-| `feature/*` | 홈·온보딩·설정·기억 화면 |
-
-## CI와 스냅숏 기록
-
-- PR의 `ci`는 Gradle 빌드 캐시와 구성 캐시로 diff가 건드리지 않은 모듈의 컴파일·시험·스냅숏 검증을 건너뛴다. main은 항상 전체 `./check.sh`를 돌리고 디버그 APK를 `car-apk` 이름으로 올린다. 문서(`*.md`, `docs/`)만 바꾼 PR은 CI를 돌리지 않는다.
-- 스냅숏 PNG는 로컬에서 기록하지 않는다. CI의 `record-snapshots` 워크플로가 만든다. PR에 `record-snapshots` 라벨을 붙이거나 `gh workflow run record-snapshots.yml -f branch=<브랜치>`로 실행하면 바뀐 PNG를 그 브랜치에 커밋 하나로 푸시한다. 레코더는 PR 브랜치에서만 돈다.
+전체 안내: https://hey.lastmile.ltd/privacy
 
 ## 라이선스
 
-코드는 MIT(`LICENSE`). 글꼴·SDK·런타임 고지는 `THIRD_PARTY.md`.
+코드는 [MIT](LICENSE)입니다. 글꼴·SDK·런타임 고지는 [THIRD_PARTY.md](THIRD_PARTY.md)를 보세요. Pleos SDK에는 MIT가 적용되지 않고 Playground 이용약관을 따릅니다.
