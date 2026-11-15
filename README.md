@@ -41,14 +41,6 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 `shared/`는 `companion-shared`를 고정한 서브모듈이다. 제출용 APK를 그대로 쓰려면 `adb install -r apk/TeamHey_Hey_release.apk`로 설치하고 Pleos 에뮬레이터 앱 목록에서 Hey를 연다.
 
-## 심사자 에뮬레이터에서 차 등록하기
-
-APK에는 비밀이 없다. 처음 연결할 때 서버가 차를 등록하려면 기기에 **등록 비밀 파일** 하나가 있어야 한다. 이 파일은 팀이 요청 시 따로 전달한다(저장소·APK에는 값이 없다).
-
-- 앱 전용 경로: `/data/data/ai.hey.car/files/provision.secret`(권한 600), 첫 줄에 값만 적는다.
-- 넣는 법(디버그 빌드): `adb shell run-as ai.hey.car sh -c 'umask 077; cat > files/provision.secret' < 받은파일`. `run-as`가 안 되는 기기는 `/sdcard/Android/data/ai.hey.car/files/provision.secret`에 둔다.
-- 등록이 끝나면 차량 토큰은 앱이 저장하고 이 파일은 다시 읽지 않는다. 파일이 없으면 서버 대화는 되지 않는다.
-
 ## 사용하는 Pleos SDK
 
 | SDK | 쓰는 곳 |

@@ -34,10 +34,10 @@ class BadBodyTest {
     private val html = "<html><body>Sign in to the network</body></html>"
 
     @Test fun `register and session turn an HTML 200 and a wrong shape into IOException`() = runBlocking {
-        expectIo { HttpTalkApi(client(html)).register("https://x.test", "i", "s") }
+        expectIo { HttpTalkApi(client(html)).register("https://x.test", "i") }
         expectIo { HttpTalkApi(client(html)).session("https://x.test", "tok") }
         expectIo { HttpTalkApi(client("""{"other":1}""", "application/json")).session("https://x.test", "tok") }
-        expectIo { HttpTalkApi(client("[1,2]", "application/json")).register("https://x.test", "i", "s") }
+        expectIo { HttpTalkApi(client("[1,2]", "application/json")).register("https://x.test", "i") }
     }
 
     @Test fun `every companion call turns an HTML 200 into IOException`() = runBlocking {

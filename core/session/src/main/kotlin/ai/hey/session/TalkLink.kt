@@ -57,8 +57,8 @@ class TalkSession(val sessionId: String, val wsTicket: String) {
 
 /** The two HTTP calls before the socket: register this install, then ask for a session ticket. */
 interface TalkApi {
-    /** POST /v1/cars/register with the provision secret; returns the car token. 403 = wrong or missing secret. */
-    suspend fun register(serverUrl: String, installId: String, provisionSecret: String): String
+    /** POST /v1/cars/register for this install; returns the car token. */
+    suspend fun register(serverUrl: String, installId: String): String
 
     /** POST /v1/sessions with the car token. 401 = the token is not known (any more). */
     suspend fun session(serverUrl: String, carToken: String): TalkSession
@@ -83,10 +83,9 @@ class HttpTalkApi(private val http: OkHttpClient = newHttpClient()) : TalkApi {
         }
     }
 
-    override suspend fun register(serverUrl: String, installId: String, provisionSecret: String): String {
+    override suspend fun register(serverUrl: String, installId: String): String {
         val body = buildJsonObject { put("installId", installId) }.toString().toRequestBody(json)
-        val request = Request.Builder().url(endpoint(serverUrl, "v1/cars/register")).post(body)
-            .header("X-Provision-Secret", provisionSecret).build()
+        val request = Request.Builder().url(endpoint(serverUrl, "v1/cars/register")).post(body).build()
         return decodeBody { HeyJson.parseToJsonElement(call(request)).jsonObject.getValue("carToken").jsonPrimitive.content }
     }
 
@@ -130,7 +129,7 @@ fun backoffMillis(failures: Int, backoffSec: List<Long> = HeyConfig.RECONNECT_BA
 /**
  * One connection to /v1/talk: register once per install (car token kept on the device), ask for a single-use ticket for
  * every (re)connect, open the socket and send `hello`. A lost socket or a failed step is retried after 1/2/4/8/15 s.
- * Nothing secret is logged: the provision secret, the car token and the ticket stay out of every message.
+ * Nothing secret is logged: the car token and the ticket stay out of every message.
  */
 class TalkLink(
     private val api: TalkApi,
@@ -139,8 +138,6 @@ class TalkLink(
     private val scope: CoroutineScope,
     private val listener: TalkTransport.Listener,
     private val appVersion: String,
-    /** Reads the provision secret from the device (a 600 file); null when it is not there. Called only to register. */
-    private val provisionSecret: () -> String?,
     /** Paces the reconnects: the 1/2/4/8/15 s backoff, cut short by the network coming back or the C8 button. */
     private val pacer: ReconnectPacer,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000 },
@@ -267,7 +264,7 @@ class TalkLink(
         return opened
     }
 
-    /** Car token from the device, or a fresh registration (needs the provision secret); a refused token is forgotten. */
+    /** Car token from the device, or a fresh registration; a refused token is forgotten. */
     private suspend fun openSession(serverUrl: String): TalkSession {
         val saved = storage.loadCarToken(serverUrl)
         if (saved != null) {
@@ -278,8 +275,7 @@ class TalkLink(
                 storage.forgetCarToken(serverUrl)
             }
         }
-        val secret = provisionSecret()?.takeIf { it.isNotBlank() } ?: throw HttpFailure(403)
-        val token = api.register(serverUrl, storage.installId(), secret)
+        val token = api.register(serverUrl, storage.installId())
         storage.saveCarToken(serverUrl, token)
         return api.session(serverUrl, token)
     }

@@ -24,7 +24,6 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import java.io.File
 import ai.hey.model.SpeechPriority
 import ai.hey.vehicle.VehicleEvent
 import kotlinx.coroutines.async
@@ -33,19 +32,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val FAULT_SPEECH_MAX_MILLIS = 15_000L
-
-/**
- * The registration secret is NOT in the APK (it is public). The demo device carries it in a file that only the app can
- * read: `<filesDir>/provision.secret` (mode 600; install it with `run-as` on debug builds) or, where there is no
- * run-as, `<externalFilesDir>/provision.secret` (`adb push`). The first non-blank line is the secret. Never logged.
- */
-internal fun readProvisionSecret(app: Application): String? =
-    listOfNotNull(app.filesDir, app.getExternalFilesDir(null))
-        .map { File(it, PROVISION_FILE) }
-        .firstOrNull { it.isFile }
-        ?.let { runCatching { it.readLines().firstOrNull { line -> line.isNotBlank() }?.trim() }.getOrNull() }
-
-internal const val PROVISION_FILE = "provision.secret"
 
 /** Manual DI: one graph per process, built lazily so the boot receiver and the activity share it. */
 class AppGraph(private val app: Application) {
@@ -74,7 +60,6 @@ class AppGraph(private val app: Application) {
                     scope = scope,
                     listener = listener.alsoTo(notifier),
                     appVersion = BuildConfig.VERSION_NAME,
-                    provisionSecret = { readProvisionSecret(app) },
                     pacer = ReconnectPacer(clock = { System.nanoTime() / 1_000_000 }, connectivity = AndroidConnectivity(app)),
                 )
             },

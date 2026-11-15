@@ -13,7 +13,7 @@ enum class ConnectionStatus {
     Online,
     Reconnecting,
 
-    /** The server refused this car (no provision secret on the device, or a wrong one): retrying cannot help until it is fixed. */
+    /** The server refused this car (HTTP 403): retrying cannot help until it is fixed. */
     Rejected,
 }
 
