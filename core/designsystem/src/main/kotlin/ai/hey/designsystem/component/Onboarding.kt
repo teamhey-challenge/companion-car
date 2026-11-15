@@ -84,6 +84,14 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.Dp
+import ai.hey.designsystem.icon.HeyIcons
 import kotlinx.coroutines.launch
 
 /*
@@ -99,7 +107,15 @@ import kotlinx.coroutines.launch
  */
 val LocalHeyStill = androidx.compose.runtime.staticCompositionLocalOf { false }
 private val SceneInk = HeyDarkColors.bgPage
-private val SceneText = HeyDarkColors.fgDefault
+// The studio's scene palette (onboarding.css): text on the night sea, whatever the car theme is.
+private val SceneText = Color(0xFFF6F8FF)
+private val SceneMuted = Color(0xFFD4E3EF)
+private val ButtonInk = Color(0xFF153B50)
+private val ButtonOffFill = Color(0xFF30495C)
+private val ButtonOffInk = Color(0xFFACBFCD)
+private val GlassFill = Color(0xFF193144).copy(alpha = 0.68f)
+private val GlassRim = Color(0xFFD6EBF7).copy(alpha = 0.3f)
+private val RowRim = Color(0xFFD6EBF7).copy(alpha = 0.24f)
 private val Halo = Color(0xFFFFDE96)
 
 // ---------------------------------------------------------------- scene
@@ -372,8 +388,9 @@ fun OnbLights(count: Int, modifier: Modifier = Modifier) {
 /** "헤이리 찾는 중" with a thin light-orbit progress bar (O3). [progress] is 0..1 of the three questions. */
 @Composable
 fun OnbProgress(label: String, progress: Float, modifier: Modifier = Modifier) {
-    VStack(HeyGap.G8, modifier = modifier, align = HeyAlign.Center) {
-        InkText(label, SceneText, variant = HeyTextVariant.Label, weight = FontWeight.Bold, trackingEm = 0.28f, maxLines = 1)
+    // The studio's eyebrow sits 44 under the top edge: the parent gives 32, the label's own box 12 more.
+    VStack(HeyGap.G8, modifier = modifier.padding(top = 12.dp), align = HeyAlign.Center) {
+        InkText(label, SceneText, variant = HeyTextVariant.Label, weight = FontWeight.Bold, trackingEm = 0.28f, metrics = HeyTextMetrics(17.sp, 24.sp), maxLines = 1)
         val shape = RoundedCornerShape(HeyTokens.Radius.full)
         Box(Modifier.width(180.dp).heightIn(min = 3.dp).clip(shape).background(Color.White.copy(alpha = 0.22f))) {
             val fill by animateFloatAsState(progress.coerceIn(0f, 1f), tween(800), label = "progress")
@@ -404,8 +421,9 @@ fun OnbCaption(
     narrow: Boolean = false,
     compact: Boolean = false,
 ) {
-    val align = if (narrow) HeyAlign.Start else HeyAlign.Center
-    val textAlign = if (narrow) HeyTextAlign.Start else HeyTextAlign.Center
+    // The studio centres the subtitle in whatever width it has (the left half while a panel is open).
+    val align = HeyAlign.Center
+    val textAlign = HeyTextAlign.Center
     Box(
         modifier.fillMaxWidth().background(
             Brush.verticalGradient(listOf(Color.Transparent, SceneInk.copy(alpha = 0.36f), SceneInk.copy(alpha = 0.74f), SceneInk.copy(alpha = 0.92f))),
@@ -465,7 +483,23 @@ fun OnbTitle(title: String, tagline: String, modifier: Modifier = Modifier, comp
             title, HeyLightColors.accentContainer, maxLines = 1, align = HeyTextAlign.Center,
             weight = FontWeight.ExtraBold, metrics = if (compact) HeyTextMetrics(96.sp, 96.sp) else HeyTextMetrics(150.sp, 150.sp), trackingEm = -0.04f,
         )
-        InkText(tagline, SceneText, maxLines = 2, align = HeyTextAlign.Center, metrics = if (compact) HeyTextMetrics(24.sp, 28.32.sp) else HeyTextMetrics(30.sp, 35.4.sp), weight = FontWeight.Normal)
+        InkText(
+            tagline, SceneText, Modifier.padding(top = 3.dp), maxLines = 2, align = HeyTextAlign.Center,
+            metrics = if (compact) HeyTextMetrics(24.sp, 24.sp) else HeyTextMetrics(30.sp, 24.sp), weight = FontWeight.Normal,
+        )
+    }
+}
+
+/** O1 "다음": the white round button with a chevron (104 dp, 72 dp over the bottom edge); [label] is only its description. */
+@Composable
+fun OnbNextButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier.padding(bottom = 72.dp)) {
+        Box(
+            Modifier.size(104.dp).clip(RoundedCornerShape(HeyTokens.Radius.full)).background(Color.White)
+                .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center,
+        ) { InkIcon(HeyIcons.ChevronRight, null, HeyLightColors.fgOnAccent, Modifier.size(44.dp)) }
     }
 }
 
@@ -582,7 +616,7 @@ fun OnbPolaroids(
         val step = card * 1.1f
         InkText(
             eyebrow, SceneText, Modifier.align(Alignment.TopCenter).padding(top = 60.dp).alpha(1f - away),
-            maxLines = 1, metrics = HeyTextMetrics(17.sp, 20.06.sp), weight = FontWeight.Bold, trackingEm = 0.02f,
+            maxLines = 1, metrics = HeyTextMetrics(17.sp, 24.sp), weight = FontWeight.Bold, trackingEm = 0.02f,
         )
         items.forEachIndexed { i, item ->
             val order = i - (items.size - 1) / 2f
@@ -609,7 +643,7 @@ fun OnbPolaroids(
                     )
                     InkText(
                         item.caption, Color(0xFF2A2A2A), Modifier.padding(bottom = 16.dp), maxLines = 2,
-                        align = HeyTextAlign.Center, metrics = if (card < 220.dp) HeyTextMetrics(20.sp, 23.6.sp) else HeyTextMetrics(26.sp, 30.68.sp), weight = FontWeight.Medium,
+                        align = HeyTextAlign.Center, metrics = if (card < 220.dp) HeyTextMetrics(20.sp, 24.sp) else HeyTextMetrics(26.sp, 24.sp), weight = FontWeight.Normal,
                     )
                 }
             }
@@ -625,15 +659,14 @@ enum class OnbSide { Start, End }
 /**
  * A panel that slides over half of the scene (consent on the left, dress-up and the phone QR on the right): the scene
  * stays visible, with a dark fade behind the text that melts into it. [compact] (1/2 and 1/3 windows) makes it full width.
- * Fills its parent; the content is a scrolling column.
+ * Fills its parent; the content is a column centred in the panel's height (the studio's `justify-content: center`) that
+ * scrolls when it is taller than the panel.
  */
 @Composable
 fun OnbSidePanel(
     side: OnbSide,
     compact: Boolean,
     modifier: Modifier = Modifier,
-    /** Pinned under the scrolling content (the panel's actions), so they never scroll out of reach. */
-    footer: (@Composable HeyStackScope.() -> Unit)? = null,
     content: @Composable HeyStackScope.() -> Unit,
 ) {
     val start = side == OnbSide.Start
@@ -658,16 +691,114 @@ fun OnbSidePanel(
         ) {
             // The scene is always the night sea: whatever sits on the panel is drawn in the dark palette.
             ai.hey.designsystem.theme.HeyTheme(dark = true) {
-                VStack(HeyGap.G24, modifier = Modifier.fillMaxSize().padding(horizontal = pad, vertical = if (compact) 32.dp else 64.dp)) {
-                    HeyScrollColumn(
-                        HeyGap.G16,
-                        modifier = Modifier.grow().fillMaxWidth(),
-                        content = content,
-                    )
-                    if (footer != null) footer()
+                Box(
+                    Modifier.fillMaxSize().padding(horizontal = pad, vertical = if (compact) 32.dp else 64.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Top) {
+                        OnbColumnScope(this).content()
+                    }
                 }
             }
         }
+    }
+}
+
+private class OnbColumnScope(private val scope: ColumnScope) : HeyStackScope {
+    override fun Modifier.grow(weight: Float): Modifier = with(scope) { this@grow.weight(weight) }
+}
+
+/** The space the studio puts between two blocks of a panel (its margins are not on the 4-step scale). */
+enum class OnbSpace(internal val value: Dp) { S8(8.dp), S16(16.dp), S18(18.dp), S20(20.dp), S24(24.dp), S28(28.dp), S32(32.dp), S40(40.dp) }
+
+@Composable
+fun OnbGap(space: OnbSpace) {
+    Spacer(Modifier.height(space.value))
+}
+
+/** One line of a panel's promise list: a dot, then 26 sp muted text. */
+@Composable
+fun OnbBullet(text: String, modifier: Modifier = Modifier) {
+    HStack(HeyGap.G4, modifier = modifier.fillMaxWidth(), align = HeyAlign.Start) {
+        Box(Modifier.width(24.dp).height(41.6.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(6.dp).clip(RoundedCornerShape(HeyTokens.Radius.full)).background(SceneMuted))
+        }
+        InkText(text, SceneMuted, Modifier.grow(), metrics = HeyTextMetrics(26.sp, 41.6.sp), weight = FontWeight.Normal)
+    }
+}
+
+/** A consent row on the scene: 44 dp box, 28 sp label, a hairline above ([last] also below). [error] sits under the row. */
+@Composable
+fun OnbCheckRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    last: Boolean = false,
+    error: String? = null,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Column(modifier.fillMaxWidth()) {
+        HStack(
+            HeyGap.G24,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 112.dp)
+                .drawBehind {
+                    val w = 1.dp.toPx()
+                    drawLine(RowRim, Offset(0f, 0f), Offset(size.width, 0f), w)
+                    if (last) drawLine(RowRim, Offset(0f, size.height), Offset(size.width, size.height), w)
+                }
+                .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onCheckedChange)
+                .padding(horizontal = 8.dp, vertical = 20.dp),
+        ) {
+            Box(
+                Modifier.size(44.dp).clip(shape)
+                    .background(if (checked) HeyLightColors.accent else Color(0xFF0D2335).copy(alpha = 0.65f), shape)
+                    .border(HeyTokens.Border.strong, if (checked) HeyLightColors.accent else Color(0xFFA5BDCE), shape),
+                contentAlignment = Alignment.Center,
+            ) { if (checked) InkIcon(HeyIcons.Check, null, ButtonInk) }
+            InkText(label, if (enabled) SceneText else SceneMuted, Modifier.grow(), maxLines = 3, metrics = HeyTextMetrics(28.sp, 42.sp), weight = FontWeight.Normal)
+        }
+        if (error != null) InkText(error, ai.hey.designsystem.theme.HeyTheme.colors.danger, Modifier.padding(top = 8.dp), maxLines = 2, metrics = HeyTextMetrics(22.sp, 32.sp), weight = FontWeight.Normal)
+    }
+}
+
+/** The underlined link under the consent rows (24 sp, 56 dp tall). */
+@Composable
+fun OnbLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier.heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.CenterStart) {
+        InkText(
+            text, SceneMuted,
+            Modifier.drawBehind { drawLine(SceneMuted, Offset(0f, size.height + 2.dp.toPx()), Offset(size.width, size.height + 2.dp.toPx()), 1.5.dp.toPx()) },
+            maxLines = 1, metrics = HeyTextMetrics(24.sp, 24.sp), weight = FontWeight.Normal,
+        )
+    }
+}
+
+/** The panel's one main action: a full-width 104 dp accent pill, 32 sp. [dimmed] draws the blocked look and still takes the press. */
+@Composable
+fun OnbPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, dimmed: Boolean = false) {
+    val shape = RoundedCornerShape(HeyTokens.Radius.full)
+    val off = dimmed || !enabled
+    Box(
+        modifier.fillMaxWidth().heightIn(min = 104.dp).clip(shape).background(if (off) ButtonOffFill else HeyLightColors.accent, shape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        InkText(text, if (off) ButtonOffInk else ButtonInk, maxLines = 1, align = HeyTextAlign.Center, metrics = HeyTextMetrics(32.sp, 24.sp), weight = FontWeight.Medium)
+    }
+}
+
+/** The quiet twin of [OnbPrimaryButton] (glass fill and rim, 28 sp). */
+@Composable
+fun OnbGhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    val shape = RoundedCornerShape(HeyTokens.Radius.full)
+    Box(
+        modifier.heightIn(min = 104.dp).clip(shape).background(GlassFill, shape).border(HeyTokens.Border.strong, GlassRim, shape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        InkText(text, SceneText, maxLines = 1, align = HeyTextAlign.Center, metrics = HeyTextMetrics(28.sp, 24.sp), weight = FontWeight.Normal)
     }
 }
 
@@ -701,19 +832,19 @@ fun OnbDressGrid(choices: List<OnbDressChoice>, modifier: Modifier = Modifier) {
 
 @Composable
 private fun OnbDressTile(c: OnbDressChoice, modifier: Modifier) {
-    val shape = RoundedCornerShape(HeyTokens.Radius.lg)
+    val shape = RoundedCornerShape(24.dp)
     val ink = if (c.selected) HeyLightColors.fgOnAccent else SceneText
     HStack(
         HeyGap.G16,
         modifier = modifier.heightIn(min = 112.dp).clip(shape)
-            .background(if (c.selected) HeyLightColors.accentContainer else HeyDarkColors.surfaceContainerHigh.copy(alpha = 0.68f), shape)
-            .border(HeyTokens.Border.strong, if (c.selected) HeyDarkColors.accent else HeyDarkColors.borderStrong, shape)
+            .background(if (c.selected) HeyLightColors.accentContainer else GlassFill, shape)
+            .border(HeyTokens.Border.strong, if (c.selected) HeyLightColors.accent else GlassRim, shape)
             .toggleable(value = c.selected, role = Role.Checkbox, onValueChange = { c.onClick() })
             .semantics { selected = c.selected }
-            .padding(HeyTokens.Space.s16),
+            .padding(20.dp),
     ) {
         Box(Modifier.size(40.dp).clip(RoundedCornerShape(HeyTokens.Radius.full)).background(c.swatch).border(HeyTokens.Border.strong, Color.Black.copy(alpha = 0.12f), RoundedCornerShape(HeyTokens.Radius.full)))
-        InkText(c.label, ink, Modifier.grow(), maxLines = 2, metrics = HeyTextMetrics(28.sp, 33.04.sp), weight = FontWeight.Medium)
+        InkText(c.label, ink, Modifier.grow(), maxLines = 2, metrics = HeyTextMetrics(28.sp, 24.sp), weight = FontWeight.Normal)
     }
 }
 
@@ -721,7 +852,7 @@ private fun OnbDressTile(c: OnbDressChoice, modifier: Modifier) {
 @Composable
 fun OnbPanelTitle(text: String, modifier: Modifier = Modifier, compact: Boolean = false) {
     InkText(
-        text, SceneText, modifier, maxLines = 3, weight = FontWeight.Normal, trackingEm = -0.055f,
+        text, SceneText, modifier, maxLines = 3, weight = FontWeight(450), trackingEm = -0.055f,
         metrics = if (compact) HeyTextMetrics(44.sp, 58.sp) else HeyTextMetrics(60.sp, 78.sp),
     )
 }
@@ -729,5 +860,5 @@ fun OnbPanelTitle(text: String, modifier: Modifier = Modifier, compact: Boolean 
 /** Panel body line in the panel's muted ink. */
 @Composable
 fun OnbPanelText(text: String, modifier: Modifier = Modifier, large: Boolean = false) {
-    InkText(text, HeyDarkColors.fgMuted, modifier, metrics = if (large) HeyTextMetrics(28.sp, 42.sp) else HeyTextMetrics(26.sp, 41.6.sp), weight = FontWeight.Normal)
+    InkText(text, SceneMuted, modifier, metrics = if (large) HeyTextMetrics(28.sp, 42.sp) else HeyTextMetrics(26.sp, 41.6.sp), weight = FontWeight.Normal)
 }

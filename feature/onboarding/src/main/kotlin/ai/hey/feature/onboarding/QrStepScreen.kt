@@ -1,5 +1,10 @@
 package ai.hey.feature.onboarding
 
+import ai.hey.designsystem.component.OnbSpace
+import ai.hey.designsystem.component.OnbGap
+import ai.hey.designsystem.component.OnbGhostButton
+import ai.hey.designsystem.component.OnbPrimaryButton
+import androidx.compose.ui.unit.dp
 import ai.hey.designsystem.component.CharacterLook
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
@@ -67,17 +72,21 @@ fun QrStepScreen(
                 side = OnbSide.End,
                 compact = compact,
                 modifier = if (compact) Modifier.carCharacterBand() else Modifier,
-                footer = {
-                    if (ui is PhoneLinkUi.Offline) GlassButton(stringResource(R.string.pair_retry), onRetry)
-                    HStack(HeyGap.G16) {
-                        GlassButton(stringResource(R.string.onb_qr_connected), onDone, enabled = linked, dimmed = !linked)
-                        HeyButton(stringResource(R.string.onb_qr_later), onLater, variant = HeyButtonVariant.Ghost)
-                    }
-                },
             ) {
                 OnbPanelTitle(stringResource(R.string.onb_qr_title), compact = compact)
-                OnbPanelText(stringResource(R.string.onb_qr_body))
+                OnbGap(OnbSpace.S20)
+                OnbPanelText(stringResource(R.string.onb_qr_body), large = true)
+                OnbGap(OnbSpace.S40)
                 PhoneLinkPanel(ui, compact = compact)
+                OnbGap(OnbSpace.S40)
+                if (ui is PhoneLinkUi.Offline) {
+                    OnbPrimaryButton(stringResource(R.string.pair_retry), onRetry)
+                    OnbGap(OnbSpace.S16)
+                }
+                HStack(HeyGap.G16, modifier = Modifier.fillWidth()) {
+                    OnbGhostButton(stringResource(R.string.onb_qr_later), onLater, Modifier.grow())
+                    OnbPrimaryButton(stringResource(R.string.onb_qr_connected), onDone, Modifier.grow(), enabled = linked, dimmed = !linked)
+                }
             }
             if (line.isNotBlank()) OnbCaption(line, Modifier.place(OnbAlign.BottomCenter), narrow = !compact, compact = compact)
         }
