@@ -31,9 +31,11 @@ class PleosVoiceInput(private val context: Context) : VoiceInput {
     @Volatile private var stt: SpeechToText? = null
     private val current = AtomicReference<CompletableDeferred<VoiceResult>?>(null)
     @Volatile private var lastPartial = ""
+    @Volatile private var speechStart: () -> Unit = {}
 
     private val results = object : ResultListener {
         override fun onUpdated(text: String, isFinal: Boolean) {
+            if (text.isNotBlank()) speechStart().also { speechStart = {} }
             if (!isFinal) {
                 lastPartial = text
                 return
@@ -106,13 +108,19 @@ class PleosVoiceInput(private val context: Context) : VoiceInput {
         }
     }
 
-    override suspend fun listen(): VoiceResult = lock.withLock {
+    override suspend fun listen(): VoiceResult = listenWith {}
+
+    /** The first partial result of the engine is the start of speech (PLEOS-194): the caller's wait-for-speech timer ends there. */
+    override suspend fun listenAfterReply(onSpeechStart: () -> Unit): VoiceResult = listenWith(onSpeechStart)
+
+    private suspend fun listenWith(onSpeechStart: () -> Unit): VoiceResult = lock.withLock {
         if (!hasPermission()) return VoiceResult.PermissionDenied
         ensureReady()?.let { return if (it == ErrorType.PERMISSION_DENIED) VoiceResult.PermissionDenied else VoiceResult.Unavailable(it.name) }
         val engine = stt ?: return VoiceResult.Unavailable("NO_ENGINE")
         val done = CompletableDeferred<VoiceResult>()
         current.set(done)
         lastPartial = ""
+        speechStart = onSpeechStart
         try {
             engine.request()
             withTimeoutOrNull(LISTEN_TIMEOUT_MS) { done.await() } ?: VoiceResult.NoSpeech
@@ -122,6 +130,7 @@ class PleosVoiceInput(private val context: Context) : VoiceInput {
             HeyLog.w(TAG, "stt request threw ${t.javaClass.simpleName}: ${t.message}")
             VoiceResult.Unavailable("REQUEST_FAILED")
         } finally {
+            speechStart = {}
             current.compareAndSet(done, null)
             try { engine.stop() } catch (_: Throwable) { }
         }

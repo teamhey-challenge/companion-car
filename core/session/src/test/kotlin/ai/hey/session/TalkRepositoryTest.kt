@@ -482,7 +482,7 @@ class TalkRepositoryTest {
 
     @Test fun `D-48 4 a statement also keeps the microphone open and the answer in the window is sent as listen_after_proactive`() = runTest {
         val cs = rigScope(testScheduler)
-        val voice = ScriptedVoiceInput(text = "안녕")
+        val voice = SayInTurn("안녕", "응 그래")
         val rig = Rig(cs, voice)
         rig.repo.startTalk() // one tap: the end of the speech sends by itself
         testScheduler.runCurrent()
@@ -525,20 +525,83 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
-    @Test fun `PLEOS-79 a repeating voice answers a question once and never loops`() = runTest {
+    /** Hears the given sentences one listening after the other; after the last one it hears nothing (the listening hangs). */
+    private class SayInTurn(vararg texts: String) : VoiceInput {
+        private val queue = ArrayDeque(texts.toList())
+        @Volatile var listens = 0
+        override fun hasPermission() = true
+        override suspend fun listen(): VoiceResult {
+            listens++
+            val next = queue.removeFirstOrNull() ?: kotlinx.coroutines.awaitCancellation()
+            return VoiceResult.Text(next)
+        }
+        override fun release() = Unit
+    }
+
+    @Test fun `PLEOS-194 follow-up speech keeps the conversation going and silence ends it`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = SayInTurn("안녕", "오늘 비 와", "응 고마워")
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        replyWith(rig, "t1", "반가워요.")
+        testScheduler.runCurrent()
+        assertEquals(TurnSource.AutoListen, rig.repo.state.value.source)
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn) // the follow-up was heard and sent
+        replyWith(rig, "t1", "그렇구나, 우산 챙겨.") // the answer to a follow-up opens the next listening
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        assertEquals(3, voice.listens)
+        assertEquals(3, rig.transport.sent.count { it.contains("turn.start") })
+        replyWith(rig, "t1", "별말씀을.")
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Listening, rig.repo.state.value.turn) // 4th listening: nobody speaks
+        testScheduler.advanceTimeBy(5_100)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertNull(rig.repo.state.value.error)
+        cs.cancel()
+    }
+
+    @Test fun `PLEOS-194 the same sentence again is the microphone hearing the car and ends the chain`() = runTest {
         val cs = rigScope(testScheduler)
         val voice = ScriptedVoiceInput(text = "같은 문장")
         val rig = Rig(cs, voice)
         rig.repo.startTalk()
         replyWith(rig, "뭐 할래?")
         testScheduler.runCurrent()
-        assertEquals(TurnSource.AutoListen, rig.repo.state.value.source)
-        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
-        assertEquals(2, voice.listens)
-        replyWith(rig, "또 물어볼까?") // the answer to the auto listen is again a question
-        testScheduler.runCurrent()
         assertEquals(TurnState.Idle, rig.repo.state.value.turn)
-        assertEquals(2, voice.listens) // no third listening
+        assertNull(rig.repo.state.value.error)
+        assertEquals(2, voice.listens)
+        assertEquals(1, rig.transport.sent.count { it.contains("turn.start") }) // the repeat was never sent
+        cs.cancel()
+    }
+
+    @Test fun `PLEOS-194 the 5 s only wait for the first words, a started sentence is heard to its end`() = runTest {
+        val cs = rigScope(testScheduler)
+        var calls = 0
+        val voice = object : VoiceInput {
+            override fun hasPermission() = true
+            override suspend fun listen(): VoiceResult {
+                if (++calls == 1) return VoiceResult.Text("안녕")
+                kotlinx.coroutines.awaitCancellation()
+            }
+            override suspend fun listenAfterReply(onSpeechStart: () -> Unit): VoiceResult {
+                calls++
+                kotlinx.coroutines.delay(1_000)
+                onSpeechStart() // the driver starts to speak after 1 s ...
+                kotlinx.coroutines.delay(9_000) // ... and speaks for 9 s, far beyond the 5 s window
+                return VoiceResult.Text("그래서 말이야 오늘은 정말 길게 이야기하고 싶어")
+            }
+            override fun release() = Unit
+        }
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        replyWith(rig, "반가워요.")
+        testScheduler.runCurrent()
+        testScheduler.advanceTimeBy(7_000) // past the 5 s window, the sentence is still going
+        assertEquals(TurnState.Listening, rig.repo.state.value.turn)
+        testScheduler.advanceTimeBy(3_100)
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        assertTrue(rig.transport.sent.any { it.contains("그래서 말이야") })
         cs.cancel()
     }
 
