@@ -1,6 +1,7 @@
 <resources>
     <string name="onboard_title_bar">헤이리</string>
     <string name="onboard_title">우리, 이야기 나눠요.</string>
+    <string name="onboard_promise_title">약속하고 시작할까?</string>
     <string name="onboard_subtitle">목소리로 대화하고, 기억하고 싶은 이야기를 함께 간직해요.</string>
     <string name="onboard_point_voice_title">목소리로 이야기해요</string>
     <string name="onboard_point_voice_body">대화할 때만 음성을 받아 답을 만들어요.</string>

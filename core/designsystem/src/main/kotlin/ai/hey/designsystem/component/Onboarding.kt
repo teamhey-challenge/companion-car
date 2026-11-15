@@ -2,6 +2,7 @@ package ai.hey.designsystem.component
 
 import ai.hey.designsystem.R
 import ai.hey.designsystem.layout.HStack
+import ai.hey.designsystem.layout.HeyStackScope
 import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
@@ -240,6 +241,22 @@ private fun SceneLayer(shot: OnbShot, fadeIn: Boolean, onEnded: () -> Unit) {
     }
 }
 
+/** Where an overlay sits in the scene (the parent decides; parts carry no position). */
+enum class OnbAlign(internal val alignment: Alignment) {
+    TopStart(Alignment.TopStart), TopCenter(Alignment.TopCenter), TopEnd(Alignment.TopEnd),
+    CenterStart(Alignment.CenterStart), Center(Alignment.Center), CenterEnd(Alignment.CenterEnd),
+    BottomCenter(Alignment.BottomCenter), BottomStart(Alignment.BottomStart), BottomEnd(Alignment.BottomEnd),
+}
+
+/** What the scene gives its overlays: only a place to sit. */
+interface OnbSceneScope {
+    fun Modifier.place(at: OnbAlign): Modifier
+}
+
+private class BoxSceneScope(private val scope: BoxScope) : OnbSceneScope {
+    override fun Modifier.place(at: OnbAlign): Modifier = with(scope) { this@place.align(at.alignment) }
+}
+
 /**
  * The one living scene of the onboarding: [shot] on the whole box, with [content] over it. When the shot changes, the new
  * one fades in over the old one (no black gap). [onShotEnded] fires when a one-shot video ends, fails, or is replaced by
@@ -250,7 +267,7 @@ fun OnbScene(
     shot: OnbShot,
     modifier: Modifier = Modifier,
     onShotEnded: () -> Unit = {},
-    content: @Composable BoxScope.() -> Unit,
+    content: @Composable OnbSceneScope.() -> Unit,
 ) {
     var previous by remember { mutableStateOf<OnbShot?>(null) }
     var current by remember { mutableStateOf(shot) }
@@ -265,7 +282,7 @@ fun OnbScene(
     Box(modifier.background(SceneInk)) {
         previous?.let { SceneLayer(it, fadeIn = false, onEnded = {}) }
         androidx.compose.runtime.key(current) { SceneLayer(current, fadeIn = previous != null, onEnded = onShotEnded) }
-        content()
+        BoxSceneScope(this).content()
     }
 }
 
@@ -591,8 +608,8 @@ fun OnbSidePanel(
     compact: Boolean,
     modifier: Modifier = Modifier,
     /** Pinned under the scrolling content (the panel's actions), so they never scroll out of reach. */
-    footer: (@Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit)? = null,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+    footer: (@Composable HeyStackScope.() -> Unit)? = null,
+    content: @Composable HeyStackScope.() -> Unit,
 ) {
     val start = side == OnbSide.Start
     val dim = listOf(SceneInk.copy(alpha = 0.96f), SceneInk.copy(alpha = 0.92f), SceneInk.copy(alpha = 0.68f), Color.Transparent)
@@ -616,13 +633,10 @@ fun OnbSidePanel(
         ) {
             // The scene is always the night sea: whatever sits on the panel is drawn in the dark palette.
             ai.hey.designsystem.theme.HeyTheme(dark = true) {
-                androidx.compose.foundation.layout.Column(
-                    Modifier.fillMaxSize().padding(horizontal = pad, vertical = if (compact) 32.dp else 64.dp),
-                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(HeyTokens.Space.s24),
-                ) {
-                    androidx.compose.foundation.layout.Column(
-                        Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                VStack(HeyGap.G24, modifier = Modifier.fillMaxSize().padding(horizontal = pad, vertical = if (compact) 32.dp else 64.dp)) {
+                    HeyScrollColumn(
+                        HeyGap.G16,
+                        modifier = Modifier.grow().fillMaxWidth(),
                         content = content,
                     )
                     if (footer != null) footer()

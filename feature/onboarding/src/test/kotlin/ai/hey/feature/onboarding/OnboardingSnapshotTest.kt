@@ -78,3 +78,17 @@ class Onboarding1280SnapshotTest {
 
     @Test fun screens() = paparazzi.recordAll()
 }
+
+/** The 1/2 width window next to navigation (2560 px Connect-S half). */
+class Onboarding840SnapshotTest {
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(840, 900), renderingMode = RenderingMode.NORMAL)
+
+    @Test fun screens() = paparazzi.recordAll()
+}
+
+/** The 1/3 width window (Connect-W). */
+class Onboarding560SnapshotTest {
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(560, 900), renderingMode = RenderingMode.NORMAL)
+
+    @Test fun screens() = paparazzi.recordAll()
+}

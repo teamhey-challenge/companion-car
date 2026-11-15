@@ -442,9 +442,11 @@ fun QrPanel(
     status: String,
     modifier: Modifier = Modifier,
     qrSize: Dp = 320.dp,
+    /** 1/2 and 1/3 windows: a 240 dp QR (still large enough to scan across the dashboard). */
+    compact: Boolean = false,
 ) {
     VStack(HeyGap.G16, modifier = modifier, align = HeyAlign.Center) {
-        HeyQrCode(content, qrSize)
+        HeyQrCode(content, if (compact) 240.dp else qrSize)
         HeyText(code, variant = HeyTextVariant.Title, maxLines = 1, align = HeyTextAlign.Center)
         HeyText(status, tone = HeyTone.Muted, maxLines = 2, align = HeyTextAlign.Center)
     }
