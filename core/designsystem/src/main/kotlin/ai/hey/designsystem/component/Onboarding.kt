@@ -2,6 +2,7 @@ package ai.hey.designsystem.component
 
 import ai.hey.designsystem.R
 import ai.hey.designsystem.layout.HStack
+import ai.hey.designsystem.layout.HeyStackScope
 import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.HeyArrange
 import ai.hey.designsystem.layout.VStack
@@ -91,6 +92,11 @@ import kotlinx.coroutines.launch
  * outer margin); the screens in :feature:onboarding only fill the slots.
  */
 
+/**
+ * True where animations must show their settled picture (snapshots and previews): fades and drops start finished.
+ * The one flag every onboarding screen reads, so a screen snapshot shows polaroids dropped and heyri faded in.
+ */
+val LocalHeyStill = androidx.compose.runtime.staticCompositionLocalOf { false }
 private val SceneInk = HeyDarkColors.bgPage
 private val SceneText = HeyDarkColors.fgDefault
 private val Halo = Color(0xFFFFDE96)
@@ -240,6 +246,22 @@ private fun SceneLayer(shot: OnbShot, fadeIn: Boolean, onEnded: () -> Unit) {
     }
 }
 
+/** Where an overlay sits in the scene (the parent decides; parts carry no position). */
+enum class OnbAlign(internal val alignment: Alignment) {
+    TopStart(Alignment.TopStart), TopCenter(Alignment.TopCenter), TopEnd(Alignment.TopEnd),
+    CenterStart(Alignment.CenterStart), Center(Alignment.Center), CenterEnd(Alignment.CenterEnd),
+    BottomCenter(Alignment.BottomCenter), BottomStart(Alignment.BottomStart), BottomEnd(Alignment.BottomEnd),
+}
+
+/** What the scene gives its overlays: only a place to sit. */
+interface OnbSceneScope {
+    fun Modifier.place(at: OnbAlign): Modifier
+}
+
+private class BoxSceneScope(private val scope: BoxScope) : OnbSceneScope {
+    override fun Modifier.place(at: OnbAlign): Modifier = with(scope) { this@place.align(at.alignment) }
+}
+
 /**
  * The one living scene of the onboarding: [shot] on the whole box, with [content] over it. When the shot changes, the new
  * one fades in over the old one (no black gap). [onShotEnded] fires when a one-shot video ends, fails, or is replaced by
@@ -250,7 +272,7 @@ fun OnbScene(
     shot: OnbShot,
     modifier: Modifier = Modifier,
     onShotEnded: () -> Unit = {},
-    content: @Composable BoxScope.() -> Unit,
+    content: @Composable OnbSceneScope.() -> Unit,
 ) {
     var previous by remember { mutableStateOf<OnbShot?>(null) }
     var current by remember { mutableStateOf(shot) }
@@ -265,7 +287,7 @@ fun OnbScene(
     Box(modifier.background(SceneInk)) {
         previous?.let { SceneLayer(it, fadeIn = false, onEnded = {}) }
         androidx.compose.runtime.key(current) { SceneLayer(current, fadeIn = previous != null, onEnded = onShotEnded) }
-        content()
+        BoxSceneScope(this).content()
     }
 }
 
@@ -430,11 +452,11 @@ fun OnbTitle(title: String, tagline: String, modifier: Modifier = Modifier, comp
 
 /** O5: "너의 단짝 / 헤이리" (the studio's INTRODUCING Roman): a small eyebrow over a large name. */
 @Composable
-fun OnbMeetTitle(eyebrow: String, name: String, modifier: Modifier = Modifier, compact: Boolean = false) {
-    VStack(HeyGap.G4, modifier = modifier, align = HeyAlign.Center) {
-        InkText(eyebrow, SceneText, maxLines = 1, size = 17.sp, weight = FontWeight.Bold, trackingEm = 0.3f)
-        InkText(name, SceneText, maxLines = 1, size = if (compact) 56.sp else 84.sp, lineHeight = if (compact) 72.sp else 109.sp, weight = FontWeight.Medium, trackingEm = -0.02f)
-    }
+fun OnbMeetTitle(name: String, modifier: Modifier = Modifier, compact: Boolean = false) {
+    InkText(
+        name, SceneText, modifier, maxLines = 1, align = HeyTextAlign.Center,
+        size = if (compact) 56.sp else 84.sp, lineHeight = if (compact) 72.sp else 109.sp, weight = FontWeight.Medium, trackingEm = -0.02f,
+    )
 }
 
 /** "누르는 건 정차하면 이어서 할게": the one line shown while a press step waits for the car to stop. */
@@ -532,7 +554,8 @@ fun OnbPolaroids(
     /** Snapshots: draw the cards already dropped. */
     settled: Boolean = false,
 ) {
-    val drop = remember { Animatable(if (settled) 1f else 0f) }
+    val still = settled || LocalHeyStill.current || LocalInspectionMode.current
+    val drop = remember { Animatable(if (still) 1f else 0f) }
     LaunchedEffect(Unit) { if (drop.value < 1f) drop.animateTo(1f, tween(1200)) }
     val away by animateFloatAsState(if (stored) 1f else 0f, tween(900), label = "stored")
     BoxWithConstraints(modifier.fillMaxSize().background(SceneInk.copy(alpha = 0.5f * (1f - away)))) {
@@ -591,8 +614,8 @@ fun OnbSidePanel(
     compact: Boolean,
     modifier: Modifier = Modifier,
     /** Pinned under the scrolling content (the panel's actions), so they never scroll out of reach. */
-    footer: (@Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit)? = null,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+    footer: (@Composable HeyStackScope.() -> Unit)? = null,
+    content: @Composable HeyStackScope.() -> Unit,
 ) {
     val start = side == OnbSide.Start
     val dim = listOf(SceneInk.copy(alpha = 0.96f), SceneInk.copy(alpha = 0.92f), SceneInk.copy(alpha = 0.68f), Color.Transparent)
@@ -616,13 +639,10 @@ fun OnbSidePanel(
         ) {
             // The scene is always the night sea: whatever sits on the panel is drawn in the dark palette.
             ai.hey.designsystem.theme.HeyTheme(dark = true) {
-                androidx.compose.foundation.layout.Column(
-                    Modifier.fillMaxSize().padding(horizontal = pad, vertical = if (compact) 32.dp else 64.dp),
-                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(HeyTokens.Space.s24),
-                ) {
-                    androidx.compose.foundation.layout.Column(
-                        Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                VStack(HeyGap.G24, modifier = Modifier.fillMaxSize().padding(horizontal = pad, vertical = if (compact) 32.dp else 64.dp)) {
+                    HeyScrollColumn(
+                        HeyGap.G16,
+                        modifier = Modifier.grow().fillMaxWidth(),
                         content = content,
                     )
                     if (footer != null) footer()

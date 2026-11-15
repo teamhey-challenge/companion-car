@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -131,6 +132,19 @@ fun Modifier.fillSize(): Modifier = fillMaxSize()
 fun Modifier.inset(gap: HeyGap): Modifier = padding(gap.value)
 fun Modifier.insetHorizontal(gap: HeyGap): Modifier = padding(horizontal = gap.value)
 fun Modifier.insetTop(gap: HeyGap): Modifier = padding(top = gap.value)
+fun Modifier.insetBottom(gap: HeyGap): Modifier = padding(bottom = gap.value)
+
+/** The onboarding hold ring: a square as tall as 69% of the scene (620 of 900 in the studio), centred by its parent. */
+fun Modifier.sceneRing(): Modifier = fillMaxHeight(0.69f).aspectRatio(1f)
+
+/** The left half of a scene (the character steps aside while a panel is open on the right). */
+fun Modifier.fillHalf(): Modifier = fillMaxWidth(0.5f)
+
+/** The onboarding "Hey" title block starts 120 dp under the top edge (studio .onb-title padding-top). */
+fun Modifier.carTitleTop(): Modifier = padding(top = 120.dp)
+
+/** 1/2 and 1/3 windows: a 192 dp band at the top keeps the small character in view above a full-width panel. */
+fun Modifier.carCharacterBand(): Modifier = padding(top = 192.dp)
 
 /** Mockup car outer margin (ui-spec "차량 외곽", styles.css `--ui-shell-pad:80px;--ui-edge-y:64px`): 80 left/right, 64 top/bottom at 1600x900. */
 fun Modifier.carMargin(): Modifier = padding(horizontal = 80.dp, vertical = 64.dp)

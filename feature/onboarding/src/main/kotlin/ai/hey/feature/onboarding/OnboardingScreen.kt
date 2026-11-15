@@ -1,25 +1,23 @@
 package ai.hey.feature.onboarding
 
-import ai.hey.designsystem.component.CarFrame
-import ai.hey.designsystem.component.CharacterStill
 import ai.hey.designsystem.component.CheckRow
-import ai.hey.designsystem.component.HeaderBar
-import ai.hey.designsystem.component.HeyButton
 import ai.hey.designsystem.component.GlassButton
+import ai.hey.designsystem.component.HeyButton
 import ai.hey.designsystem.component.HeyButtonVariant
-import ai.hey.designsystem.component.HeyIcon
-import ai.hey.designsystem.component.HeySection
-import ai.hey.designsystem.component.PageHeading
-import ai.hey.designsystem.component.ToggleRow
-import ai.hey.designsystem.icon.HeyIcons
-import androidx.compose.ui.graphics.vector.ImageVector
-import ai.hey.designsystem.component.HeyScrollColumn
 import ai.hey.designsystem.component.HeyText
+import ai.hey.designsystem.component.OnbPanelText
+import ai.hey.designsystem.component.OnbPanelTitle
+import ai.hey.designsystem.component.OnbScene
+import ai.hey.designsystem.component.OnbShot
+import ai.hey.designsystem.component.OnbSide
+import ai.hey.designsystem.component.OnbSidePanel
+import ai.hey.designsystem.component.ToggleRow
 import ai.hey.designsystem.layout.HStack
-import ai.hey.designsystem.layout.HeyAlign
+import ai.hey.designsystem.layout.HeyWindow
 import ai.hey.designsystem.layout.VStack
+import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.fillWidth
-import ai.hey.designsystem.layout.insetTop
+import ai.hey.designsystem.layout.isCompactWindow
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTone
@@ -43,8 +41,11 @@ data class ConsentFormUi(
 )
 
 /**
- * C1 first run. Pure UI: every press is a callback. Pressing start without the required consent calls
- * [onStartWithoutVoice] (the owner only shows the message; nothing is asked or sent), otherwise [onStart].
+ * The consent (D-48 O2, studio PLEOS-190): a full-height panel on the left half over the living whale scene; in a 1/2 or
+ * 1/3 window the panel takes the whole width. Pure UI: every press is a callback. Pressing start without the required
+ * consent calls [onStartWithoutVoice] (the owner only shows the message; nothing is asked or sent), otherwise [onStart].
+ * The notice texts stay in full (collection, purpose, retention, refusal, providers): the law asks for them, the studio's
+ * short three-line version is not enough.
  */
 @Composable
 fun OnboardingScreen(
@@ -57,52 +58,43 @@ fun OnboardingScreen(
     onPolicy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    CarFrame(
-        modifier = modifier,
-        statusStrip = {
-            HeaderBar(
-                title = stringResource(R.string.onboard_title_bar),
-                stateLabel = stringResource(R.string.onboard_header),
-            )
-        },
-        driving = false,
-        actionRail = {
-            VStack(HeyGap.G8, modifier = Modifier.fillWidth()) {
-                if (ui.saving) HeyText(stringResource(R.string.onboard_saving), tone = HeyTone.Muted)
-                if (ui.failed) HeyText(stringResource(R.string.onboard_error_network), tone = HeyTone.Danger)
-                HStack(HeyGap.G16) {
-                    GlassButton(
-                        stringResource(R.string.onboard_start),
-                        if (ui.voice) onStart else onStartWithoutVoice,
-                        enabled = !ui.saving,
-                        dimmed = !ui.voice,
-                    )
-                    HeyButton(
-                        stringResource(R.string.onboard_decline),
-                        onDecline,
-                        variant = HeyButtonVariant.Ghost,
-                        enabled = !ui.saving,
-                    )
-                }
-            }
-        },
-    ) {
-        HStack(HeyGap.G32, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
-            HeyScrollColumn(HeyGap.G24, modifier = Modifier.grow(1.07f)) {
-                PageHeading(
-                    title = stringResource(R.string.onboard_title),
-                    subtitle = stringResource(R.string.onboard_subtitle),
-                )
-                InfoRow(HeyIcons.Mic, stringResource(R.string.onboard_point_voice_title), stringResource(R.string.onboard_point_voice_body), Modifier.insetTop(HeyGap.G8))
-                // Mockup C1: first row 68 dp under the title, rows 89 dp apart, text 33 dp right of the icon edge.
-                InfoRow(HeyIcons.Book, stringResource(R.string.onboard_point_memory_title), stringResource(R.string.onboard_point_memory_body))
+    HeyWindow(modifier) { width, height ->
+        val compact = isCompactWindow(width, height)
+        OnbScene(OnbShot.Whale, Modifier.fillSize()) {
+            OnbSidePanel(
+                side = OnbSide.Start,
+                compact = compact,
+                footer = {
+                    VStack(HeyGap.G8, modifier = Modifier.fillWidth()) {
+                        if (ui.saving) HeyText(stringResource(R.string.onboard_saving), tone = HeyTone.Muted)
+                        if (ui.failed) HeyText(stringResource(R.string.onboard_error_network), tone = HeyTone.Danger)
+                        HStack(HeyGap.G16) {
+                            GlassButton(
+                                stringResource(R.string.onboard_start),
+                                if (ui.voice) onStart else onStartWithoutVoice,
+                                enabled = !ui.saving,
+                                dimmed = !ui.voice,
+                            )
+                            HeyButton(
+                                stringResource(R.string.onboard_decline),
+                                onDecline,
+                                variant = HeyButtonVariant.Ghost,
+                                enabled = !ui.saving,
+                            )
+                        }
+                    }
+                },
+            ) {
+                OnbPanelTitle(stringResource(R.string.onboard_promise_title), compact = compact)
+                OnbPanelText(stringResource(R.string.onboard_point_voice_body))
+                OnbPanelText(stringResource(R.string.onboard_point_memory_body))
                 ToggleRow(
-                    modifier = Modifier.insetTop(HeyGap.G8),
                     label = stringResource(R.string.onboard_toggle_memory),
                     checked = ui.memory,
                     onCheckedChange = onMemoryChange,
                     description = stringResource(R.string.onboard_toggle_memory_body),
                     enabled = !ui.saving,
+                    modifier = Modifier.fillWidth(),
                 )
                 CheckRow(
                     label = stringResource(R.string.onboard_check_voice),
@@ -110,35 +102,16 @@ fun OnboardingScreen(
                     onCheckedChange = onVoiceChange,
                     enabled = !ui.saving,
                     error = if (ui.voiceRequiredShown && !ui.voice) stringResource(R.string.onboard_error_voice_required) else null,
+                    modifier = Modifier.fillWidth(),
                 )
-                HeySection(stringResource(R.string.onboard_notice_title)) {
-                    HeyText(stringResource(R.string.onboard_notice_collect), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
-                    HeyText(stringResource(R.string.onboard_notice_purpose), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
-                    HeyText(stringResource(R.string.onboard_notice_retention), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
-                    HeyText(stringResource(R.string.onboard_notice_refuse), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
-                    HeyText(stringResource(R.string.onboard_notice_providers), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
-                }
+                HeyText(stringResource(R.string.onboard_notice_title), variant = HeyTextVariant.Heading, tone = HeyTone.Muted)
+                HeyText(stringResource(R.string.onboard_notice_collect), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+                HeyText(stringResource(R.string.onboard_notice_purpose), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+                HeyText(stringResource(R.string.onboard_notice_retention), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+                HeyText(stringResource(R.string.onboard_notice_refuse), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
+                HeyText(stringResource(R.string.onboard_notice_providers), variant = HeyTextVariant.Caption, tone = HeyTone.Muted)
                 HeyButton(stringResource(R.string.onboard_policy), onPolicy, variant = HeyButtonVariant.Ghost)
             }
-            CharacterStill(
-                description = stringResource(R.string.onboard_character),
-                caption = stringResource(R.string.onboard_caption),
-                modifier = Modifier.grow(1f),
-                seated = true,
-            )
-        }
-    }
-}
-
-/** One line of the "what this is" list: an icon, a heading and one explanatory line (C1 design). */
-@Composable
-private fun InfoRow(icon: ImageVector, title: String, body: String, modifier: Modifier = Modifier) {
-    HStack(HeyGap.G24, align = HeyAlign.Start, modifier = modifier.fillWidth()) {
-        HeyIcon(icon, null)
-        // Mockup C1: title is 24 sp (cap band 23 dp, was 32 sp = 30 dp), explanation 24 sp caption, rows 36 dp apart.
-        VStack(HeyGap.G8, modifier = Modifier.grow()) {
-            HeyText(title, variant = HeyTextVariant.Body)
-            HeyText(body, variant = HeyTextVariant.Caption, tone = HeyTone.Muted, maxLines = 2)
         }
     }
 }

@@ -246,7 +246,9 @@ fun AssetSlot(name: String, size: CharacterSize, modifier: Modifier = Modifier, 
 @Composable
 fun HeyFadeIn(modifier: Modifier = Modifier, millis: Int = 900, content: @Composable () -> Unit) {
     val reduced = rememberReducedMotion()
-    var shown by remember { mutableStateOf(false) }
+    // Previews and snapshots draw the settled picture, not the first frame of the fade.
+    val settled = LocalHeyStill.current || androidx.compose.ui.platform.LocalInspectionMode.current
+    var shown by remember { mutableStateOf(settled) }
     LaunchedEffect(Unit) { shown = true }
     val alpha by animateFloatAsState(
         targetValue = if (shown || reduced) 1f else 0f,

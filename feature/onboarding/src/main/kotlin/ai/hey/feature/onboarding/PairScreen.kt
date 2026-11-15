@@ -20,7 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
-
+import ai.hey.designsystem.layout.HeyStackScope
+import ai.hey.designsystem.component.HeyScrollColumn
+import ai.hey.designsystem.layout.HeyWindow
+import ai.hey.designsystem.layout.isCompactWindow
 
 /** The base address a phone opens; the pair code is appended (`/p/<pairCode>`, PRD 4.2, contract.md). */
 const val PAIR_URL_BASE = "https://hey.lastmile.ltd/p/"
@@ -68,8 +71,9 @@ fun PairScreen(
             }
         },
     ) {
-        HStack(HeyGap.G32, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
-            VStack(HeyGap.G16, modifier = Modifier.grow(1.07f)) {
+        HeyWindow(Modifier.fillWidth()) { width, height ->
+            val compact = isCompactWindow(width, height)
+            val text: @Composable HeyStackScope.() -> Unit = {
                 PageHeading(
                     title = stringResource(R.string.pair_title),
                     subtitle = stringResource(R.string.pair_subtitle),
@@ -87,6 +91,7 @@ fun PairScreen(
                         code = code,
                         status = if (ui is PairUi.Expired) "" else statusText(ui),
                         modifier = if (ui is PairUi.Expired) Modifier.alpha(0.35f) else Modifier,
+                        compact = compact,
                     )
                 } else {
                     HeyText(
@@ -96,12 +101,20 @@ fun PairScreen(
                     )
                 }
             }
-            CharacterStill(
-                description = stringResource(R.string.onboard_character),
-                caption = stringResource(R.string.onboard_caption),
-                modifier = Modifier.grow(1f),
-                seated = true,
-            )
+            if (compact) {
+                // 1/2 and 1/3 windows: one column, no character (the QR is what the driver needs).
+                HeyScrollColumn(HeyGap.G16, modifier = Modifier.fillWidth(), content = text)
+            } else {
+                HStack(HeyGap.G32, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
+                    VStack(HeyGap.G16, modifier = Modifier.grow(1.07f), content = text)
+                    CharacterStill(
+                        description = stringResource(R.string.onboard_character),
+                        caption = stringResource(R.string.onboard_caption),
+                        modifier = Modifier.grow(1f),
+                        seated = true,
+                    )
+                }
+            }
         }
     }
 }
