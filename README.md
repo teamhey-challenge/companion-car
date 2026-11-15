@@ -1,6 +1,6 @@
 # companion-car
 
-> 공모전 제출용 저장소다. 앱 이름·팀명은 아직 정해지지 않아 임시 이름 `companion-*`을 쓴다(정해지면 아래 `apk/` 이름만 바뀐다).
+> 공모전 제출용 저장소다. 앱 Hey(캐릭터 헤이파리), 팀 Team Hey. 저장소 이름 `companion-*`은 그대로다.
 
 ## 앱 소개
 
@@ -11,7 +11,7 @@
 
 ## APK 위치
 
-- 제출용 APK: `apk/<팀명>_<앱이름>_release.apk`. 팀명·앱 이름이 정해진 뒤 `scripts/stage-apk.sh <팀명> <앱이름>` 한 줄로 만든다(배포 서버의 최신 APK를 받아 SHA-256을 목록과 대조하고 이름을 붙인다). 릴리스 키로 직접 빌드한 파일을 쓰려면 `./gradlew :app:assembleRelease` 뒤 `APK_FILE=dist/apk/<파일> scripts/stage-apk.sh <팀명> <앱이름>`. 파일이 크면 GitHub Releases에 올리고 여기에 링크를 적는다.
+- 제출용 APK: `apk/TeamHey_Hey_release.apk`(릴리스 키 서명본). 다시 만들려면 `scripts/stage-apk.sh --release TeamHey Hey`(마지막 성공한 `release-apk` 실행의 산출물을 받는다). 파일이 크면 GitHub Releases에 올리고 여기에 링크를 적는다.
 - 항상 최신 빌드: `https://hey.lastmile.ltd/download/latest.apk` (파일 목록과 SHA-256은 `https://hey.lastmile.ltd/download/`).
 
 ## 테스트 환경
