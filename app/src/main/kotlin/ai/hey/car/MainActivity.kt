@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // No permission dialog at launch: the only runtime permission is the microphone, asked on a press while parked.
+        // No permission dialog at launch: runtime permissions are asked only while parked (see the end of this class).
         SessionService.start(this)
         val graph = (application as HeyApp).graph
         val repository = graph.repository
@@ -64,7 +64,21 @@ class MainActivity : ComponentActivity() {
             // session. While driving no permission screen opens (PRD 4.5.7): the press ends in the Microphone fault, which
             // is announced by voice only.
             val needsMic = state.turn is TurnState.NeedsPermission
-            // (no notification request, see below)
+            val askedNotifications = remember { getSharedPreferences("hey_permissions", MODE_PRIVATE) }
+            LaunchedEffect(state.isParked, state.needsOnboarding, state.onboardingStep) {
+                val ask = shouldAskNotifications(
+                    parked = state.isParked,
+                    consented = !state.needsOnboarding,
+                    onboardingDone = state.onboardingStep == OnboardingStep.Done,
+                    alreadyAsked = askedNotifications.getBoolean("asked_notifications", false),
+                    granted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED,
+                    sdk = android.os.Build.VERSION.SDK_INT,
+                )
+                if (ask) {
+                    askedNotifications.edit().putBoolean("asked_notifications", true).apply()
+                    permissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+                }
+            }
             LaunchedEffect(needsMic, state.isParked) {
                 if (needsMic && mayAskPermission(state.isParked)) {
                     permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
@@ -243,6 +257,6 @@ class MainActivity : ComponentActivity() {
         },
     )
 
-    // POST_NOTIFICATIONS is never requested (PLEOS-90): the foreground service runs without it, the system dialog opened over C1 on
-    // first launch and could still be open when the gear went to D. Microphone is the only runtime permission, asked while parked.
+    // Runtime permissions are asked only while parked (PLEOS-90, [mayAskPermission]): the microphone on a press, notifications once after
+    // consent and onboarding ([shouldAskNotifications]); a denial of the latter is kept and the D-52 notifications are skipped silently.
 }

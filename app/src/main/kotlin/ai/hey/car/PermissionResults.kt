@@ -14,5 +14,13 @@ internal fun voiceAnswer(result: Map<String, Boolean>): Boolean? = result[Manife
  * "주행 중에는 사용할 수 없습니다" (AC-3.5-05). [parked] is `CarUiState.isParked`, which is false for unknown motion.
  */
 internal fun mayAskPermission(parked: Boolean): Boolean = parked
-/** The notification permission is never requested: the service notification works without it and its dialog covered C1 (PLEOS-90). */
-internal val requestedRuntimePermissions: Set<String> = setOf(Manifest.permission.RECORD_AUDIO)
+
+/**
+ * The notification permission (Android 13+) is what lets the two D-52 notifications (friend message, trip-end diary)
+ * appear. Asked once, parked only, after consent and the onboarding flow; a denial is kept and never asked again, the
+ * notifications are then skipped silently ([AndroidNoticeSink]).
+ */
+internal fun shouldAskNotifications(parked: Boolean, consented: Boolean, onboardingDone: Boolean, alreadyAsked: Boolean, granted: Boolean, sdk: Int): Boolean =
+    sdk >= 33 && !granted && !alreadyAsked && consented && onboardingDone && mayAskPermission(parked)
+
+internal val requestedRuntimePermissions: Set<String> = setOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
