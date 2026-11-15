@@ -97,12 +97,22 @@ sealed interface InviteUi {
     data object Failed : InviteUi
 }
 
+/** "친구 초대 수락": the code a friend showed is sent to the server; [Done] carries the new friend's name. */
+sealed interface AcceptUi {
+    data object None : AcceptUi
+    data object Working : AcceptUi
+    data class Done(val name: String) : AcceptUi
+    enum class Reason { Unknown, Expired, Own, Already, Offline }
+    data class Failed(val reason: Reason) : AcceptUi
+}
+
 /** Friend section of settings: read-only list of the friends (adding, removing and 도착 알리기 are phone-only, D-47). */
 data class FriendsState(
     val items: List<Friend> = emptyList(),
     val loaded: Boolean = false,
     val failed: Boolean = false,
     val invite: InviteUi = InviteUi.None,
+    val accept: AcceptUi = AcceptUi.None,
 )
 
 /** The received-messages view: [reporting] = the report request is in flight, [reportFailed] = the last one did not go through. */
@@ -166,6 +176,10 @@ interface CompanionCommands {
     /** Settings "내 친구 코드": asks the server for a new invite (parked screen only). */
     fun createInvite()
     fun closeInvite()
+
+    /** "친구 초대 수락": accepts the friend's code (6 characters); the friend list is reloaded on success. */
+    fun acceptInvite(code: String)
+    fun clearAccept()
 
     /** Received messages opened: reads what friends sent me. */
     fun loadMessages()
@@ -272,6 +286,32 @@ class CompanionRepository(
     }
 
     override fun closeInvite() = _state.update { it.copy(friends = it.friends.copy(invite = InviteUi.None)) }
+
+    override fun acceptInvite(code: String) {
+        if (_state.value.friends.accept == AcceptUi.Working) return
+        _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Working)) }
+        scope.launch {
+            try {
+                val f = api.acceptFriendInvite(code.trim())
+                _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Done(f.name), items = (it.friends.items.filter { x -> x.id != f.id } + f), loaded = true)) }
+            } catch (e: HttpFailure) {
+                log("accept", e)
+                val why = when (e.code) {
+                    404 -> AcceptUi.Reason.Unknown
+                    410 -> AcceptUi.Reason.Expired
+                    400 -> AcceptUi.Reason.Own
+                    409 -> AcceptUi.Reason.Already
+                    else -> AcceptUi.Reason.Offline
+                }
+                _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Failed(why))) }
+            } catch (e: IOException) {
+                log("accept", e)
+                _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Failed(AcceptUi.Reason.Offline))) }
+            }
+        }
+    }
+
+    override fun clearAccept() = _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.None)) }
 
     // ---------------------------------------------------------------- received messages
 

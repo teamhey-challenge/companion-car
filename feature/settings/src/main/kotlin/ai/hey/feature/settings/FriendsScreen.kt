@@ -13,6 +13,7 @@ import ai.hey.designsystem.component.HeyNotice
 import ai.hey.designsystem.component.HeyScrollColumn
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyText
+import ai.hey.designsystem.component.HeyTextField
 import ai.hey.designsystem.component.MessageCard
 import ai.hey.designsystem.component.MessageRow
 import ai.hey.designsystem.component.PageHeading
@@ -24,7 +25,12 @@ import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.fillWidth
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTone
+import ai.hey.session.AcceptUi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 
@@ -52,6 +58,9 @@ sealed interface FriendsView {
 
     /** [confirmReport] = the report question is open on top. */
     data class Message(val id: String, val confirmReport: Boolean = false) : FriendsView
+
+    /** "친구 초대 수락": type the 6-character code a friend shows on their own "내 친구 코드". */
+    data object Invite : FriendsView
 }
 
 data class FriendsUi(
@@ -64,6 +73,7 @@ data class FriendsUi(
     val messagesFailed: Boolean = false,
     val reporting: Boolean = false,
     val reportFailed: Boolean = false,
+    val accept: AcceptUi = AcceptUi.None,
 )
 
 class FriendsActions(
@@ -74,6 +84,8 @@ class FriendsActions(
     val onRetryMessages: () -> Unit,
     val onReadAloud: (MessageUi) -> Unit,
     val onReport: (String) -> Unit,
+    val onAccept: (String) -> Unit = {},
+    val onClearAccept: () -> Unit = {},
 )
 
 /**
@@ -118,6 +130,7 @@ fun FriendsScreen(ui: FriendsUi, view: FriendsView, actions: FriendsActions, mod
                     FriendsView.Code -> FriendCode(ui.code, actions.onCreateCode)
                     is FriendsView.Inbox -> Inbox(ui, view.friendId, actions)
                     is FriendsView.Message -> MessageDetail(ui, open, actions)
+                    FriendsView.Invite -> InviteAccept(ui.accept, actions)
                 }
             }
         }
@@ -130,6 +143,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.FriendList(ui: FriendsUi, a
     HStack(HeyGap.G16, align = HeyAlign.Center) {
         HeyButton(stringResource(R.string.friends_open_code), { actions.onNavigate(FriendsView.Code) }, variant = HeyButtonVariant.Soft, icon = HeyIcons.Qr)
         HeyButton(stringResource(R.string.friends_open_inbox), { actions.onNavigate(FriendsView.Inbox()) }, variant = HeyButtonVariant.Soft, icon = HeyIcons.Message)
+        HeyButton(stringResource(R.string.friends_open_invite), { actions.onNavigate(FriendsView.Invite) }, variant = HeyButtonVariant.Soft, icon = HeyIcons.User)
     }
     when {
         ui.friendsFailed -> LoadFailed(actions.onRetryFriends)
@@ -210,4 +224,60 @@ private fun ai.hey.designsystem.layout.HeyStackScope.MessageDetail(ui: FriendsUi
 private fun ai.hey.designsystem.layout.HeyStackScope.LoadFailed(onRetry: () -> Unit) {
     EmptyPanel(HeyIcons.Message, stringResource(R.string.friends_failed_title), Modifier.fillWidth(), message = stringResource(R.string.friends_failed_message))
     HeyButton(stringResource(R.string.friends_retry), onRetry, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Refresh)
+}
+
+/** 6 characters from the same alphabet the server uses; spaces and dashes are ignored. */
+internal fun cleanInviteCode(raw: String): String = raw.filter { it.isLetterOrDigit() }.uppercase().take(INVITE_CODE_LENGTH)
+
+internal const val INVITE_CODE_LENGTH = 6
+
+@Composable
+private fun ai.hey.designsystem.layout.HeyStackScope.InviteAccept(accept: AcceptUi, actions: FriendsActions) {
+    var code by remember { mutableStateOf("") }
+    PageHeading(stringResource(R.string.friends_invite_title))
+    if (accept is AcceptUi.Done) {
+        EmptyPanel(
+            HeyIcons.Check,
+            stringResource(R.string.friends_invite_done_title, accept.name),
+            Modifier.fillWidth(),
+            message = stringResource(R.string.friends_invite_done_message),
+        )
+        HeyButton(stringResource(R.string.friends_invite_to_list), { actions.onClearAccept(); actions.onNavigate(FriendsView.List) }, variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large)
+        return
+    }
+    HeyText(stringResource(R.string.friends_invite_prompt))
+    HeyTextField(
+        label = stringResource(R.string.friends_invite_label),
+        value = code,
+        onValueChange = { code = cleanInviteCode(it); if (accept is AcceptUi.Failed) actions.onClearAccept() },
+        modifier = Modifier.fillWidth(),
+        enabled = accept != AcceptUi.Working,
+        placeholder = stringResource(R.string.friends_invite_placeholder),
+    )
+    if (accept is AcceptUi.Failed) {
+        HeyNotice(
+            stringResource(
+                when (accept.reason) {
+                    AcceptUi.Reason.Unknown -> R.string.friends_invite_unknown
+                    AcceptUi.Reason.Expired -> R.string.friends_invite_expired
+                    AcceptUi.Reason.Own -> R.string.friends_invite_own
+                    AcceptUi.Reason.Already -> R.string.friends_invite_already
+                    AcceptUi.Reason.Offline -> R.string.friends_invite_offline
+                },
+            ),
+            HeyStatusTone.Danger,
+            persistent = true,
+        )
+    }
+    HStack(HeyGap.G16, align = HeyAlign.Center) {
+        HeyButton(
+            stringResource(R.string.friends_invite_accept),
+            { actions.onAccept(code) },
+            variant = HeyButtonVariant.Primary,
+            size = HeyButtonSize.Large,
+            enabled = code.length == INVITE_CODE_LENGTH && accept != AcceptUi.Working,
+            loading = accept == AcceptUi.Working,
+        )
+        HeyButton(stringResource(R.string.friends_invite_later), { actions.onClearAccept(); actions.onNavigate(FriendsView.List) }, variant = HeyButtonVariant.Secondary)
+    }
 }

@@ -29,6 +29,12 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
         dump.write()
     }
     dump("car-settings-phone") { PhoneLinkScreen(PhoneLinkUi.Code("K7M2QX9P"), onBack = {}, onUnpair = {}, onRetry = {}) }
+    dump("car-settings") {
+        SettingsScreen(
+            SettingsUi(name = "민수", phonePaired = true), onBack = {}, onProactive = {}, onMemoryEnabled = {}, onSpeech = {}, onName = {},
+            onLook = {}, onOpenMemory = {}, onOpenPair = {}, onWithdraw = {},
+        )
+    }
     val noop = FriendsActions({}, {}, {}, {}, {}, {}, {})
     val ui = FriendsUi(
         friends = listOf(
@@ -40,10 +46,11 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
     )
     dump("car-friends") { FriendsScreen(ui, FriendsView.List, noop) }
     dump("car-friends-code") { FriendsScreen(ui, FriendsView.Code, noop) }
+    dump("car-friends-invite") { FriendsScreen(ui, FriendsView.Invite, noop) }
 }
 
 class SettingsDesignDump1600Test {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 1300), renderingMode = RenderingMode.NORMAL)
 
     @Before fun onlyWhenAsked() = Assume.assumeTrue("run with -Pdesign-diff", System.getProperty("design-diff") != null)
 
@@ -51,7 +58,7 @@ class SettingsDesignDump1600Test {
 }
 
 class SettingsDesignDump1251Test {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1251, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1251, 1300), renderingMode = RenderingMode.NORMAL)
 
     @Before fun onlyWhenAsked() = Assume.assumeTrue("run with -Pdesign-diff", System.getProperty("design-diff") != null)
 

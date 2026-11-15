@@ -361,6 +361,24 @@ class CompanionRepositoryTest {
         assertFalse(rig.repo.state.value.friends.failed)
         cs.cancel()
     }
+
+    @Test fun `accepting a friend's code adds the friend and maps each server answer to a reason`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.repo.acceptInvite("zzzzzz")
+        assertEquals(AcceptUi.Failed(AcceptUi.Reason.Unknown), rig.repo.state.value.friends.accept)
+        rig.repo.acceptInvite("abc234")
+        assertEquals(AcceptUi.Done("서연"), rig.repo.state.value.friends.accept)
+        assertTrue(rig.repo.state.value.friends.items.any { it.name == "서연" })
+        rig.repo.acceptInvite("ABC234")
+        assertEquals(AcceptUi.Failed(AcceptUi.Reason.Already), rig.repo.state.value.friends.accept)
+        rig.api.failing = true
+        rig.repo.acceptInvite("ABC234")
+        assertEquals(AcceptUi.Failed(AcceptUi.Reason.Offline), rig.repo.state.value.friends.accept)
+        rig.repo.clearAccept()
+        assertEquals(AcceptUi.None, rig.repo.state.value.friends.accept)
+        cs.cancel()
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

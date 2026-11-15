@@ -63,6 +63,9 @@ interface CompanionApi {
     /** POST /v1/friends/invites */
     suspend fun createFriendInvite(): FriendInvite
 
+    /** POST /v1/friends/invites/{code}/accept: the code a friend showed (their "내 친구 코드"); 404 unknown, 410 expired, 400 own code, 409 already friends or friend limit. */
+    suspend fun acceptFriendInvite(code: String): Friend
+
     /** GET /v1/friends (a plain JSON array). */
     suspend fun friends(): List<Friend>
 
@@ -192,6 +195,16 @@ class HttpCompanionApi(
             o.getValue("code").jsonPrimitive.content,
             o.getValue("url").jsonPrimitive.content,
             o["expiresAt"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+        )
+    }
+
+    override suspend fun acceptFriendInvite(code: String): Friend = decodeBody {
+        val o = parse(call("POST", "v1/friends/invites/${code.uppercase()}/accept")).jsonObject.getValue("friend").jsonObject
+        Friend(
+            id = o.getValue("id").jsonPrimitive.content,
+            name = o["name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            since = o["since"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            shareArrival = o["shareArrival"]?.jsonPrimitive?.contentOrNull == "true",
         )
     }
 
