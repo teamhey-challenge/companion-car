@@ -38,4 +38,5 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.rive.android)
     testImplementation(libs.junit)
+    testImplementation(project(":core:testing"))
 }

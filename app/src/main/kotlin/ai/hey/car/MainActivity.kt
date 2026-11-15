@@ -1,5 +1,6 @@
 package ai.hey.car
 
+import ai.hey.designsystem.layout.designDensity
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.feature.home.DriveScreen
 import ai.hey.feature.home.FaultAnnouncer
@@ -41,13 +42,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 
-/** Width in dp of the 1600x900 design canvas every car mockup (hey-companion-ui) is drawn on. */
-private const val DESIGN_WIDTH_DP = 1600f
-private const val DESIGN_HEIGHT_DP = 900f
-
-/** Pixels per design dp relative to the system dp: full width for 16:9 and wider windows, full 900 dp height for narrower ones. */
-internal fun designScale(widthDp: Int, heightDp: Int): Float =
-    if (widthDp * DESIGN_HEIGHT_DP >= heightDp * DESIGN_WIDTH_DP) widthDp / DESIGN_WIDTH_DP else heightDp / DESIGN_HEIGHT_DP
 
 class MainActivity : ComponentActivity() {
     // One launcher for both runtime permissions; only an answer that contains the microphone goes back to the session.
@@ -127,12 +121,12 @@ class MainActivity : ComponentActivity() {
             // switch to their stacked layout below 1000 dp).
             val density = LocalDensity.current
             val config = LocalConfiguration.current
-            val designDensity = remember(config.screenWidthDp, config.screenHeightDp, density.density) {
-                Density(density = designScale(config.screenWidthDp, config.screenHeightDp) * density.density, fontScale = 1f)
+            val carDensity = remember(config.screenWidthDp, config.screenHeightDp, density.density) {
+                designDensity(density, config.screenWidthDp, config.screenHeightDp)
             }
             // D-26: the car follows the system day/night setting (the mockup default is the light sea theme).
             val dark = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-            CompositionLocalProvider(LocalDensity provides designDensity) {
+            CompositionLocalProvider(LocalDensity provides carDensity) {
             HeyTheme(dark = dark) {
                 NavHost(nav, startDestination = Routes.Drive) {
                     composable(Routes.Drive) {

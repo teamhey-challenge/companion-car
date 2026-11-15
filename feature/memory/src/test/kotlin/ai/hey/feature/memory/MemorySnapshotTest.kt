@@ -2,22 +2,11 @@ package ai.hey.feature.memory
 
 import ai.hey.designsystem.theme.HeyTheme
 import androidx.compose.runtime.Composable
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
-import com.android.ide.common.rendering.api.SessionParams.RenderingMode
-import com.android.resources.Density
-import com.android.resources.ScreenOrientation
+import ai.hey.designsystem.testing.CarPaparazzi
+import ai.hey.designsystem.testing.CarWindow
 import org.junit.Rule
 import org.junit.Test
 
-private fun device(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
-    screenWidth = width,
-    screenHeight = height,
-    xdpi = 160,
-    ydpi = 160,
-    density = Density.MEDIUM,
-    orientation = ScreenOrientation.LANDSCAPE,
-)
 
 private val rows = listOf(
     MemoryRowUi("1", MemoryKindUi.Fact, "비 오는 날, 잔잔한 음악을 좋아해요.", "11월 13일"),
@@ -41,7 +30,7 @@ private fun Screen(shot: Shot) {
     MemoryScreen(list = shot.list, onBack = {}, onRetry = {}, onDelete = {}, onDeleteAll = {}, notice = shot.notice)
 }
 
-private fun Paparazzi.recordAll() {
+private fun CarPaparazzi.recordAll() {
     shots.forEach { (name, shot) ->
         listOf(true, false).forEach { dark ->
             snapshot("$name-${if (dark) "dark" else "light"}") { HeyTheme(dark) { Screen(shot) } }
@@ -50,13 +39,33 @@ private fun Paparazzi.recordAll() {
 }
 
 class Memory1600SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Full1600)
+
+    @Test fun screens() = paparazzi.recordAll()
+}
+
+/** Pleos multi-window, 1/2 width (840 x 1212 dp) and 1/3 width (560 x 1212 dp); drawn at the 900 dp design height. */
+class Memory840SnapshotTest {
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Half840)
+
+    @Test fun screens() = paparazzi.recordAll()
+}
+
+class Memory560SnapshotTest {
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Third560)
 
     @Test fun screens() = paparazzi.recordAll()
 }
 
 class Memory1280SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1280, 720), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Small1280)
+
+    @Test fun screens() = paparazzi.recordAll()
+}
+
+/** The real Pleos app window (1682 x 1210 px = 1251 x 900 design dp). */
+class Memory1251SnapshotTest {
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Car1251)
 
     @Test fun screens() = paparazzi.recordAll()
 }
