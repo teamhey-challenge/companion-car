@@ -242,7 +242,7 @@ fun MessageRow(
     }
 }
 
-/** The full text of one received message (D-53: at most 120 characters), with the sender above and the time below. */
+/** The full text of one received message (at most 120 characters), with the sender above and the time below. */
 @Composable
 fun MessageCard(
     sender: String,

@@ -42,7 +42,7 @@ private fun scenePart(id: String, shot: OnbShot, content: @Composable OnbSceneSc
         OnbScene(shot, Modifier.width(1200.dp).height(675.dp), content = content)
     }
 
-/** The onboarding scene parts (PLEOS-190): scene stage, lights, caption layer, hold ring, polaroids, side panels, banner. */
+/** The onboarding scene parts: scene stage, lights, caption layer, hold ring, polaroids, side panels, banner. */
 internal fun onboardingParts(): List<Story> = buildList {
     add(scenePart("onb-scene-title", OnbShot.Title) {
         OnbTitle("Hey", "길 위의 단짝, 헤이리를 만나러 가요", Modifier.place(OnbAlign.TopCenter).padding(top = 90.dp))

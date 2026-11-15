@@ -42,7 +42,7 @@ object ClientFrames {
 
     fun turnCancel(turnId: String): String = obj { put("type", "turn.cancel"); put("turnId", turnId) }
 
-    /** D-48 onboarding: "speak this step now" (the wire names of [OnboardingStep] plus the whale's `skip`). */
+    /** onboarding: "speak this step now" (the wire names of [OnboardingStep] plus the whale's `skip`). */
     fun onboarding(step: String): String = obj { put("type", "onboarding"); put("step", step) }
 
     /** The recognized answer to a whale question (`q1`..`q3`); `reply` asks the server for the whale's short answer line. */
@@ -91,10 +91,10 @@ sealed interface ServerFrame {
     /** A friend's message: the spoken line follows as `reply.*` + PCM with turn id [id]; [text] is only shown when parked. */
     data class FriendMessage(val id: String, val fromName: String, val text: String) : ServerFrame
 
-    /** The trip ended (D-52 2): only the car notification centre uses it; [text] is the server's one-line farewell. */
+    /** The trip ended: only the car notification centre uses it; [text] is the server's one-line farewell. */
     data class TripDone(val id: String, val text: String, val date: String, val at: String, val carLine: String? = null) : ServerFrame
 
-    /** A friend arrived (spoken only): same audio path as [FriendMessage]. D-52: the frame never carries, and the app never reads, a place. */
+    /** A friend arrived (spoken only): same audio path as [FriendMessage]. the frame never carries, and the app never reads, a place. */
     data class FriendArrived(val id: String, val fromName: String) : ServerFrame
 
     /** After three friend messages read while driving the server keeps the rest in the inbox and says so once ([text] is the spoken line, audio follows with turn id [id]). */

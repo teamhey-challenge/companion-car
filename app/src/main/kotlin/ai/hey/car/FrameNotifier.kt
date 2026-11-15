@@ -9,7 +9,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 
-/** What the notification centre shows (D-52 2: exactly two kinds). The strings come from resources when it is posted. */
+/** What the notification centre shows (exactly two kinds). The strings come from resources when it is posted. */
 sealed interface CenterNotice {
     val frameId: String
 

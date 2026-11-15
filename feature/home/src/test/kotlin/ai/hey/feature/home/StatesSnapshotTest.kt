@@ -10,7 +10,7 @@ import org.junit.Test
 
 private val online = HomeUi(online = true)
 
-/** PLEOS-200: trip end (`car/home#trip-end`) and the parked error variants of `car/error` (screens-and-flows 2, 4.9). */
+/** trip end (`car/home#trip-end`) and the parked error variants of `car/error` (screens-and-flows 2, 4.9). */
 private val parkedShots: List<Pair<String, HomeUi>> = listOf(
     "s-trip-end-writing" to online.copy(tripNote = "오늘도 같이 달렸어. 오늘 일기 써 뒀어, 폰에서 봐!", tripDiary = true),
     "s-trip-end" to online.copy(tripNote = "오늘도 같이 달렸어. 오늘 일기 써 뒀어, 폰에서 봐!", tripDiary = true, tripMomentDone = true),

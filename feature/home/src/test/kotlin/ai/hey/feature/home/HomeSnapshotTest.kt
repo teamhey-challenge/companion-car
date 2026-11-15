@@ -35,7 +35,7 @@ private val driveShots: List<Pair<String, HomeUi>> = listOf(
     "c5-listening" to online.copy(phase = HomePhase.Listening),
     "c5-thinking" to online.copy(phase = HomePhase.Thinking),
     "c5-speaking" to online.copy(phase = HomePhase.Speaking, reply = LONG_REPLY),
-    // A friend's line while driving: character, reading state and "읽기 멈추기" only; the text never reaches the screen (D-47).
+    // A friend's line while driving: character, reading state and "읽기 멈추기" only; the text never reaches the screen.
     "c5-friend-reading" to online.copy(phase = HomePhase.Speaking, source = ai.hey.session.TurnSource.Friend, mouth = 2),
 )
 
@@ -44,7 +44,7 @@ private val driveMotionShots: List<Pair<String, HomeUi>> = listOf(
     "c5-motion-idle" to online,
     "c5-motion-listening" to online.copy(phase = HomePhase.Listening),
     "c5-motion-speaking" to online.copy(phase = HomePhase.Speaking, reply = LONG_REPLY),
-    // A proactive line is parked-only: driving shows no text, only the listening state (PLEOS-194, D-25).
+    // A proactive line is parked-only: driving shows no text, only the listening state.
     "c5-proactive" to online.copy(phase = HomePhase.Listening, source = ai.hey.session.TurnSource.AutoListen, reply = "비 오네, 와이퍼 켰어. 오늘 발표 날이죠?"),
 )
 

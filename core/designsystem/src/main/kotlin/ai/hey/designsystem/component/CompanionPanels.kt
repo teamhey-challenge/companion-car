@@ -311,7 +311,7 @@ fun StatusBadge(
         modifier = modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) {
         if (online && !driving && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)) {
-            // Design `.status[data-visual=waveform]`: the wave, then the small phase word (PLEOS-194 "파형 + 듣는 중/말하는 중").
+            // Design `.status[data-visual=waveform]`: the wave, then the small phase word ("파형 + 듣는 중/말하는 중").
             Waveform(color, moving, speaking = phase == TalkPhase.Speaking)
             InkText(
                 label, colors.fgMuted, Modifier.padding(start = 16.dp),

@@ -11,7 +11,7 @@ private const val TAG = "TalkLink"
 /** What cut a reconnect pause short (or, for [Backoff], nothing did). The name goes into the log line. */
 enum class ReconnectTrigger(val label: String) { Network("network"), Button("button"), Backoff("backoff") }
 
-/** The device's connectivity, as the link needs it: a call whenever the default network is usable (PLEOS-94). */
+/** The device's connectivity, as the link needs it: a call whenever the default network is usable. */
 fun interface Connectivity {
     /** Calls [onReady] on every "network available / validated" event, [onLost] when the default network goes; until the handle is closed. */
     fun watch(onReady: () -> Unit, onLost: () -> Unit): AutoCloseable
@@ -22,7 +22,7 @@ fun interface Connectivity {
  * "다시 연결" button. Times come from [clock] (ms, monotonic) so tests run on a fake one.
  * Logs `link: reconnect trigger=… after … ms` and `link: online after … ms`.
  *
- * A lost network marks the link down at once (a socket on the dead network can look open for a ping interval, PLEOS-145)
+ * A lost network marks the link down at once (a socket on the dead network can look open for a ping interval)
  * and tells [onNetworkGone] so the link drops that socket. While it is gone the pause has no timeout: an attempt now
  * could only fail, so only the network coming back (or the button) ends it. The first "network is back" event after a
  * loss stamps [networkBackAt]; an attempt that began before that stamp ran on the dead network and is stale.

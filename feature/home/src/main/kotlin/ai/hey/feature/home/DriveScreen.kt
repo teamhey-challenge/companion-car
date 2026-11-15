@@ -27,11 +27,11 @@ import kotlinx.coroutines.delay
 const val DRIVE_WAIT_MILLIS = 2_000L
 
 /**
- * C5 while the car moves (or its motion is unknown): the same animated Rive character as C3 (D-48 8, cancels D-45: idle motion,
+ * C5 while the car moves (or its motion is unknown): the same animated Rive character as C3 (cancels idle motion,
  * mouth from the voice level, talk states; still image while Rive loads, fails or motion is reduced), one status line and one
- * big button. Rive is capped at 30 fps (see [RiveCharacter]); the ocean background and the status wave move like C3 (D-48 8).
- * There are no subtitles (D-25) and no way to another screen. The one button is "말하기" while idle and "대화 마치기" in every
- * active phase (PLEOS-194): it ends the conversation. Errors never change this screen (voice only, see FaultAnnouncer).
+ * big button. Rive is capped at 30 fps (see [RiveCharacter]); the ocean background and the status wave move like C3.
+ * There are no subtitles and no way to another screen. The one button is "말하기" while idle and "대화 마치기" in every
+ * active phase: it ends the conversation. Errors never change this screen (voice only, see FaultAnnouncer).
  */
 @Composable
 fun DriveScreen(
@@ -66,7 +66,7 @@ fun DriveScreen(
                     ui.fault != null -> DriveFaultIcon(ui.fault)
                 }
             }
-            // A friend's line being read: the one button stops the reading (PLEOS-196); nothing else of it is on screen.
+            // A friend's line being read: the one button stops the reading; nothing else of it is on screen.
             val friendLine = ui.source == TurnSource.Friend && ui.phase != HomePhase.Idle
             TalkButton(
                 phase = ui.phase.toTalk(),

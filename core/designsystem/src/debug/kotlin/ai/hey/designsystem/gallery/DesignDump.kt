@@ -8,7 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import java.io.File
 
 /**
- * Design-conformance dump (PLEOS-199, debug only). A Paparazzi test wraps the screen it already renders in [capture];
+ * Design-conformance dump (debug only). A Paparazzi test wraps the screen it already renders in [capture];
  * every HeyText reports its laid-out bounds (dp) and TextStyle to the probe, and [write] puts them in
  * `build/reports/design-diff/<name>.json`. `ops/design-diff/run.ts` in pleos-challenge compares that file with the studio design.
  * Nothing here runs in the app.

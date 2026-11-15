@@ -54,14 +54,14 @@ private const val CONSENT_REQUIRED = "consent_required"
 /**
  * Owns the one /v1/talk connection and the vehicle and exposes ONE state. A turn is: Pleos STT hears one sentence ->
  * `turn.start`, `text`, `turn.end` -> the reply streams back as `reply.*` frames and, when the server has a voice, as
- * PCM that [audio] plays (mouth level from its loudness, D-13). Without server audio, or when the server is gone, the
+ * PCM that [audio] plays (mouth level from its loudness). Without server audio, or when the server is gone, the
  * Pleos TTS reads the text and its `onUpdatedRms` drives the mouth.
  *
  * Driving does not interrupt a turn: listening and the turn go on when the car leaves P (AC-4.4-18, AC-4.5-07). Only
  * the hands-on commands ([ParkedCommands]) disappear while the car moves.
  *
- * The voice stops at once when another app takes the audio focus and is not resumed (D-14), and a button press while the
- * character talks stops it and starts listening (D-24).
+ * The voice stops at once when another app takes the audio focus and is not resumed, and a button press while the
+ * character talks stops it and starts listening.
  *
  * [transport] builds the connection; a test passes a recording fake and drives the repository through the listener.
  */
@@ -82,7 +82,7 @@ class TalkRepository(
     /** How long the microphone stays open by itself after a line that ends with a question mark (F4-F6). */
     private val autoListenMillis: Long = AUTO_LISTEN_MILLIS,
     private val ctxDebounceMillis: Long = CTX_DEBOUNCE_MILLIS,
-    /** Asked when the character wants to start a line by itself; true = another app is playing, so the line is dropped (PLEOS-171). Null in tests that do not need it. */
+    /** Asked when the character wants to start a line by itself; true = another app is playing, so the line is dropped. Null in tests that do not need it. */
     private val otherAudio: OtherAudioProbe? = null,
 ) : CarCommands {
     private val hands = Hands()
@@ -155,7 +155,7 @@ class TalkRepository(
             }
         }
         scope.launch {
-            // D-58: there is no separate consent screen. A car without the record consent (first run, withdrawn in settings, or
+            // there is no separate consent screen. A car without the record consent (first run, withdrawn in settings, or
             // refused by the server) is always at the consent sheet O2: the flow comes back at its Consent step.
             storage.consents.collect { c ->
                 _state.update { it.copy(needsOnboarding = !c.recordDone) }
@@ -306,7 +306,7 @@ class TalkRepository(
         speakingId = speechId
         _state.update { it.copy(turn = TurnState.Replying) }
         val focusOk = speechFocus?.request {
-            // D-14: someone else took the speaker. Stop and do not resume; this is not an audio fault.
+            // someone else took the speaker. Stop and do not resume; this is not an audio fault.
             if (speakingId == speechId) {
                 speakingId = null
                 vehicle.stopSpeech()
@@ -344,7 +344,7 @@ class TalkRepository(
         when (reason) {
             PlaybackEnd.Completed -> afterReply()
             PlaybackEnd.FocusLost -> {
-                // D-14: someone else needs the speaker. Stop everything of ours and do not resume, do not listen.
+                // someone else needs the speaker. Stop everything of ours and do not resume, do not listen.
                 vehicle.stopSpeech()
                 turnId = null
                 endSpeaking()
@@ -355,7 +355,7 @@ class TalkRepository(
     }
 
     /**
-     * The reply was read to the end. D-48 4 / PLEOS-194: the microphone opens by itself after every answer to a driver turn
+     * The reply was read to the end. the microphone opens by itself after every answer to a driver turn
      * (follow-ups need no second tap) and right away after a line the character started by itself ([TurnSource.Proactive]);
      * the end of the speech sends the turn by itself. Never after a friend line, never while navigation guides. The chain
      * goes on as long as the driver keeps speaking: [listenOnce] ends it quietly on silence or when the microphone hears the
@@ -387,7 +387,7 @@ class TalkRepository(
             s.needsOnboarding -> "consent not recorded"
             s.onboardingStep != OnboardingStep.Done -> "onboarding is running"
             s.turn != TurnState.Idle -> "busy (${s.turn})"
-            // D-14: no new line while navigation guides.
+            // no new line while navigation guides.
             vehicle.signals.value.naviGuiding -> "navigation guiding"
             otherAudio?.otherAppPlaying() == true -> "another app is playing audio"
             else -> null
@@ -407,7 +407,7 @@ class TalkRepository(
         armWatchdog(frame.id, REPLY_START_TIMEOUT_MILLIS)
     }
 
-    /** Trip end: the line the server chose for the car (`carLine`: diary written / no phone / memory off) shows on the parked home (never while driving, D-25) for [TRIP_NOTE_MILLIS]. */
+    /** Trip end: the line the server chose for the car (`carLine`: diary written / no phone / memory off) shows on the parked home (never while driving) for [TRIP_NOTE_MILLIS]. */
     private fun onTripDone(text: String) {
         val line = text.trim()
         if (line.isEmpty() || !_state.value.isParked) return
@@ -504,7 +504,7 @@ class TalkRepository(
         link.send(ClientFrames.ctx(signals))
     }
 
-    /** The connection went. A reply that was playing is read by the Pleos TTS instead (D-12), a turn that was waiting fails. */
+    /** The connection went. A reply that was playing is read by the Pleos TTS instead, a turn that was waiting fails. */
     private fun onServerGone() {
         val id = turnId ?: return
         turnId = null
@@ -537,7 +537,7 @@ class TalkRepository(
         _state.update { it.copy(turn = TurnState.Idle, error = error) }
     }
 
-    /** PLEOS-134: the turn [id] must show a sign of life within [millis], else it ends with the server fault and the talk button is free again. */
+    /** the turn [id] must show a sign of life within [millis], else it ends with the server fault and the talk button is free again. */
     private fun armWatchdog(id: String, millis: Long) {
         watchdog?.cancel()
         watchdog = scope.launch {
@@ -550,7 +550,7 @@ class TalkRepository(
         }
     }
 
-    // ---------------------------------------------------------------- spoken onboarding (D-48, D-52)
+    // ---------------------------------------------------------------- spoken onboarding
 
     /** `onboarding` frame: the whale's (or heyri's) line of the step follows as `reply.*` + PCM with turn id [ServerFrame.Onboarding.id]. */
     private fun onOnboardingFrame(frame: ServerFrame.Onboarding) {
@@ -811,7 +811,7 @@ class TalkRepository(
         }
         when (s.turn) {
             TurnState.Idle -> Unit
-            // D-24: the character is talking and the driver presses: stop the voice at once and listen.
+            // the character is talking and the driver presses: stop the voice at once and listen.
             TurnState.Replying -> {
                 silence()
                 endTurn(null)
@@ -857,7 +857,7 @@ class TalkRepository(
         voiceJob = scope.launch {
             val result = if (source == TurnSource.AutoListen) listenForFollowUp() else voiceInput.listen()
             when (result) {
-                // Feedback guard (PLEOS-194): the same sentence as the last one sent is the microphone hearing the car, not a follow-up.
+                // Feedback guard: the same sentence as the last one sent is the microphone hearing the car, not a follow-up.
                 is VoiceResult.Text -> if (source == TurnSource.AutoListen && result.text == lastSentText) {
                     HeyLog.i(TAG, "auto-listen ignored: the same sentence again")
                     endTurn(null)
@@ -917,7 +917,7 @@ class TalkRepository(
     }
 
     /**
-     * "대화 마치기" (PLEOS-194): the one button of every active phase. Stops the microphone, drops a turn that has not been
+     * "대화 마치기": the one button of every active phase. Stops the microphone, drops a turn that has not been
      * answered, silences the voice and clears the conversation on screen, so the home is idle again.
      */
     override fun cancelTalk() {
@@ -1010,8 +1010,8 @@ const val FRIEND_NOTE_MILLIS = 8_000L
 /** Spoken and shown when `friend_more` arrives without text. */
 const val FRIEND_MORE_FALLBACK = "친구 말이 더 있어요, 멈추시면 보여 드릴게요"
 
-/** A sent turn with no `reply.start` for this long ends with the server fault (PLEOS-134). */
+/** A sent turn with no `reply.start` for this long ends with the server fault. */
 const val REPLY_START_TIMEOUT_MILLIS = 12_000L
 
-/** A reply that goes quiet (no frame, no `reply.end`) for this long ends the turn (PLEOS-134). */
+/** A reply that goes quiet (no frame, no `reply.end`) for this long ends the turn. */
 const val REPLY_END_TIMEOUT_MILLIS = 30_000L

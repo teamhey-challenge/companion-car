@@ -10,7 +10,7 @@ enum class PlaybackEnd {
     /** [ReplyAudio.stop] (new button press, cancel, lost connection). */
     Stopped,
 
-    /** Another app took the audio focus (navigation guidance, call, ...): stopped at once and never resumed (D-14). */
+    /** Another app took the audio focus (navigation guidance, call, ...): stopped at once and never resumed. */
     FocusLost,
 
     /** No audio focus could be had or the output failed; nothing (more) was played. */

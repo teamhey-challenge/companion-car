@@ -53,7 +53,7 @@ enum class TurnSource {
     /** A friend's message or arrival (`friend_message` / `friend_arrived`): spoken at once, never opens the microphone, text only when parked. */
     Friend,
 
-    /** D-48 onboarding: a spoken step (whale line, whale question, heyri's first greeting) and the listening for the answer to it. */
+    /** onboarding: a spoken step (whale line, whale question, heyri's first greeting) and the listening for the answer to it. */
     Onboarding,
 }
 
@@ -112,14 +112,14 @@ data class CarUiState(
     val friendMore: String? = null,
     /** Trip end (`trip_done`): the character's one-line farewell, parked only; cleared after [TRIP_NOTE_MILLIS] or when the car moves. */
     val tripNote: String? = null,
-    /** Where the first-run flow is (D-48); [OnboardingStep.Done] when it is over or was never started. */
+    /** Where the first-run flow is; [OnboardingStep.Done] when it is over or was never started. */
     val onboardingStep: ai.hey.model.OnboardingStep = ai.hey.model.OnboardingStep.Done,
-    /** What the first-run screens draw besides the step (D-48): the spoken line, whose voice, the answers. */
+    /** What the first-run screens draw besides the step: the spoken line, whose voice, the answers. */
     val onboarding: OnboardingView = OnboardingView(),
     /** §6.1: the first-run phone link was skipped; home shows "폰 연결하면 일기를 볼 수 있어" once ([TalkRepository.phoneHintShown]). */
     val phoneHint: Boolean = false,
     val error: TurnError? = null,
-    /** Mouth openness 0..3 of the character while a voice plays (D-13). */
+    /** Mouth openness 0..3 of the character while a voice plays. */
     val mouth: Int = 0,
     /** The repository's hands-on commands; reachable only through [parked]. */
     internal val hands: ParkedCommands? = null,

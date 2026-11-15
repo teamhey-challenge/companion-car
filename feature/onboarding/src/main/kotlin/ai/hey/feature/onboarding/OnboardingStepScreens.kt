@@ -55,7 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 
 /*
- * D-48 onboarding screens (PLEOS-190), built from the studio's design: one living scene (video over its still) with the
+ * onboarding screens, built from the studio's design: one living scene (video over its still) with the
  * lights, subtitle layer, hold ring, polaroids and the side panels of design-system parts on top. They only draw what the step
  * machine in the session module decided. Spoken steps work while driving too, but then the app shows the driving screen, so
  * these screens exist for the parked car only (subtitles are shown here and never while driving).
@@ -75,7 +75,7 @@ data class SpokenStepUi(
     val micBlocked: Boolean = false,
 )
 
-/** The fixed text of each spoken step: what shows until (or instead of) the server's line (D-54: never stuck on the network). */
+/** The fixed text of each spoken step: what shows until (or instead of) the server's line (never stuck on the network). */
 private fun OnboardingStep.titleRes(): Int = when (this) {
     OnboardingStep.WhaleIntro -> R.string.step_whale_title
     OnboardingStep.Lights -> R.string.step_lights_title
@@ -217,7 +217,7 @@ fun SummonScreen(summoned: Boolean, onSummon: () -> Unit, modifier: Modifier = M
     }
 }
 
-/** What the "너를 이만큼 알아" step shows (D-52: memory saving off shows guidance and never the cards). */
+/** What the "너를 이만큼 알아" step shows (memory saving off shows guidance and never the cards). */
 enum class KnownCardsMode { Cards, Empty, MemoryOff }
 
 fun knownCardsMode(memoryEnabled: Boolean, answers: OnboardingAnswers): KnownCardsMode = when {
@@ -228,7 +228,7 @@ fun knownCardsMode(memoryEnabled: Boolean, answers: OnboardingAnswers): KnownCar
 
 /**
  * O6 "너를 이만큼 알아": one polaroid per answer the driver gave (a skipped question has no polaroid; the picture of each is
- * fixed, only the caption comes from the answer, D-54). Heyri says the line while the polaroids drop, so there is no button.
+ * fixed, only the caption comes from the answer). Heyri says the line while the polaroids drop, so there is no button.
  * With memory saving off the polaroids are replaced by "기억 저장을 켜면 이렇게 기억해요".
  */
 @Composable
