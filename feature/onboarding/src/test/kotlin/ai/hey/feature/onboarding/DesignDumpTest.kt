@@ -26,7 +26,7 @@ private fun device(w: Int, h: Int) = DeviceConfig.PIXEL_C.copy(
     screenWidth = w, screenHeight = h, xdpi = 160, ydpi = 160, density = Density.MEDIUM, orientation = ScreenOrientation.LANDSCAPE,
 )
 
-private val answers = OnboardingAnswers(name = "민수", trips = "출퇴근길", topics = "음악")
+private val answers = OnboardingAnswers(name = "지우", trips = "출퇴근길", topics = "캠핑")
 
 private fun Paparazzi.dumpScreens(w: Int, h: Int) {
     fun dump(name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
@@ -35,15 +35,19 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
         dump.write()
     }
     dump("car-onboarding-1") { TitleScreen(onNext = {}) }
-    dump("car-onboarding-2") { OnboardingScreen(ConsentFormUi(), {}, {}, {}, {}, {}, {}) }
+    dump("car-onboarding-2") { OnboardingScreen(ConsentFormUi(), {}, {}, {}, {}, {}) }
     dump("car-onboarding-3") {
-        SpokenStepScreen(SpokenStepUi(OnboardingStep.Q1, line = "먼저, 뭐라고 불러 줄까?", phase = TalkPhase.Listening))
+        SpokenStepScreen(SpokenStepUi(OnboardingStep.Lights, line = "여기 빛 하나하나가 너의 헤이리가 될 수 있어. 이제 너에 대해 알려 줘."))
     }
     dump("car-onboarding-4") { SummonScreen(summoned = false, onSummon = {}) }
-    dump("car-onboarding-5") { SpokenStepScreen(SpokenStepUi(OnboardingStep.Greeting, line = "반가워, 민수! 난 헤이리야.")) }
-    dump("car-onboarding-6") { KnownCardsScreen(answers = answers) }
-    dump("car-onboarding-7") { FirstLookScreen(look = CharacterLook(), onLook = {}, onDone = {}) }
-    dump("car-onboarding-8") { QrStepScreen(PhoneLinkUi.Code("K7M2QX9P"), onLater = {}, onDone = {}, onRetry = {}) }
+    dump("car-onboarding-5") {
+        SpokenStepScreen(SpokenStepUi(OnboardingStep.Greeting, line = "지우야! 불빛 보고 바로 올라왔어. 출퇴근길에 매일 같이 다니고, 캠핑 얘기 많이 하자."))
+    }
+    dump("car-onboarding-6") { KnownCardsScreen(answers = answers, line = "너에 대해 이만큼 알게 됐어. 이건 기억해 둘게, 언제든 지울 수 있어.") }
+    dump("car-onboarding-7") { FirstLookScreen(look = CharacterLook(), onLook = {}, onDone = {}, line = "나 어떤 모습이 좋아? 골라 줘.") }
+    dump("car-onboarding-8") {
+        QrStepScreen(PhoneLinkUi.Code("K7M2QX9P"), onLater = {}, onDone = {}, onRetry = {}, line = "폰에서도 나랑 얘기하고 싶으면 이걸 찍어 줘. 나중에 해도 돼.")
+    }
 }
 
 class OnboardingDesignDump1600Test {

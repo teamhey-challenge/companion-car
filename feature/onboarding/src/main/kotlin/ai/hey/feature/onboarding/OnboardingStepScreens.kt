@@ -13,6 +13,10 @@ import ai.hey.designsystem.component.OnbHoldRing
 import ai.hey.designsystem.component.OnbLights
 import ai.hey.designsystem.component.OnbMeetTitle
 import ai.hey.designsystem.component.OnbPanelText
+import ai.hey.designsystem.component.OnbGap
+import ai.hey.designsystem.component.OnbNextButton
+import ai.hey.designsystem.component.OnbPrimaryButton
+import androidx.compose.ui.unit.dp
 import ai.hey.designsystem.component.OnbPanelTitle
 import ai.hey.designsystem.component.OnbPolaroid
 import ai.hey.designsystem.component.OnbPolaroids
@@ -123,7 +127,7 @@ fun TitleScreen(onNext: () -> Unit, modifier: Modifier = Modifier) {
             stringResource(R.string.step_title_name), stringResource(R.string.step_title_subtitle),
             Modifier.place(OnbAlign.TopCenter).carTitleTop(), compact = compact,
         )
-        GlassButton(stringResource(R.string.step_next), onNext, Modifier.place(OnbAlign.BottomCenter).insetBottom(HeyGap.G32))
+        OnbNextButton(stringResource(R.string.step_next), onNext, Modifier.place(OnbAlign.BottomCenter))
     }
 }
 
@@ -259,9 +263,9 @@ fun FirstLookScreen(
             side = OnbSide.End,
             compact = compact,
             modifier = if (compact) Modifier.carCharacterBand() else Modifier,
-            footer = { GlassButton(stringResource(R.string.onb_dress_done), onDone) },
         ) {
             OnbPanelTitle(stringResource(R.string.onb_dress_title), compact = compact)
+            OnbGap(40.dp)
             OnbDressGrid(
                 listOf(
                     OnbDressChoice(stringResource(R.string.onb_dress_aqua), OnbSwatch.Aqua, look.body(dark) == 0) { onLook(look.copy(bodyColor = 0)) },
@@ -271,6 +275,8 @@ fun FirstLookScreen(
                     OnbDressChoice(stringResource(R.string.step_look_scarf), OnbSwatch.Scarf, look.neck == 1) { onLook(look.copy(neck = if (look.neck == 1) 0 else 1)) },
                 ),
             )
+            OnbGap(32.dp)
+            OnbPrimaryButton(stringResource(R.string.onb_dress_done), onDone)
         }
         if (line.isNotBlank()) OnbCaption(line, Modifier.place(OnbAlign.BottomCenter), narrow = !compact, compact = compact)
     }
