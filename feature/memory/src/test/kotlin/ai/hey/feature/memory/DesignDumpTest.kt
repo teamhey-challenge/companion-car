@@ -34,7 +34,7 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
 }
 
 class MemoryDesignDump1600Test {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 1300), renderingMode = RenderingMode.NORMAL)
 
     @Before fun onlyWhenAsked() = Assume.assumeTrue("run with -Pdesign-diff", System.getProperty("design-diff") != null)
 
@@ -42,7 +42,7 @@ class MemoryDesignDump1600Test {
 }
 
 class MemoryDesignDump1251Test {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1251, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1251, 1300), renderingMode = RenderingMode.NORMAL)
 
     @Before fun onlyWhenAsked() = Assume.assumeTrue("run with -Pdesign-diff", System.getProperty("design-diff") != null)
 

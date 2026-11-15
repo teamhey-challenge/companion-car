@@ -46,10 +46,11 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
     )
     dump("car-friends") { FriendsScreen(ui, FriendsView.List, noop) }
     dump("car-friends-code") { FriendsScreen(ui, FriendsView.Code, noop) }
+    dump("car-friends-invite") { FriendsScreen(ui, FriendsView.Invite, noop) }
 }
 
 class SettingsDesignDump1600Test {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 1300), renderingMode = RenderingMode.NORMAL)
 
     @Before fun onlyWhenAsked() = Assume.assumeTrue("run with -Pdesign-diff", System.getProperty("design-diff") != null)
 
@@ -57,7 +58,7 @@ class SettingsDesignDump1600Test {
 }
 
 class SettingsDesignDump1251Test {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1251, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1251, 1300), renderingMode = RenderingMode.NORMAL)
 
     @Before fun onlyWhenAsked() = Assume.assumeTrue("run with -Pdesign-diff", System.getProperty("design-diff") != null)
 

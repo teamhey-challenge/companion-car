@@ -133,6 +133,17 @@ class FakeCompanionApi(
         return FriendInvite("K7M2QX", "https://hey.lastmile.ltd/f/K7M2QX", "2026-11-16T00:00:00Z")
     }
 
+    /** Codes the fake server knows: code -> the friend that owns it. */
+    val inviteOwners = mutableMapOf("ABC234" to Friend("f9", "서연", "2026-11-15", false))
+
+    override suspend fun acceptFriendInvite(code: String): Friend {
+        check()
+        val f = inviteOwners[code.uppercase()] ?: throw HttpFailure(404)
+        if (friendList.any { it.id == f.id }) throw HttpFailure(409)
+        friendList += f
+        return f
+    }
+
     override suspend fun friends(): List<Friend> {
         check()
         return friendList.toList()

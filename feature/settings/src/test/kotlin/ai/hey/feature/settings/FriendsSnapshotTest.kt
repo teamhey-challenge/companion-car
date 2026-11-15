@@ -44,6 +44,11 @@ private val friendShots: List<Pair<String, FriendShot>> = listOf(
     "friends-message-reporting" to FriendShot(ready.copy(reporting = true), FriendsView.Message("m1", confirmReport = true)),
     "friends-message-report-failed" to FriendShot(ready.copy(reportFailed = true), FriendsView.Message("m1")),
     "friends-message-gone" to FriendShot(ready, FriendsView.Message("gone")),
+    "friends-invite" to FriendShot(ready, FriendsView.Invite),
+    "friends-invite-working" to FriendShot(ready.copy(accept = ai.hey.session.AcceptUi.Working), FriendsView.Invite),
+    "friends-invite-unknown" to FriendShot(ready.copy(accept = ai.hey.session.AcceptUi.Failed(ai.hey.session.AcceptUi.Reason.Unknown)), FriendsView.Invite),
+    "friends-invite-expired" to FriendShot(ready.copy(accept = ai.hey.session.AcceptUi.Failed(ai.hey.session.AcceptUi.Reason.Expired)), FriendsView.Invite),
+    "friends-invite-done" to FriendShot(ready.copy(accept = ai.hey.session.AcceptUi.Done("서연")), FriendsView.Invite),
 )
 
 private fun CarPaparazzi.recordFriends() {

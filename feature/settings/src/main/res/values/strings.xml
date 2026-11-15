@@ -1,5 +1,5 @@
 <resources>
-    <string name="settings_app_name">헤이리</string>
+    <string name="settings_app_name">Hey</string>
     <string name="settings_back">뒤로</string>
     <string name="settings_parked">정차 중</string>
     <string name="settings_title">설정</string>
@@ -10,8 +10,8 @@
     <string name="settings_freq_low">적게</string>
     <string name="settings_freq_normal">보통</string>
     <string name="settings_freq_high">자주</string>
-    <string name="settings_memory">기억 저장</string>
-    <string name="settings_memory_desc">끄면 새 대화를 기억하지 않아요</string>
+    <string name="settings_memory">이야기 기억하기</string>
+    <string name="settings_memory_desc">끄면 새로운 기억을 만들지 않아요</string>
     <string name="settings_speech">말투</string>
     <string name="settings_speech_banmal">반말</string>
     <string name="settings_speech_jondaetmal">존댓말</string>
@@ -42,7 +42,7 @@
     <string name="settings_unpair_title">연결을 해제할까요?</string>
     <string name="settings_unpair_message">폰에서는 더 이상 기억을 볼 수 없어요. 기억은 그대로 남아요.</string>
     <string name="settings_unpair_confirm">해제</string>
-    <string name="settings_withdraw">녹음 동의 철회</string>
+    <string name="settings_withdraw">녹음·기억 동의 철회</string>
     <string name="settings_withdraw_title">동의를 철회할까요?</string>
     <string name="settings_withdraw_message">기억, 대화 요약, 운행 일기, 친구 메시지가 모두 지워져요.</string>
     <string name="settings_withdraw_confirm">철회</string>

@@ -161,7 +161,6 @@ fun SettingsScreen(
                     }
                 }
                 NameSection(settings.name, enabled = SettingField.Name !in settings.saving, onSave = onName)
-                LookSection(settings.look, onLook, enabled = SettingField.Look !in settings.saving)
                 val proactiveSaving = SettingField.Proactive in settings.saving
                 ToggleRow(
                     label = stringResource(R.string.settings_proactive),
@@ -196,6 +195,21 @@ fun SettingsScreen(
                     surface = ToggleSurface.Plain,
                     modifier = Modifier.fillWidth(),
                 )
+                // Studio C7 order: 폰 연결 해제 (the unlink itself is confirmed on the phone-connection screen), then the withdraw.
+                HeyButton(
+                    stringResource(if (settings.phonePaired) R.string.settings_unpair else R.string.settings_pair),
+                    onOpenPair,
+                    variant = HeyButtonVariant.Secondary,
+                    icon = if (settings.phonePaired) HeyIcons.Link else HeyIcons.Qr,
+                )
+                HeyButton(
+                    stringResource(R.string.settings_withdraw),
+                    { confirm = Confirm.Withdraw },
+                    variant = HeyButtonVariant.Danger,
+                    icon = HeyIcons.Trash,
+                )
+                // Not in the studio's C7 (car-only extras): 꾸미기 (D-41), 말투, 기억 보기, the debug server field.
+                LookSection(settings.look, onLook, enabled = SettingField.Look !in settings.saving)
                 ChoiceRow(
                     options = listOf(
                         HeySegmentOption(SpeechUi.Banmal, stringResource(R.string.settings_speech_banmal)),
@@ -207,28 +221,13 @@ fun SettingsScreen(
                     enabled = SettingField.Speech !in settings.saving,
                     modifier = Modifier.fillWidth(),
                 )
-                // 폰 연결 is the last settings item (§2): the row opens `car/settings/phone` (QR, or the linked account).
-                HStack(HeyGap.G16, align = HeyAlign.Center) {
-                    HeyButton(
-                        stringResource(R.string.settings_open_memory),
-                        onOpenMemory,
-                        variant = HeyButtonVariant.Soft,
-                        icon = HeyIcons.Book,
-                    )
-                    HeyButton(
-                        stringResource(if (settings.phonePaired) R.string.settings_phone_linked else R.string.settings_pair),
-                        onOpenPair,
-                        variant = HeyButtonVariant.Soft,
-                        icon = if (settings.phonePaired) HeyIcons.Link else HeyIcons.Qr,
-                    )
-                }
-                if (server != null) ServerSetting(server.saved, server.onApply)
                 HeyButton(
-                    stringResource(R.string.settings_withdraw),
-                    { confirm = Confirm.Withdraw },
-                    variant = HeyButtonVariant.Danger,
-                    icon = HeyIcons.Trash,
+                    stringResource(R.string.settings_open_memory),
+                    onOpenMemory,
+                    variant = HeyButtonVariant.Soft,
+                    icon = HeyIcons.Book,
                 )
+                if (server != null) ServerSetting(server.saved, server.onApply)
             }
         }
     }
