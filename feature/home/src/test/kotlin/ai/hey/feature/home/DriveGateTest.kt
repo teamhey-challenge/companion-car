@@ -8,37 +8,34 @@ import org.junit.Test
 
 class DriveGateTest {
     @Test fun `leaving park sends every parked screen to drive`() {
-        for (r in Routes.parkedOnly) assertEquals(r, Routes.Drive, gateRoute(r, parked = false, needsOnboarding = false))
-        assertNull(gateRoute(Routes.Drive, parked = false, needsOnboarding = false))
+        for (r in Routes.parkedOnly) assertEquals(r, Routes.Drive, gateRoute(r, parked = false))
+        assertNull(gateRoute(Routes.Drive, parked = false))
     }
 
     @Test fun `unknown start has no current route and lands on drive`() {
-        assertEquals(Routes.Drive, gateRoute(null, parked = false, needsOnboarding = false))
+        assertEquals(Routes.Drive, gateRoute(null, parked = false))
     }
 
-    @Test fun `back in park drive returns to home or onboarding`() {
-        assertEquals(Routes.Home, gateRoute(Routes.Drive, parked = true, needsOnboarding = false))
-        assertEquals(Routes.Onboarding, gateRoute(Routes.Drive, parked = true, needsOnboarding = true))
+    @Test fun `back in park drive returns to home`() {
+        assertEquals(Routes.Home, gateRoute(Routes.Drive, parked = true))
+        assertEquals(Routes.Home, gateRoute(null, parked = true))
     }
 
-    @Test fun `parked screens stay and missing consent forces onboarding`() {
-        assertNull(gateRoute(Routes.Memory, parked = true, needsOnboarding = false))
-        assertEquals(Routes.Onboarding, gateRoute(Routes.Home, parked = true, needsOnboarding = true))
-        assertNull(gateRoute(Routes.Onboarding, parked = true, needsOnboarding = true))
+    @Test fun `parked screens stay`() {
+        assertNull(gateRoute(Routes.Memory, parked = true))
+        assertNull(gateRoute(Routes.Home, parked = true))
+        assertNull(gateRoute(Routes.Settings, parked = true))
     }
 
-    @Test fun `D-48 an active first-run flow wins over home and over the consent check, driving still shows drive`() {
-        assertEquals(Routes.Flow, gateRoute(Routes.Drive, parked = true, needsOnboarding = false, flowActive = true))
-        assertEquals(Routes.Flow, gateRoute(Routes.Home, parked = true, needsOnboarding = false, flowActive = true))
-        assertEquals(Routes.Flow, gateRoute(Routes.Onboarding, parked = true, needsOnboarding = false, flowActive = true))
-        assertNull(gateRoute(Routes.Flow, parked = true, needsOnboarding = false, flowActive = true))
-        assertEquals(Routes.Drive, gateRoute(Routes.Flow, parked = false, needsOnboarding = false, flowActive = true))
-        assertNull(gateRoute(Routes.Drive, parked = false, needsOnboarding = false, flowActive = true))
+    @Test fun `D-58 an active first-run flow or a missing consent wins over every other screen, driving still shows drive`() {
+        assertEquals(Routes.Flow, gateRoute(Routes.Drive, parked = true, flowActive = true))
+        assertEquals(Routes.Flow, gateRoute(Routes.Home, parked = true, flowActive = true))
+        assertEquals(Routes.Flow, gateRoute(Routes.Settings, parked = true, flowActive = true))
+        assertNull(gateRoute(Routes.Flow, parked = true, flowActive = true))
+        assertEquals(Routes.Drive, gateRoute(Routes.Flow, parked = false, flowActive = true))
+        assertNull(gateRoute(Routes.Drive, parked = false, flowActive = true))
         // the flow ended: leave it for home
-        assertEquals(Routes.Home, gateRoute(Routes.Flow, parked = true, needsOnboarding = false, flowActive = false))
-        // the whale intro and the consent sheet are inside the flow: it comes before the consent check
-        assertEquals(Routes.Flow, gateRoute(Routes.Drive, parked = true, needsOnboarding = true, flowActive = true))
-        assertNull(gateRoute(Routes.Flow, parked = true, needsOnboarding = true, flowActive = true))
+        assertEquals(Routes.Home, gateRoute(Routes.Flow, parked = true, flowActive = false))
     }
 
     @Test fun `a fault is spoken once per cause while driving and never while parked`() {
