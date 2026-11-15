@@ -14,7 +14,7 @@ import org.junit.Assert.fail
 import org.junit.Test
 import java.io.IOException
 
-/** PLEOS-141: a 200 that is not the expected JSON (captive portal, proxy page, wrong deploy) is an [IOException], never a crash. */
+/** a 200 that is not the expected JSON (captive portal, proxy page, wrong deploy) is an [IOException], never a crash. */
 class BadBodyTest {
     private fun client(body: String, type: String = "text/html") = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
         Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")

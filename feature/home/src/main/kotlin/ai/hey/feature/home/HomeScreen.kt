@@ -105,7 +105,7 @@ internal fun HomeCharacter(
 /**
  * C3 parked home, C4 conversation (a turn is on it) and C8 errors (a fault replaces the left column) on one screen,
  * like the routes in PRD 3.2: `/home` with C4 and C8 as states. Never composed while the car moves (the NavHost shows
- * [DriveScreen] then), so subtitles here are the parked-only subtitles of D-25.
+ * [DriveScreen] then), so subtitles here are the parked-only subtitles of.
  */
 @Composable
 fun HomeScreen(
@@ -177,7 +177,7 @@ const val TRIP_DIARY_MOMENT_MILLIS = 2_500L
 
 /**
  * The character column. At the trip end with a diary (memory saving on) it first shows the diary-writing moment for
- * [TRIP_DIARY_MOMENT_MILLIS] as a named, empty asset slot (D-49: the art comes later, no stand-in picture), then the
+ * [TRIP_DIARY_MOMENT_MILLIS] as a named, empty asset slot (the art comes later, no stand-in picture), then the
  * character again with the farewell line beside it.
  */
 @Composable
@@ -210,7 +210,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
         talking || ui.inTalk -> {
             VStack(HeyGap.G24) {
                 StatusBadge(phase = ui.phase.toTalk(), connection = HeyConnection.Online)
-                // PLEOS-194 captions (parked only): listening says what the app does ("말을 마치면 알아서 보내요", after an answer
+                // captions (parked only): listening says what the app does ("말을 마치면 알아서 보내요", after an answer
                 // "더 하고 싶은 말 있어요?"); thinking shows the driver's words, speaking the character's own reply.
                 VStack(HeyGap.G16, modifier = Modifier.carCaptionTop()) {
                     if (ui.phase == HomePhase.Listening) {
@@ -247,7 +247,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
             }
         }
     }
-    // PLEOS-194: idle is "말하기"; in every active phase (listening, thinking, speaking) the same button is "대화 마치기" and
+    // idle is "말하기"; in every active phase (listening, thinking, speaking) the same button is "대화 마치기" and
     // ends the conversation (cancels listening and playback). It never sends: the end of the speech sends by itself.
     if (faultShown) return
     TalkButton(

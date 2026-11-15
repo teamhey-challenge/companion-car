@@ -27,7 +27,7 @@ class DriveGateTest {
         assertNull(gateRoute(Routes.Settings, parked = true))
     }
 
-    @Test fun `D-58 an active first-run flow or a missing consent wins over every other screen, driving still shows drive`() {
+    @Test fun `an active first-run flow or a missing consent wins over every other screen, driving still shows drive`() {
         assertEquals(Routes.Flow, gateRoute(Routes.Drive, parked = true, flowActive = true))
         assertEquals(Routes.Flow, gateRoute(Routes.Home, parked = true, flowActive = true))
         assertEquals(Routes.Flow, gateRoute(Routes.Settings, parked = true, flowActive = true))

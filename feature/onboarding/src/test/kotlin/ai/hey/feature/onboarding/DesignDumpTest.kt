@@ -18,7 +18,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * PLEOS-199: dumps every HeyText of each onboarding step (bounds in dp, TextStyle) to `build/reports/design-diff/<name>@<w>x<h>.json`.
+ * dumps every HeyText of each onboarding step (bounds in dp, TextStyle) to `build/reports/design-diff/<name>@<w>x<h>.json`.
  * `ops/design-diff/screens.json` in pleos-challenge maps car/onboarding/1..8 to these names. 1251x900 is the real Pleos window
  * (1682x1210 px / designScale 1.3444), 1600x900 the studio canvas. Runs only with `-Pdesign-diff`; nothing is recorded or verified.
  */

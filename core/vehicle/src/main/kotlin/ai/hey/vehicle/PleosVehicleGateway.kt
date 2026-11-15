@@ -391,7 +391,7 @@ internal class PleosSpeechEngine(
         }
         override fun onStop() { onMouth(0); current.get()?.complete(false) }
 
-        // The mouth follows the engine's own loudness callback (D-13). The raw value is logged at a low rate so the thresholds can be tuned.
+        // The mouth follows the engine's own loudness callback. The raw value is logged at a low rate so the thresholds can be tuned.
         override fun onUpdatedRms(rms: Double) {
             val level = thresholds.level(rms)
             if (level != lastLevel) {

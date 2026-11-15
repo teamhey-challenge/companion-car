@@ -76,7 +76,7 @@ data class SettingsUi(
     val accountFailure: AccountFailureUi = AccountFailureUi.None,
     /** The confirmed unpair/withdraw request that is still running (its dialog shows work; the retry button waits). */
     val pending: SettingsPending = SettingsPending.None,
-    /** What the character wears (D-41); the 꾸미기 section previews and edits it. */
+    /** What the character wears; the 꾸미기 section previews and edits it. */
     val look: CharacterLook = CharacterLook(),
 )
 
@@ -101,7 +101,7 @@ fun SettingsScreen(
     onName: (String) -> Unit,
     onLook: (CharacterLook) -> Unit,
     onOpenMemory: () -> Unit,
-    /** 폰 연결 opens the phone-connection screen (D-33), linked or not. */
+    /** 폰 연결 opens the phone-connection screen, linked or not. */
     onOpenPair: () -> Unit,
     onWithdraw: () -> Unit,
     modifier: Modifier = Modifier,
@@ -329,7 +329,7 @@ internal fun NameSection(
     }
 }
 /**
- * 꾸미기 (D-41, parked only like all of C7): the Rive file's two bodies, two hats and the scarf, picked with the same choice
+ * 꾸미기 (parked only like all of C7): the Rive file's two bodies, two hats and the scarf, picked with the same choice
  * pills as the other settings and previewed on the still of exactly that combination. No shop, no payment.
  */
 @Composable

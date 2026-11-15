@@ -41,7 +41,7 @@ fun riveStateFor(ui: HomeUi): Int = when {
     }
 }
 
-/** Frames per second Rive draws at most (D-31). */
+/** Frames per second Rive draws at most. */
 internal const val RIVE_FPS_CAP = 30
 
 /**
@@ -64,7 +64,7 @@ internal class FrameThrottle(private val minIntervalNanos: Long = 1_000_000_000L
 }
 
 /**
- * Rive draws at most 30 frames per second (D-31): a vsync closer than 33.3 ms to the last drawn frame is skipped. The base
+ * Rive draws at most 30 frames per second: a vsync closer than 33.3 ms to the last drawn frame is skipped. The base
  * view re-arms the Choreographer itself (scheduleFrame), so a skipped frame costs one callback and no drawing.
  */
 private class CompanionRiveView(context: Context) : RiveAnimationView(context, null) {
@@ -76,7 +76,7 @@ private class CompanionRiveView(context: Context) : RiveAnimationView(context, n
             override fun doFrame(frameTimeNanos: Long) {
                 if (!throttle.shouldDraw(frameTimeNanos)) { scheduleFrame(); return }
                 super.doFrame(frameTimeNanos)
-                // Debug aid for the CPU measurement (D-48 8): drawn frames per 5 s window, expected ~RIVE_FPS_CAP per second.
+                // Debug aid for the CPU measurement: drawn frames per 5 s window, expected ~RIVE_FPS_CAP per second.
                 if (windowStart == 0L) windowStart = frameTimeNanos
                 drawn++
                 if (frameTimeNanos - windowStart >= 5_000_000_000L) {
@@ -112,9 +112,9 @@ private fun Modifier.renderedAt(scale: Float): Modifier = if (scale >= 1f) this 
  * `state`, `mouth`, `driving` and `bodyColor` properties of the Companion view model. [onFailure] is called once when
  * the file cannot be loaded or bound; the caller then shows the still image (rive-rig.md; C3/C4/C5 never go blank).
  *
- * Composed on C3/C4 and, since D-48 8 (cancels D-45), on C5 too: the rig's `driving` property stays false so the idle
+ * Composed on C3/C4 and, since (cancels), on C5 too: the rig's `driving` property stays false so the idle
  * animation keeps running while the car moves. [whileDriving] labels the debug log line of the fps cap
- * ([RIVE_FPS_CAP] = 30) and lowers the render resolution (PLEOS-195: pixel ratio at most 1 on C5, 2 parked): the Rive
+ * ([RIVE_FPS_CAP] = 30) and lowers the render resolution (pixel ratio at most 1 on C5, 2 parked): the Rive
  * Android view has no pixel-ratio setting, so the texture is laid out at [DRIVING_RENDER_SCALE] of the slot and scaled
  * back up by the GPU. Reduced motion, a hidden app, the motion budget flag and failure use the still image instead.
  */

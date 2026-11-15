@@ -13,7 +13,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * PLEOS-199: dumps every HeyText of C6 (bounds in dp, TextStyle) to `build/reports/design-diff/car-memory@<w>x<h>.json` for
+ * dumps every HeyText of C6 (bounds in dp, TextStyle) to `build/reports/design-diff/car-memory@<w>x<h>.json` for
  * `ops/design-diff/screens.json`. 1251x900 is the real Pleos window, 1600x900 the studio canvas. Runs only with `-Pdesign-diff`.
  */
 private fun device(w: Int, h: Int) = DeviceConfig.PIXEL_C.copy(

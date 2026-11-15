@@ -79,12 +79,12 @@ interface VehicleGateway {
     /**
      * What the server is told as context (gear, speed, wiper, door, range, fuel, headlight, navigation guiding). A signal
      * the car does not answer stays null. [VehicleSignals.naviGuiding] is true while the navigation service has a route
-     * (the character never starts a line then, D-14).
+     * (the character never starts a line then).
      */
     val signals: StateFlow<VehicleSignals>
     val events: SharedFlow<VehicleEvent>
 
-    /** Mouth level 0..3 while the local (Pleos) voice reads, from its `onUpdatedRms` (D-13); 0 when it is quiet. */
+    /** Mouth level 0..3 while the local (Pleos) voice reads, from its `onUpdatedRms`; 0 when it is quiet. */
     val mouth: StateFlow<Int>
 
     /**
@@ -98,7 +98,7 @@ interface VehicleGateway {
 
     fun configureSpeech(settings: SpeechSettings)
 
-    /** The driver pressed the button or the audio focus went: cut what is being read and drop what waits. Nothing is read again (D-14, D-24). */
+    /** The driver pressed the button or the audio focus went: cut what is being read and drop what waits. Nothing is read again. */
     fun stopSpeech()
 
     /** Opens the on-device voice now so the first spoken reply does not wait for its start-up (Go/No-go 8.2). */

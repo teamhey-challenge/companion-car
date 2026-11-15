@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 private const val NO_SPACE_FRIEND = "오늘퇴근길에는비가와서조용한음악을틀어드리고내일아침일정도함께알려드릴게요오늘퇴근길에는비가와서조용한음악을틀어드리고"
 private const val LONG_120 = "오늘 발표 잘할 거야. 끝나고 맛있는 거 먹자. 응원할게! 그리고 저녁에는 같이 모여서 이야기하자. 집에 돌아가는 길에 비가 오니까 우산 꼭 챙기고, 조심해서 운전해야 해."
 
-/** The friend parts (PLEOS-196): list row, inbox row and message card, in every shape the data can take. */
+/** The friend parts: list row, inbox row and message card, in every shape the data can take. */
 internal fun friendParts(): List<Story> = buildList {
     add(Story("friend-rows", StoryFrame.Part) {
         VStack(HeyGap.G16, modifier = Modifier.width(1100.dp).padding(32.dp)) {

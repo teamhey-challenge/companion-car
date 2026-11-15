@@ -41,7 +41,7 @@ data class CompanionSettings(
     val memoryEnabled: Boolean = true,
     val speech: SpeechStyle = SpeechStyle.Banmal,
     val nickname: String? = null,
-    /** Look (D-41, Rive values): bodyColor 0 aqua / 1 peach / null = follows the theme; hat 0 none / 1 beanie / 2 bucket; neck 0 none / 1 scarf. */
+    /** Look (Rive values): bodyColor 0 aqua / 1 peach / null = follows the theme; hat 0 none / 1 beanie / 2 bucket; neck 0 none / 1 scarf. */
     val bodyColor: Int? = null,
     val hat: Int = 1,
     val neck: Int = 0,
@@ -93,10 +93,10 @@ data class PairingStatus(
 
 data class PairingInfo(val pairCode: String, val expiresAt: String)
 
-/** GET /v1/friends item. Read-only on the car: [shareArrival] (도착 알리기) is shown, set only on the phone (D-47). */
+/** GET /v1/friends item. Read-only on the car: [shareArrival] (도착 알리기) is shown, set only on the phone. */
 data class Friend(val id: String, val name: String, val since: String, val shareArrival: Boolean)
 
-/** A message a friend sent me (GET /v1/messages, direction "in"; the server leaves reported ones out). D-53: at most 120 characters. [friendId] is my friend row. */
+/** A message a friend sent me (GET /v1/messages, direction "in"; the server leaves reported ones out). at most 120 characters. [friendId] is my friend row. */
 data class ReceivedMessage(val id: String, val friendId: String, val friendName: String, val text: String, val at: String)
 
 /** POST /v1/friends/invites: a 6-character code (24 h) and the link the QR carries. */
