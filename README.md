@@ -24,11 +24,11 @@
 
 | 저장소 | 내용 |
 |---|---|
-| [companion-car](https://github.com/darren-pleos-challenge/companion-car) | 차량 앱(이 저장소) |
-| [companion-phone](https://github.com/darren-pleos-challenge/companion-phone) | 폰 앱(QR 연결·동의·기억 관리) |
-| [companion-server](https://github.com/darren-pleos-challenge/companion-server) | 대화·기억·TTS 서버 |
-| [companion-web](https://github.com/darren-pleos-challenge/companion-web) | 폰 웹(폰 앱의 백업)·디자인 시스템 Storybook |
-| [companion-shared](https://github.com/darren-pleos-challenge/companion-shared) | 디자인 토큰·프로토콜(서브모듈 `shared/`) |
+| [companion-car](https://github.com/teamhey-challenge/companion-car) | 차량 앱(이 저장소) |
+| [companion-phone](https://github.com/teamhey-challenge/companion-phone) | 폰 앱(QR 연결·동의·기억 관리) |
+| [companion-server](https://github.com/teamhey-challenge/companion-server) | 대화·기억·TTS 서버 |
+| [companion-web](https://github.com/teamhey-challenge/companion-web) | 폰 웹(폰 앱의 백업)·디자인 시스템 Storybook |
+| [companion-shared](https://github.com/teamhey-challenge/companion-shared) | 디자인 토큰·프로토콜(서브모듈 `shared/`) |
 
 HEY 시절 `hey-car@8b8de8c`의 기록을 이어받은 저장소다(택시 운행 화면·경로 시작 상태 기계·HEY 중계 서버 연결은 지웠다). 모듈 구성은 아래와 같다.
 
@@ -55,7 +55,7 @@ APK에는 비밀이 없다(APK는 `https://hey.lastmile.ltd/download/latest.apk`
 ## 빌드
 
 ```sh
-git clone --recurse-submodules git@github.com:darren-pleos-challenge/companion-car.git
+git clone --recurse-submodules git@github.com:teamhey-challenge/companion-car.git
 ./check.sh    # 조립·단위 시험·Paparazzi 스냅숏 검증 (nice, --max-workers=2)
 ```
 
@@ -76,6 +76,6 @@ git clone --recurse-submodules git@github.com:darren-pleos-challenge/companion-c
 
 ## 링크·라이선스
 
-- 서버: [companion-server](https://github.com/darren-pleos-challenge/companion-server), 폰 웹: [companion-web](https://github.com/darren-pleos-challenge/companion-web)
+- 서버: [companion-server](https://github.com/teamhey-challenge/companion-server), 폰 웹: [companion-web](https://github.com/teamhey-challenge/companion-web)
 - 코드는 MIT(`LICENSE`). 글꼴·SDK·런타임 고지는 `THIRD_PARTY.md`. Pleos SDK는 이 저장소에 들어 있지 않고 Playground 약관을 따른다.
 
