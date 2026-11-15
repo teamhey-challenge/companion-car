@@ -43,7 +43,7 @@ class AppGraph(private val app: Application) {
     val voice: VoiceInput by lazy { demoVoiceOrNull(app) ?: PleosVoiceInput(app) }
     val companion: CompanionRepository by lazy { CompanionRepository(scope, HttpCompanionApi(storage, newHttpClient(), AndroidConnectivity(app)), storage) }
 
-    /** D-52 2: friend messages and trip-end diaries also go to the notification centre (two kinds only). */
+    /** friend messages and trip-end diaries also go to the notification centre (two kinds only). */
     private val notifier by lazy { FrameNotifier(AndroidNoticeSink(app)) }
     val repository: TalkRepository by lazy {
         val http = newHttpClient()
@@ -73,7 +73,7 @@ class AppGraph(private val app: Application) {
     private val faultFocus by lazy { AudioFocusGateAndroid(app) }
 
     /**
-     * PLEOS-133: the driving fault line never talks over another app (D-14). It is spoken only when navigation is not
+     * the driving fault line never talks over another app. It is spoken only when navigation is not
      * guiding and the transient audio focus is granted; a refusal or a later loss drops it without a retry.
      */
     fun speakFault(text: String, id: String) {

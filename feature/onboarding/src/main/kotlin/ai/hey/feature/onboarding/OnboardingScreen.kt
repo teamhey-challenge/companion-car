@@ -40,7 +40,7 @@ data class ConsentFormUi(
 )
 
 /**
- * The consent (D-48 O2, studio 4dc8ad3): a full-height panel on the left half over the living whale scene; in a 1/2 or
+ * The consent (O2, studio 4dc8ad3): a full-height panel on the left half over the living whale scene; in a 1/2 or
  * 1/3 window the panel takes the whole width. Pure UI: every press is a callback. Pressing start without the required
  * consent calls [onStartWithoutVoice] (the owner only shows the message; nothing is asked or sent), otherwise [onStart].
  * The studio shows the three promises and the two ticks; the full notice (collection, purpose, retention, refusal, providers)

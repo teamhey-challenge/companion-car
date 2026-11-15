@@ -34,9 +34,9 @@ interface VoiceInput {
     fun finishListening() = Unit
 
     /**
-     * The automatic listening that follows an answer (F4-F6, D-48 4): the same recognition as [listen], plus [onSpeechStart] the
+     * The automatic listening that follows an answer (F4-F6): the same recognition as [listen], plus [onSpeechStart] the
      * moment the first words are heard. The caller times only the wait for that call; once speech has started the recognizer
-     * is left to hear the sentence to its end (PLEOS-194 follow-up listening).
+     * is left to hear the sentence to its end (follow-up listening).
      */
     suspend fun listenAfterReply(onSpeechStart: () -> Unit = {}): VoiceResult = listen()
 

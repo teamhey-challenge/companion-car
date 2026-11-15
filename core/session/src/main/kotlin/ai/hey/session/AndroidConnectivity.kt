@@ -5,7 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 
-/** Whether the device has a default network with internet right now (PLEOS-148: a settings save does not wait on a dead link). */
+/** Whether the device has a default network with internet right now (a settings save does not wait on a dead link). */
 fun interface OnlineCheck {
     fun isOnline(): Boolean
 }

@@ -8,7 +8,7 @@ object HeyLog {
     @Volatile
     var sink: (level: Char, tag: String, message: String) -> Unit = { level, tag, message -> println("$level/$tag: $message") }
 
-    /** What the driver said and what the car answered may be logged only when this is true; the app sets it from BuildConfig.DEBUG (PLEOS-137). */
+    /** What the driver said and what the car answered may be logged only when this is true; the app sets it from BuildConfig.DEBUG. */
     @Volatile
     var contentEnabled: Boolean = false
 

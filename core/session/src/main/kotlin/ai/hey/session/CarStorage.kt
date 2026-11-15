@@ -59,7 +59,7 @@ interface CarStorage {
     suspend fun saveCarToken(serverUrl: String, token: String)
     suspend fun forgetCarToken(serverUrl: String)
 
-    /** D-48 onboarding: the step the first-run flow is at. [OnboardingStep.Done] for installs that never started it. */
+    /** onboarding: the step the first-run flow is at. [OnboardingStep.Done] for installs that never started it. */
     val onboardingStep: StateFlow<OnboardingStep>
     suspend fun setOnboardingStep(step: OnboardingStep)
 

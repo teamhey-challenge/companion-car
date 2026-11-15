@@ -13,7 +13,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * PLEOS-199: renders each screen that has a studio counterpart and dumps every HeyText (bounds in dp, TextStyle) to
+ * renders each screen that has a studio counterpart and dumps every HeyText (bounds in dp, TextStyle) to
  * `build/reports/design-diff/<name>@<w>x<h>.json`. `ops/design-diff/screens.json` in pleos-challenge maps screen codes to these names.
  * 1251x900 is what the Pleos emulator window really is (1682x1210 px / designScale 1.3444); 1600x900 is the studio canvas.
  * Runs only with `-Pdesign-diff`; the snapshots are never recorded or verified, so this is a report, not a gate on the app build.

@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
             val route = current?.destination?.route
 
             // The driving gate (PRD 3.5): the route follows the car, never the other way round. Unknown motion is "driving".
-            // D-58: a car without the record consent is in the flow too (it lands on the O2 consent sheet), there is no other screen.
+            // a car without the record consent is in the flow too (it lands on the O2 consent sheet), there is no other screen.
             val flowActive = state.onboardingStep != OnboardingStep.Done || state.needsOnboarding
             LaunchedEffect(route, parked, flowActive) {
                 gateRoute(route, parked, flowActive = flowActive)?.let { target ->
@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
             }
             LaunchedEffect(ui.fault, parked) { announcer.onFault(ui.fault, parked) }
             // A permission dialog (system, not distraction-optimized) that was open when the gear left P would keep covering C5 under
-            // the system's driving block (AC-3.5-05, PLEOS-73 evidence): bring this activity back above it. OnboardingRoute treats the
+            // the system's driving block (AC-3.5-05 evidence): bring this activity back above it. OnboardingRoute treats the
             // request as denied, so nothing waits for the hidden dialog.
             LaunchedEffect(parked) {
                 if (!parked) {
@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
             val carDensity = remember(config.screenWidthDp, config.screenHeightDp, density.density) {
                 designDensity(density, config.screenWidthDp, config.screenHeightDp)
             }
-            // D-26: the car follows the system day/night setting (the mockup default is the light sea theme).
+            // the car follows the system day/night setting (the mockup default is the light sea theme).
             val dark = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
             CompositionLocalProvider(LocalDensity provides carDensity) {
             HeyTheme(dark = dark) {
@@ -216,7 +216,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** C5 motion (PLEOS-195): the app is on screen. Off while stopped/hidden, the still character replaces the Rive rig. */
+    /** C5 motion: the app is on screen. Off while stopped/hidden, the still character replaces the Rive rig. */
     private var appShown by mutableStateOf(false)
 
     /** Debug/settings input: the runtime says the motion budget is exceeded, C5 shows the still. Nothing sets it automatically yet. */
@@ -243,7 +243,7 @@ class MainActivity : ComponentActivity() {
     private fun reducedMotion(): Boolean =
         Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
-    /** C5 draws the live rig by default (D-52 3); still when the OS reduces motion, the app is hidden, or the budget input is on. */
+    /** C5 draws the live rig by default; still when the OS reduces motion, the app is hidden, or the budget input is on. */
     private fun drivingStill(): Boolean = reducedMotion() || !appShown || motionBudgetExceeded
 
     private fun onFaultAction(fault: CarFault, retryTalk: () -> Unit, reconnect: () -> Unit) {
@@ -267,6 +267,6 @@ class MainActivity : ComponentActivity() {
         },
     )
 
-    // Runtime permissions are asked only while parked (PLEOS-90, [mayAskPermission]): the microphone on a press, notifications once after
-    // consent and onboarding ([shouldAskNotifications]); a denial of the latter is kept and the D-52 notifications are skipped silently.
+    // Runtime permissions are asked only while parked ([mayAskPermission]): the microphone on a press, notifications once after
+    // consent and onboarding ([shouldAskNotifications]); a denial of the latter is kept and the notifications are skipped silently.
 }

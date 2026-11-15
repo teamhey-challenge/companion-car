@@ -114,7 +114,7 @@ interface TalkTransport {
 
     fun connect(serverUrl: String)
 
-    /** The C8 "다시 연결" button: skip the pause before the next attempt (PLEOS-94). */
+    /** The C8 "다시 연결" button: skip the pause before the next attempt. */
     fun reconnectNow()
 
     /** True when the frame went onto an open socket. */

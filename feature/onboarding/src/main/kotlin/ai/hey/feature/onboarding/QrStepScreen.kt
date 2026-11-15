@@ -37,7 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 
 /**
- * O8 phone link (D-58: the only place the first phone is linked; later it is settings > 폰 연결), parked only, on the scene:
+ * O8 phone link (the only place the first phone is linked; later it is settings > 폰 연결), parked only, on the scene:
  * heyri steps to the left and the shared phone-connection panel opens on the right. In a 1/2 or 1/3 window the panel takes the
  * full width under a band with the small character. "나중에 할게" ([onLater]) leaves without a phone; "연결했어" ([onDone]) is
  * pressable once a phone is linked.

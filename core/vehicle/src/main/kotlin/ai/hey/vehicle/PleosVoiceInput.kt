@@ -110,7 +110,7 @@ class PleosVoiceInput(private val context: Context) : VoiceInput {
 
     override suspend fun listen(): VoiceResult = listenWith {}
 
-    /** The first partial result of the engine is the start of speech (PLEOS-194): the caller's wait-for-speech timer ends there. */
+    /** The first partial result of the engine is the start of speech: the caller's wait-for-speech timer ends there. */
     override suspend fun listenAfterReply(onSpeechStart: () -> Unit): VoiceResult = listenWith(onSpeechStart)
 
     private suspend fun listenWith(onSpeechStart: () -> Unit): VoiceResult = lock.withLock {

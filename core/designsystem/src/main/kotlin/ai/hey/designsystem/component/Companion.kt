@@ -167,7 +167,7 @@ enum class CharacterSize(val width: Dp, val height: Dp) {
 }
 
 /**
- * What the character wears (D-41), in the `hey_companion.riv` Companion view-model values (rive-rig.md): [bodyColor] 0 aqua,
+ * What the character wears, in the `hey_companion.riv` Companion view-model values (rive-rig.md): [bodyColor] 0 aqua,
  * 1 peach, null = follow the theme (light 0, dark 1); [hat] 0 none, 1 beanie (the default look), 2 bucket; [neck] 0 none, 1 scarf.
  */
 data class CharacterLook(val bodyColor: Int? = null, val hat: Int = 1, val neck: Int = 0) {
@@ -185,7 +185,7 @@ private val Stills: Array<IntArray> = arrayOf(
 
 /**
  * The still for [look]: one prepared WebP per combination (2 bodies x 3 hats x 2 necks), frames taken from the Rive file itself
- * in its parked pose, so C5 stays a plain image (D-11) and matches what C3 shows. Default look: aqua in the sea theme, peach in
+ * in its parked pose, so C5 stays a plain image and matches what C3 shows. Default look: aqua in the sea theme, peach in
  * the deep-sea theme (design "헤이리 테마별 기본 색상").
  */
 @Composable
@@ -222,7 +222,7 @@ fun CharacterSlot(
 }
 
 /**
- * A clearly named, EMPTY place for art that has not arrived yet (D-49: whale picture, backgrounds, new outfits come from the
+ * A clearly named, EMPTY place for art that has not arrived yet (whale picture, backgrounds, new outfits come from the
  * planner later). It draws only a sunken outline and the [name] of the asset, never a stand-in picture, so a screen can swap it
  * for the real art without touching its logic. Same box as [CharacterSlot] of [size].
  */
@@ -332,7 +332,7 @@ private fun TalkPill(
     onHoldEnd: (() -> Unit)? = null,
     /** Blocked look but still pressable. */
     dimmed: Boolean = false,
-    /** A long press (D-48 3c "길게 눌러 헤이리 만나기"): a plain tap does nothing; the accessibility action runs it at once. */
+    /** A long press (c "길게 눌러 헤이리 만나기"): a plain tap does nothing; the accessibility action runs it at once. */
     onLongPress: (() -> Unit)? = null,
     /** How long the press must be held before [onLongPress] fires (planner: 1.8 s). */
     longPressMillis: Long = 1_800L,
@@ -404,7 +404,7 @@ private fun TalkPill(
 
 /**
  * The primary action. 96dp high, 320dp wide at least. Idle is "말하기" and starts a conversation; in every other phase
- * (Listening, Thinking, Speaking) the same button is "대화 마치기" and ends it (PLEOS-194: never a send button). Only
+ * (Listening, Thinking, Speaking) the same button is "대화 마치기" and ends it (never a send button). Only
  * [enabled] = false draws the blocked look and takes no input.
  *
  * Parked: pass [onHoldStart]/[onHoldEnd] for press-and-hold; [onClick] is then only the accessibility

@@ -18,12 +18,12 @@ data class HomeUi(
     val online: Boolean = false,
     /** What the driver said this turn (C4 `txt-talk-user`). */
     val heard: String? = null,
-    /** The character's text so far (C4 caption; never shown while driving, D-25). */
+    /** The character's text so far (C4 caption; never shown while driving). */
     val reply: String = "",
-    /** Mouth openness 0..3 from the playback loudness (D-13). */
+    /** Mouth openness 0..3 from the playback loudness. */
     val mouth: Int = 0,
     val source: TurnSource = TurnSource.Ptt,
-    /** What the character wears (D-41); C3/C4 pass it to Rive, C5/C8/fallback draw the matching still. */
+    /** What the character wears; C3/C4 pass it to Rive, C5/C8/fallback draw the matching still. */
     val look: CharacterLook = CharacterLook(),
     /** A friend's message shown as a subtitle: set only while parked (the session never fills it while driving). */
     val friendNote: String? = null,
@@ -42,7 +42,7 @@ data class HomeUi(
     val inTalk: Boolean get() = phase != HomePhase.Idle || reply.isNotEmpty() || heard != null
 
     /**
-     * The automatic listening that follows the character's own opening line (PLEOS-194 "선제 발화"): the driver said nothing in
+     * The automatic listening that follows the character's own opening line ("선제 발화"): the driver said nothing in
      * this turn ([heard] is null) and the line is still [reply]. A listening after a driver turn is the follow-up instead.
      */
     val proactivePrompt: Boolean get() = phase == HomePhase.Listening && source == TurnSource.AutoListen && heard == null && reply.isNotEmpty()
