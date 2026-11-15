@@ -9,6 +9,8 @@ import ai.hey.designsystem.testing.CarPaparazzi
 import ai.hey.designsystem.testing.CarWindow
 import ai.hey.designsystem.component.CharacterLook
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import ai.hey.designsystem.component.LocalScrollToEnd
 import org.junit.Rule
 import org.junit.Test
 
@@ -59,6 +61,14 @@ private fun CarPaparazzi.recordAll() {
                 HeyTheme(dark) {
                     PageBackground(modifier = Modifier.fillSize().carMargin()) { LookSection(look, onLook = {}, enabled = true) }
                 }
+            }
+        }
+    }
+    // Scrolled to the end: bottom margin below the last row, scrollbar at the window edge, fade at the top.
+    listOf(true, false).forEach { dark ->
+        snapshot("c7-scrolled-end-${if (dark) "dark" else "light"}") {
+            HeyTheme(dark) {
+                CompositionLocalProvider(LocalScrollToEnd provides true) { Screen(shots.first().second) }
             }
         }
     }

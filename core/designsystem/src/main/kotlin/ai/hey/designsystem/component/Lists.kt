@@ -31,6 +31,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -41,7 +47,9 @@ private const val NOTICE_VISIBLE_MS = 4000L
 
 /**
  * Vertical scroll for a list zone inside a frame. The scrollbar is always drawn when the content overflows,
- * so a driver can see that more rows exist below.
+ * so a driver can see that more rows exist beyond the edge. Inside a [CarFrame] the viewport reaches the window's
+ * right and bottom edge (scrollbar in the outer margin) and the page margin is restored as padding inside the
+ * scroll, so the last row clears the bottom edge. Rows cut by the top or bottom edge fade out instead of being sliced.
  */
 @Composable
 fun HeyScrollColumn(
@@ -50,28 +58,62 @@ fun HeyScrollColumn(
     content: @Composable HeyStackScope.() -> Unit,
 ) {
     val state = rememberScrollState()
+    val toEnd = LocalScrollToEnd.current
+    LaunchedEffect(toEnd, state.maxValue) { if (toEnd) state.scrollTo(state.maxValue) }
     val track = HeyTheme.colors.borderDefault
     val thumb = HeyTheme.colors.fgSubtle
+    val inset = LocalCarScrollInset.current
     Box(
-        modifier.drawWithContent {
-            drawContent()
-            val max = state.maxValue
-            if (max > 0) {
-                val bar = HeyTokens.Space.s8.toPx()
-                val viewport = size.height
-                val total = viewport + max
-                val thumbHeight = (viewport * viewport / total).coerceAtLeast(HeyTokens.Size.touchCar.toPx())
-                val top = (viewport - thumbHeight) * state.value / max
-                val x = size.width - bar
-                val radius = CornerRadius(bar / 2f)
-                drawRoundRect(track, Offset(x, 0f), Size(bar, viewport), radius)
-                drawRoundRect(thumb, Offset(x, top), Size(bar, thumbHeight), radius)
+        modifier
+            .drawWithContent {
+                drawContent()
+                val max = state.maxValue
+                if (max > 0) {
+                    val bar = HeyTokens.Space.s8.toPx()
+                    val viewport = size.height
+                    val total = viewport + max
+                    val thumbHeight = (viewport * viewport / total).coerceAtLeast(HeyTokens.Size.touchCar.toPx())
+                    val top = (viewport - thumbHeight) * state.value.coerceIn(0, max) / max
+                    val x = size.width - bar - HeyTokens.Space.s8.toPx()
+                    val radius = CornerRadius(bar / 2f)
+                    drawRoundRect(track, Offset(x, 0f), Size(bar, viewport), radius)
+                    drawRoundRect(thumb, Offset(x, top), Size(bar, thumbHeight), radius)
+                }
             }
-        },
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                val fade = minOf(EDGE_FADE.toPx(), size.height / 2f)
+                if (state.value > 0) {
+                    drawRect(
+                        brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black), startY = 0f, endY = fade),
+                        size = Size(size.width, fade),
+                        blendMode = BlendMode.DstIn,
+                    )
+                }
+                if (state.value < state.maxValue) {
+                    drawRect(
+                        brush = Brush.verticalGradient(listOf(Color.Black, Color.Transparent), startY = size.height - fade, endY = size.height),
+                        topLeft = Offset(0f, size.height - fade),
+                        size = Size(size.width, fade),
+                        blendMode = BlendMode.DstIn,
+                    )
+                }
+            },
     ) {
-        VStack(gap = gap, modifier = Modifier.fillMaxWidth().verticalScroll(state).padding(end = HeyTokens.Space.s24), content = content)
+        VStack(
+            gap = gap,
+            modifier = Modifier.fillMaxWidth().verticalScroll(state)
+                .padding(end = maxOf(inset.end, HeyTokens.Space.s24), bottom = inset.bottom),
+            content = content,
+        )
     }
 }
+
+private val EDGE_FADE = 32.dp
+
+/** Snapshot tests only: start every [HeyScrollColumn] scrolled to its end. */
+val LocalScrollToEnd = androidx.compose.runtime.compositionLocalOf { false }
 
 /** Title plus its group; the parent puts 24 between groups. */
 @Composable

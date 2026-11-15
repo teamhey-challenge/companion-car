@@ -26,6 +26,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -232,19 +235,36 @@ fun CarFrame(
     actionRail: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
+    // A scrolling page (no rail, not driving) lets its scroll viewport reach the window's right and bottom edge,
+    // so the scrollbar sits in the outer margin; the content gets the margin back as padding inside the scroll.
+    val edgeScroll = actionRail == null && !driving
+    val endPad = if (edgeScroll) 0.dp else CarPageX
     VStack(
         gap = HeyGap.G24,
         modifier = modifier
             .fillMaxSize()
             .background(HeyTheme.colors.bgPage)
-            // Scrolling pages (no action rail) run to the screen edge like the mockups; pages with a rail keep 64.
-            .padding(start = CarPageX, end = CarPageX, top = CarPageTop, bottom = if (actionRail != null) CarPageBottom else 0.dp),
+            .padding(start = CarPageX, end = endPad, top = CarPageTop, bottom = if (actionRail != null) CarPageBottom else 0.dp),
     ) {
-        statusStrip()
-        Box(Modifier.grow().fillMaxWidth().padding(top = CarContentGap)) { content() }
+        Box(Modifier.fillMaxWidth().padding(end = if (edgeScroll) CarPageX else 0.dp)) { statusStrip() }
+        Box(Modifier.grow().fillMaxWidth().padding(top = CarContentGap)) {
+            CompositionLocalProvider(
+                LocalCarScrollInset provides if (edgeScroll) CarScrollInset(end = CarPageX, bottom = CarPageBottom) else CarScrollInset(0.dp, 0.dp),
+                content = content,
+            )
+        }
         if (!driving && actionRail != null) actionRail()
     }
 }
+
+/**
+ * Margin a scroll viewport inside [CarFrame] reaches past, and the clearance its last row keeps from the window
+ * edge. Zero outside an edge-scrolling frame.
+ */
+@Immutable
+data class CarScrollInset(val end: Dp, val bottom: Dp)
+
+val LocalCarScrollInset = staticCompositionLocalOf { CarScrollInset(0.dp, 0.dp) }
 
 /** Mockup car shell (ui-spec "차량 외곽": 80 left/right, 64 top). */
 private val CarPageX = 80.dp
