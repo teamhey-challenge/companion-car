@@ -82,12 +82,13 @@ data class ConsentRecord(val type: ConsentType, val version: String, val granted
 
 enum class PairingPhase { None, Pending, Claimed, Expired }
 
-/** GET /v1/pairings/current. [expiresAt] / [pairedAt] are ISO-8601 strings from the server. */
+/** GET /v1/pairings/current. [expiresAt] / [pairedAt] are ISO-8601 strings; [googleName] is the linked Google account's given name (claimed only, null when the server has none). */
 data class PairingStatus(
     val phase: PairingPhase,
     val pairCode: String? = null,
     val expiresAt: String? = null,
     val pairedAt: String? = null,
+    val googleName: String? = null,
 )
 
 data class PairingInfo(val pairCode: String, val expiresAt: String)

@@ -154,6 +154,7 @@ class TalkRepository(
             storage.consents.collect { c -> _state.update { it.copy(needsOnboarding = !c.recordDone) } }
         }
         scope.launch { storage.onboardingStep.collect { st -> _state.update { it.copy(onboardingStep = st) }; if (st == OnboardingStep.Done) drainFriends() } }
+        scope.launch { storage.phoneHintPending.collect { h -> _state.update { it.copy(phoneHint = h) } } }
         scope.launch {
             // A spoken step runs while the car is moving too (a press step waits for park); the steps before the consent sheet
             // need no consent. collectLatest restarts the step when the step, the link, the consent or the gear (for press steps)
@@ -253,7 +254,7 @@ class TalkRepository(
                 is ServerFrame.FriendArrived -> onFriend(frame.id, frame.fromName, "", showText = false)
                 is ServerFrame.TripDone -> Unit // the notification centre ([FrameNotifier]) reads it; the repository has nothing to do
                 is ServerFrame.Settings -> companion?.onServerSettings(frame.settings)
-                is ServerFrame.Pairing -> companion?.onServerPairing(frame.phase)
+                is ServerFrame.Pairing -> companion?.onServerPairing(frame.phase, frame.googleName)
                 is ServerFrame.Onboarding -> onOnboardingFrame(frame)
                 is ServerFrame.OnboardingAck -> onOnboardingAck(frame)
             }
@@ -684,6 +685,16 @@ class TalkRepository(
     /** A press step (title, consent, long press, dress-up, phone link) was done on its screen: go on to the next one. */
     fun finishOnboardingStep(step: OnboardingStep) {
         scope.launch { if (storage.onboardingStep.value == step) storage.setOnboardingStep(step.next()) }
+    }
+
+    /** O8 ended without a linked phone: home reminds once (§6.1). */
+    fun skippedPhoneLink() {
+        scope.launch { storage.setPhoneHintPending(true) }
+    }
+
+    /** Home showed the reminder (or the phone got linked): it never shows again. */
+    fun phoneHintShown() {
+        scope.launch { storage.setPhoneHintPending(false) }
     }
 
     /** "넘어갈래" on a whale question: stop listening, the whale says "괜찮아, 다음에 알려 줘" and the next step starts. */

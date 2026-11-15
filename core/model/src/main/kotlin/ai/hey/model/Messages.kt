@@ -109,8 +109,11 @@ sealed interface ServerFrame {
 
     data class Settings(val settings: CompanionSettings) : ServerFrame
 
-    /** The pairing status changed on the server (a phone or the car ended it: [phase] None). */
-    data class Pairing(val phase: PairingPhase) : ServerFrame
+    /**
+     * The pairing status changed on the server: a phone linked ([phase] Claimed, with the Google given name in [googleName],
+     * null when unknown) or a phone or the car ended the link ([phase] None).
+     */
+    data class Pairing(val phase: PairingPhase, val googleName: String? = null) : ServerFrame
     data class Error(val code: String, val turnId: String?, val message: String?) : ServerFrame
 }
 
@@ -167,6 +170,7 @@ private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
                 "expired" -> PairingPhase.Expired
                 else -> return null
             },
+            googleName = s("googleName"),
         )
         "error" -> ServerFrame.Error(s("code") ?: return null, s("turnId"), s("message"))
         else -> null

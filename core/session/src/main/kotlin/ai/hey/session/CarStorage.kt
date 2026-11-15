@@ -62,6 +62,10 @@ interface CarStorage {
     /** D-48 onboarding: the step the first-run flow is at. [OnboardingStep.Done] for installs that never started it. */
     val onboardingStep: StateFlow<OnboardingStep>
     suspend fun setOnboardingStep(step: OnboardingStep)
+
+    /** §6.1: O8 was skipped, so home says "폰 연결하면 일기를 볼 수 있어" once. Cleared when it was shown or the phone is linked. */
+    val phoneHintPending: StateFlow<Boolean>
+    suspend fun setPhoneHintPending(pending: Boolean)
 }
 
 class InMemoryCarStorage(
@@ -76,6 +80,9 @@ class InMemoryCarStorage(
     private val _step = MutableStateFlow(initialStep)
     override val onboardingStep: StateFlow<OnboardingStep> = _step.asStateFlow()
     override suspend fun setOnboardingStep(step: OnboardingStep) { _step.value = step }
+    private val _hint = MutableStateFlow(false)
+    override val phoneHintPending: StateFlow<Boolean> = _hint.asStateFlow()
+    override suspend fun setPhoneHintPending(pending: Boolean) { _hint.value = pending }
     override val settings: StateFlow<CarSettings> = _settings.asStateFlow()
     override val consents: StateFlow<ConsentMirror> = _consents.asStateFlow()
     override suspend fun setConsent(type: ConsentType, granted: Boolean) {

@@ -18,10 +18,10 @@ class SettingsUiTest {
         assertEquals(listOf(null, 20, 10, 5), ProactiveLevel.entries.map { it.intervalMin })
     }
 
-    @Test fun `unpair exists only while a phone is linked`() {
+    @Test fun `the phone row says linked only while a phone is linked`() {
         assertFalse(settingsUi(CompanionState(pairing = PairingUi.None), null).phonePaired)
-        assertFalse(settingsUi(CompanionState(pairing = PairingUi.Expired), null).phonePaired)
-        assertTrue(settingsUi(CompanionState(pairing = PairingUi.Claimed), null).phonePaired)
+        assertFalse(settingsUi(CompanionState(pairing = PairingUi.Pending("ABCD2345", "x")), null).phonePaired)
+        assertTrue(settingsUi(CompanionState(pairing = PairingUi.Claimed("민수")), null).phonePaired)
     }
 
     @Test fun `saving marks only the field changed last`() {
@@ -65,15 +65,15 @@ class SettingsUiTest {
         assertEquals("""{"bodyColor":null}""", ai.hey.model.settingsPatch(CompanionSettings(bodyColor = 1), CompanionSettings()).toString())
     }
 
-    @Test fun `a failed withdraw or unpair reaches the screen state`() {
+    @Test fun `a failed withdraw reaches the screen state`() {
         assertEquals(AccountFailureUi.Withdraw, settingsUi(CompanionState(accountFailure = ai.hey.session.AccountFailure.Withdraw), null).accountFailure)
-        assertEquals(AccountFailureUi.Unpair, settingsUi(CompanionState(accountFailure = ai.hey.session.AccountFailure.Unpair), null).accountFailure)
+        assertEquals(AccountFailureUi.None, settingsUi(CompanionState(accountFailure = ai.hey.session.AccountFailure.Unpair), null).accountFailure) // the unlink failure lives on the phone-connection screen
         assertEquals(AccountFailureUi.None, settingsUi(CompanionState(), null).accountFailure)
     }
 
-    @Test fun `a running unpair or withdraw reaches the screen as pending`() {
+    @Test fun `a running withdraw reaches the screen as pending`() {
         assertEquals(SettingsPending.None, settingsUi(CompanionState(), null).pending)
-        assertEquals(SettingsPending.Unpair, settingsUi(CompanionState(settingsAction = SettingsAction.Unpairing), null).pending)
+        assertEquals(SettingsPending.None, settingsUi(CompanionState(settingsAction = SettingsAction.Unpairing), null).pending)
         assertEquals(SettingsPending.Withdraw, settingsUi(CompanionState(settingsAction = SettingsAction.Withdrawing), null).pending)
     }
 }

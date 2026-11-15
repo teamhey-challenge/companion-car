@@ -193,14 +193,14 @@ fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, on
             onDone = { talk.finishOnboardingStep(OnboardingStep.Dress) },
             line = line,
         )
-        OnboardingStep.Qr -> PairRoute(
-            companion = companion,
-            talk = talk,
-            onDone = { talk.finishOnboardingStep(OnboardingStep.Qr) },
-            onBack = { talk.finishOnboardingStep(OnboardingStep.Qr) },
-            onDriving = {},
-            inFlow = true,
-        )
+        OnboardingStep.Qr -> {
+            // O8 skipped ("나중에 할게") without a phone: home reminds once (§6.1).
+            val end = {
+                if (!companion.state.value.paired) talk.skippedPhoneLink()
+                talk.finishOnboardingStep(OnboardingStep.Qr)
+            }
+            PairRoute(companion = companion, talk = talk, onDone = end, onBack = end, onDriving = {}, inFlow = true)
+        }
         OnboardingStep.Done -> Unit
     }
 }
@@ -222,7 +222,6 @@ fun PairRoute(
 ) {
     val state by companion.state.collectAsState()
     val talkState by talk.state.collectAsState()
-    var lastCode by remember { mutableStateOf("") }
 
     DisposableEffect(Unit) {
         companion.openPairing()
@@ -232,7 +231,6 @@ fun PairRoute(
     LaunchedEffect(talkState.driving) { if (talkState.driving != DrivingStatus.Parked) onDriving() }
 
     val pairing = state.pairing
-    if (pairing is PairingUi.Pending) lastCode = pairing.pairCode
     LaunchedEffect(pairing is PairingUi.Claimed) {
         if (pairing is PairingUi.Claimed) {
             delay(CLAIMED_HOLD_MS)
@@ -244,8 +242,7 @@ fun PairRoute(
     val ui = when (pairing) {
         PairingUi.None, PairingUi.Creating -> PairUi.Loading
         is PairingUi.Pending -> PairUi.Pending(pairing.pairCode)
-        PairingUi.Claimed -> PairUi.Claimed
-        PairingUi.Expired -> PairUi.Expired(lastCode)
+        is PairingUi.Claimed -> PairUi.Claimed
         PairingUi.Failed -> PairUi.Failed
     }
     if (inFlow) {

@@ -52,16 +52,8 @@ fun settingsUi(state: CompanionState, lastField: SettingField?): SettingsUi = Se
     phonePaired = state.paired,
     look = CharacterLook(state.settings.bodyColor, state.settings.hat, state.settings.neck),
     saving = if (state.settingsSave == SettingsSave.Saving && lastField != null) setOf(lastField) else emptySet(),
-    accountFailure = when (state.accountFailure) {
-        AccountFailure.None -> AccountFailureUi.None
-        AccountFailure.Withdraw -> AccountFailureUi.Withdraw
-        AccountFailure.Unpair -> AccountFailureUi.Unpair
-    },
-    pending = when (state.settingsAction) {
-        SettingsAction.None -> SettingsPending.None
-        SettingsAction.Unpairing -> SettingsPending.Unpair
-        SettingsAction.Withdrawing -> SettingsPending.Withdraw
-    },
+    accountFailure = if (state.accountFailure == AccountFailure.Withdraw) AccountFailureUi.Withdraw else AccountFailureUi.None,
+    pending = if (state.settingsAction == SettingsAction.Withdrawing) SettingsPending.Withdraw else SettingsPending.None,
 )
 
 /**
@@ -101,7 +93,6 @@ fun SettingsRoute(
         onCloseFriendCode = commands::closeInvite,
         onShareArrival = commands::setShareArrival,
         onOpenPair = onOpenPair,
-        onUnpair = commands::unpair,
         onWithdraw = commands::withdrawRecordConsent,
         modifier = modifier,
         notice = if (state.settingsSave == SettingsSave.Failed) stringResource(R.string.settings_save_failed) else null,
