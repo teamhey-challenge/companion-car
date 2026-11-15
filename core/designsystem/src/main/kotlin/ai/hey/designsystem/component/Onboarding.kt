@@ -804,7 +804,7 @@ fun OnbPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Mod
 fun OnbGhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val shape = RoundedCornerShape(HeyTokens.Radius.full)
     Box(
-        modifier.heightIn(min = 104.dp).clip(shape).background(GlassFill, shape).border(HeyTokens.Border.strong, GlassRim, shape)
+        modifier.fillMaxWidth().heightIn(min = 104.dp).clip(shape).background(GlassFill, shape).border(HeyTokens.Border.strong, GlassRim, shape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

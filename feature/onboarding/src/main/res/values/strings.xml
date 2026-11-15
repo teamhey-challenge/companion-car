@@ -38,6 +38,9 @@
     <string name="step_farewell_title">좋아, 이제 같이 가자!</string>
     <string name="step_answer_hint">말로 대답해 주세요</string>
     <string name="step_skip">넘어갈래</string>
+    <string name="onb_mic_blocked">마이크를 허용하면 대답할 수 있어요</string>
+    <string name="onb_mic_allow">마이크 허용</string>
+    <string name="onb_mic_pass">넘어가기</string>
     <string name="step_summon_title">헤이리 찾는 중</string>
     <string name="step_summon_subtitle">버튼을 길게 눌러 주세요</string>
     <string name="step_summon_button">길게 눌러 헤이리 만나기</string>

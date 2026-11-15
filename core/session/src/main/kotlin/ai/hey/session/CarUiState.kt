@@ -67,6 +67,8 @@ data class OnboardingView(
     /** True while the whale speaks (the light ring around it), false for heyri. */
     val whale: Boolean = false,
     val answers: ai.hey.model.OnboardingAnswers = ai.hey.model.OnboardingAnswers(),
+    /** The microphone was refused at a question: the screen says so with "마이크 허용" / "넘어가기" (TalkRepository.onboardingMicChoice). */
+    val micBlocked: Boolean = false,
 )
 
 /** What the first-run runner is asked to do: which step, and whether the link is up. Internal to the repository. */

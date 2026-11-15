@@ -949,13 +949,45 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
-    @Test fun `D-48 a missing microphone permission gives up the questions only, the rest of the flow still runs`() = runTest {
+    @Test fun `D-48 a missing microphone permission asks again, shows the blocked message and only gives up the questions on pass`() = runTest {
         val cs = rigScope(testScheduler)
         val rig = Rig(cs, ScriptedVoiceInput(permission = false), step = OnboardingStep.Q1)
         testScheduler.runCurrent()
         onboardingFrame(rig, "q1", "o1", "먼저, 뭐라고 불러 줄까?")
         testScheduler.runCurrent()
+        // not skipped silently: the permission is asked for again
+        assertEquals(OnboardingStep.Q1, rig.storage.onboardingStep.value)
+        assertEquals(TurnState.NeedsPermission, rig.repo.state.value.turn)
+        rig.repo.voicePermissionResult(false)
+        testScheduler.runCurrent()
+        assertTrue(rig.repo.state.value.onboarding.micBlocked)
+        assertEquals(OnboardingStep.Q1, rig.storage.onboardingStep.value)
+        // "마이크 허용" asks again, a second refusal shows the message again
+        rig.repo.onboardingMicChoice(true)
+        testScheduler.runCurrent()
+        assertEquals(TurnState.NeedsPermission, rig.repo.state.value.turn)
+        rig.repo.voicePermissionResult(false)
+        testScheduler.runCurrent()
+        assertTrue(rig.repo.state.value.onboarding.micBlocked)
+        // "넘어가기" gives up the questions only
+        rig.repo.onboardingMicChoice(false)
+        testScheduler.runCurrent()
         assertEquals(OnboardingStep.Found, rig.storage.onboardingStep.value)
+        assertFalse(rig.repo.state.value.onboarding.micBlocked)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a listening that never returns is cut by the watchdog and the question passes`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, hangingVoice(), step = OnboardingStep.Q2)
+        testScheduler.runCurrent()
+        onboardingFrame(rig, "q2", "o1", "이 차로 주로 어디 다녀?")
+        testScheduler.advanceTimeBy(70_000)
+        testScheduler.runCurrent()
+        assertEquals(1, asked(rig, "skip"))
+        onboardingFrame(rig, "skip", "o2", "괜찮아, 다음에 알려 줘.")
+        testScheduler.runCurrent()
+        assertEquals(OnboardingStep.Q3, rig.storage.onboardingStep.value)
         cs.cancel()
     }
 
