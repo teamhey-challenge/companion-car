@@ -148,7 +148,10 @@ fun HeyCardRow(
                 weight = androidx.compose.ui.text.font.FontWeight.SemiBold, trackingEm = -0.025f,
                 metrics = HeyTextMetrics(30.sp, 43.5.sp),
             )
-            if (line != null) InkText(line, HeyTheme.colors.fgMuted, maxLines = 3, metrics = HeyTextMetrics(22.sp, 37.4.sp))
+            if (line != null) InkText(
+                line, HeyTheme.colors.fgMuted, maxLines = 3,
+                weight = androidx.compose.ui.text.font.FontWeight.Normal, metrics = HeyTextMetrics(22.sp, 37.4.sp),
+            )
         }
         if (trailing != null) trailing()
     }
