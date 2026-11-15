@@ -24,6 +24,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 
 /** Width in dp of the 1600x900 design canvas every car mockup (hey-companion-ui) is drawn on. */
 private const val DESIGN_WIDTH_DP = 1600f
@@ -44,6 +50,27 @@ fun designDensity(system: Density, widthDp: Int, heightDp: Int): Density =
 @Composable
 fun HeyWindow(modifier: Modifier = Modifier, content: @Composable (width: Dp, height: Dp) -> Unit) {
     BoxWithConstraints(modifier) { content(maxWidth, maxHeight) }
+}
+
+/**
+ * Pixels per design dp that fit the 1600x900 design canvas into a [widthPx] x [heightPx] window without stretching or clipping:
+ * the smaller of the two axis ratios. It is the final Compose density, whatever density the window was laid out with.
+ */
+fun fitScale(widthPx: Int, heightPx: Int): Float = minOf(widthPx / DESIGN_WIDTH_DP, heightPx / DESIGN_HEIGHT_DP)
+
+/**
+ * Screens that exist only as the 16:9 mockup (onboarding, driving C5): drawn on a fixed 1600x900 dp canvas that is scaled to fit
+ * the window and centred, the rest filled with [background]. A 4:3-ish Pleos window thus shows the mockup letterboxed instead of a
+ * squashed 1251 x 900 re-layout. Touch input follows the scaled density.
+ */
+@Composable
+fun WideCanvas(background: Color, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    BoxWithConstraints(modifier.fillMaxSize().background(background), contentAlignment = Alignment.Center) {
+        val fit = fitScale(constraints.maxWidth, constraints.maxHeight)
+        CompositionLocalProvider(LocalDensity provides Density(density = fit, fontScale = 1f)) {
+            Box(Modifier.size(DESIGN_WIDTH_DP.dp, DESIGN_HEIGHT_DP.dp)) { content() }
+        }
+    }
 }
 
 /** Multi-window outer margin (1/2 and 1/3 width): 32 all round instead of the 80/64 of the full-width mockup. */
