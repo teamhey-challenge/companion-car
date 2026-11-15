@@ -179,7 +179,7 @@ const val TRIP_DIARY_MOMENT_MILLIS = 2_500L
  * character again with the farewell line beside it.
  */
 @Composable
-private fun HomeStage(ui: HomeUi, reducedMotion: Boolean, size: CharacterSize, description: String) {
+private fun HomeStage(ui: HomeUi, reducedMotion: Boolean, size: CharacterSize, description: String, modifier: Modifier = Modifier) {
     var writing by remember(ui.tripNote) { mutableStateOf(ui.tripNote != null && ui.tripDiary && !ui.tripMomentDone) }
     LaunchedEffect(ui.tripNote) {
         if (writing) {
@@ -187,8 +187,8 @@ private fun HomeStage(ui: HomeUi, reducedMotion: Boolean, size: CharacterSize, d
             writing = false
         }
     }
-    if (writing) AssetSlot(name = "heyri-writing-diary", size = size, contentDescription = stringResource(R.string.trip_end_writing))
-    else HomeCharacter(ui = ui, reducedMotion = reducedMotion, size = size, description = description)
+    if (writing) AssetSlot(name = "heyri-writing-diary", size = size, modifier = modifier, contentDescription = stringResource(R.string.trip_end_writing))
+    else HomeCharacter(ui = ui, reducedMotion = reducedMotion, size = size, description = description, modifier = modifier)
 }
 
 @Composable
