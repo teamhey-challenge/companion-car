@@ -37,10 +37,10 @@ class InjectableVoiceInput(
     }
 
     /** While a sentence is injected the automatic listening after a reply hears nothing (no self-answer loop); otherwise the real microphone. */
-    override suspend fun listenAfterReply(): VoiceResult = when {
+    override suspend fun listenAfterReply(onSpeechStart: () -> Unit): VoiceResult = when {
         !real.hasPermission() -> VoiceResult.PermissionDenied
-        injected -> scripted.listenAfterReply()
-        else -> real.listenAfterReply()
+        injected -> scripted.listenAfterReply(onSpeechStart)
+        else -> real.listenAfterReply(onSpeechStart)
     }
 
     override fun finishListening() = real.finishListening()

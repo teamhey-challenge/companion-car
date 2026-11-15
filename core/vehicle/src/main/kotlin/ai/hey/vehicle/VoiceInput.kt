@@ -33,8 +33,12 @@ interface VoiceInput {
      */
     fun finishListening() = Unit
 
-    /** The automatic listening that follows a question (F4-F6); real recognizers hear the driver, so it is the same as [listen]. */
-    suspend fun listenAfterReply(): VoiceResult = listen()
+    /**
+     * The automatic listening that follows an answer (F4-F6, D-48 4): the same recognition as [listen], plus [onSpeechStart] the
+     * moment the first words are heard. The caller times only the wait for that call; once speech has started the recognizer
+     * is left to hear the sentence to its end (PLEOS-194 follow-up listening).
+     */
+    suspend fun listenAfterReply(onSpeechStart: () -> Unit = {}): VoiceResult = listen()
 
     fun release()
 }
@@ -66,8 +70,8 @@ class ScriptedVoiceInput(
         return if (heard.isEmpty()) VoiceResult.NoSpeech else VoiceResult.Text(heard)
     }
 
-    override suspend fun listenAfterReply(): VoiceResult {
-        if (!silentAfterReply) return listen()
+    override suspend fun listenAfterReply(onSpeechStart: () -> Unit): VoiceResult {
+        if (!silentAfterReply) return listen().also { if (it is VoiceResult.Text) onSpeechStart() }
         listens++
         if (!permission) return VoiceResult.PermissionDenied
         if (listenMillis > 0) delay(listenMillis)

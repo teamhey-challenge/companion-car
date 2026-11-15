@@ -98,6 +98,8 @@ class TalkRepository(
 
     @Volatile private var replyAudio: AudioSpec = AudioSpec.None
 
+    /** The last sentence sent as a driver turn; an automatic listening that hears it again is feedback, not speech. */
+    @Volatile private var lastSentText: String? = null
     /** Whose voice the reply in flight is: only an onboarding frame with `voice: "whale"` makes it the whale's (reverb). */
     @Volatile private var replyVoice: ReplyVoice = ReplyVoice.Heyri
     @Volatile private var turnEndSentAt = 0L
@@ -341,20 +343,16 @@ class TalkRepository(
     }
 
     /**
-     * The reply was read to the end. D-48 4: the microphone stays open for [autoListenMillis] after every answer to a
-     * driver turn (follow-ups need no second tap), and right away after a line the character started by itself
-     * ([TurnSource.Proactive]); the end of the speech sends the turn by itself. Never after a friend line, never while
-     * navigation guides, and never twice in a row (the answer to an automatic listening ends the chain).
+     * The reply was read to the end. D-48 4 / PLEOS-194: the microphone opens by itself after every answer to a driver turn
+     * (follow-ups need no second tap) and right away after a line the character started by itself ([TurnSource.Proactive]);
+     * the end of the speech sends the turn by itself. Never after a friend line, never while navigation guides. The chain
+     * goes on as long as the driver keeps speaking: [listenOnce] ends it quietly on silence or when the microphone hears the
+     * sentence it just sent (the car's own voice).
      */
     private fun afterReply() {
         endSpeaking()
         val s = _state.value
         if (s.turn != TurnState.Idle || s.source.quiet()) return
-        if (s.source == TurnSource.AutoListen) {
-            // PLEOS-79: at most one automatic listening per driver-started turn, or a repeating voice loops forever.
-            HeyLog.i(TAG, "talk ignored: auto-listen skipped, the turn was itself an auto-listen")
-            return
-        }
         val why = when {
             s.needsOnboarding -> "consent not recorded"
             !s.online -> "offline"
@@ -754,18 +752,39 @@ class TalkRepository(
             else it.copy(turn = TurnState.Listening, source = source, heard = null, reply = "", error = null, audioFailed = false)
         }
         voiceJob = scope.launch {
-            val result = if (source == TurnSource.AutoListen) {
-                withTimeoutOrNull(autoListenMillis) { voiceInput.listenAfterReply() } ?: VoiceResult.NoSpeech
-            } else {
-                voiceInput.listen()
-            }
+            val result = if (source == TurnSource.AutoListen) listenForFollowUp() else voiceInput.listen()
             when (result) {
-                is VoiceResult.Text -> sendTurn(result.text, source)
+                // Feedback guard (PLEOS-194): the same sentence as the last one sent is the microphone hearing the car, not a follow-up.
+                is VoiceResult.Text -> if (source == TurnSource.AutoListen && result.text == lastSentText) {
+                    HeyLog.i(TAG, "auto-listen ignored: the same sentence again")
+                    endTurn(null)
+                } else sendTurn(result.text, source)
                 // Nothing said in the automatic listening: end quietly, no prompt, no error (F4-F6).
                 VoiceResult.NoSpeech -> endTurn(if (source == TurnSource.AutoListen) null else TurnError.NoSpeech)
                 VoiceResult.PermissionDenied -> endTurn(TurnError.PermissionDenied)
                 is VoiceResult.Unavailable -> endTurn(if (source == TurnSource.AutoListen) null else TurnError.SpeechUnavailable)
             }
+        }
+    }
+
+    /**
+     * The listening after an answer: [autoListenMillis] is only the wait for the first words. Once the recognizer reports
+     * speech the timer is over and the sentence is heard to its end; silence ends the chain quietly (NoSpeech).
+     */
+    private suspend fun listenForFollowUp(): VoiceResult = coroutineScope {
+        val started = CompletableDeferred<Unit>()
+        val heard = async { voiceInput.listenAfterReply { started.complete(Unit) } }
+        val inTime = withTimeoutOrNull(autoListenMillis) {
+            select<Boolean> {
+                started.onAwait { true }
+                heard.onAwait { true }
+            }
+        }
+        if (inTime == null) {
+            heard.cancel()
+            VoiceResult.NoSpeech
+        } else {
+            heard.await()
         }
     }
 
@@ -782,6 +801,7 @@ class TalkRepository(
             endTurn(TurnError.NotConnected)
             return
         }
+        lastSentText = text
         turnEndSentAt = clock()
         turnId = id
         HeyLog.content(TAG, "turn sent chars=${text.length}", text)
