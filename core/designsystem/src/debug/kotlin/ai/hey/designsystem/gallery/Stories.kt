@@ -394,6 +394,7 @@ object Stories {
                 Plate { CharacterSlot(size) }
             })
         }
+        addAll(onboardingParts())
     }
 
     val screens: List<Story> = buildList {
