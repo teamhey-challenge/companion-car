@@ -97,6 +97,9 @@ sealed interface ServerFrame {
     /** A friend arrived (spoken only): same audio path as [FriendMessage]. D-52: the frame never carries, and the app never reads, a place. */
     data class FriendArrived(val id: String, val fromName: String) : ServerFrame
 
+    /** After three friend messages read while driving the server keeps the rest in the inbox and says so once ([text] is the spoken line, audio follows with turn id [id]). */
+    data class FriendMore(val id: String, val text: String) : ServerFrame
+
     /**
      * The spoken onboarding line follows as `reply.*` + PCM with turn id [id], like a friend line. [whale] is `voice: "whale"`
      * (the car adds the reverb to that playback; heyri stays dry). Also sent as `step: "ack"` (the whale's short answer to a
@@ -153,6 +156,7 @@ private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
         "friend_message" -> ServerFrame.FriendMessage(s("id") ?: return null, s("fromName").orEmpty(), s("text") ?: return null)
         "trip_done" -> ServerFrame.TripDone(s("id") ?: return null, s("text") ?: return null, s("date").orEmpty(), s("at").orEmpty(), s("carLine")?.takeIf { it.isNotBlank() })
         "friend_arrived" -> ServerFrame.FriendArrived(s("id") ?: return null, s("fromName").orEmpty())
+        "friend_more" -> ServerFrame.FriendMore(s("id") ?: return null, s("text").orEmpty())
         "onboarding" -> ServerFrame.Onboarding(s("step") ?: return null, s("id") ?: return null, s("text").orEmpty(), whale = s("voice") == "whale")
         "onboarding.ack" -> ServerFrame.OnboardingAck(
             step = s("step") ?: return null,

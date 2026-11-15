@@ -27,6 +27,8 @@ data class HomeUi(
     val look: CharacterLook = CharacterLook(),
     /** A friend's message shown as a subtitle: set only while parked (the session never fills it while driving). */
     val friendNote: String? = null,
+    /** `friend_more`: more friend messages wait; the home says so while parked until the friends list is opened. */
+    val friendMore: String? = null,
     /** §6.1: O8 was skipped; the home says once "폰 연결하면 일기를 볼 수 있어" (parked only). */
     val phoneHint: Boolean = false,
     /** Trip end (`car/home#trip-end`, parked only): the character's one-line farewell from the server's `trip_done` frame. */
@@ -63,6 +65,7 @@ fun homeUi(s: CarUiState): HomeUi {
         source = s.source,
         look = CharacterLook(s.companion.settings.bodyColor, s.companion.settings.hat, s.companion.settings.neck),
         friendNote = s.friendNote?.takeIf { s.isParked }?.let { "${it.fromName}: ${it.text}" },
+        friendMore = s.friendMore?.takeIf { s.isParked },
         phoneHint = s.phoneHint && s.isParked && !s.companion.paired,
         tripNote = s.tripNote?.takeIf { s.isParked },
         tripDiary = s.companion.settings.memoryEnabled && s.companion.paired,

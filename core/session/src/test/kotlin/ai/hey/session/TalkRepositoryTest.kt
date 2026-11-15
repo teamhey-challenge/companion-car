@@ -714,6 +714,27 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
+    @Test fun `friend_more frame parses and is spoken, kept for the parked home until dismissed`() = runTest {
+        assertEquals(
+            ServerFrame.FriendMore("fm9", "친구 말이 더 있어요, 멈추시면 보여 드릴게요"),
+            ai.hey.model.parseServerFrame("""{"type":"friend_more","id":"fm9","text":"친구 말이 더 있어요, 멈추시면 보여 드릴게요"}"""),
+        )
+        assertEquals(null, ai.hey.model.parseServerFrame("""{"type":"friend_more"}"""))
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput())
+        rig.vehicle.setDriving(true)
+        val l = rig.transport.listener
+        l.onFrame(ServerFrame.FriendMore("fm9", "친구 말이 더 있어요, 멈추시면 보여 드릴게요"))
+        l.onFrame(ServerFrame.ReplyStart("fm9", AudioSpec.None))
+        l.onFrame(ServerFrame.ReplyEnd("fm9", "친구 말이 더 있어요, 멈추시면 보여 드릴게요", 100, 900))
+        testScheduler.advanceUntilIdle()
+        assertEquals("친구 말이 더 있어요, 멈추시면 보여 드릴게요", rig.repo.state.value.friendMore)
+        assertNull(rig.repo.state.value.friendNote)
+        rig.repo.dismissFriendMore()
+        assertNull(rig.repo.state.value.friendMore)
+        cs.cancel()
+    }
+
     @Test fun `a proactive frame while navigation guides is refused and cancelled`() = runTest {
         val cs = rigScope(testScheduler)
         val rig = Rig(cs, ScriptedVoiceInput())

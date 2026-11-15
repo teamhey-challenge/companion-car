@@ -159,7 +159,7 @@ class MainActivity : ComponentActivity() {
                             onTalk = repository::startTalk,
                             onEndConversation = repository::cancelTalk,
                             onMemory = { state.parked?.let { if (nav.graph.findNode(Routes.Memory) != null) nav.navigate(Routes.Memory) } },
-                            onFriends = { state.parked?.let { nav.navigate(Routes.Friends) } },
+                            onFriends = { state.parked?.let { repository.dismissFriendMore(); nav.navigate(Routes.Friends) } },
                             onSettings = { state.parked?.let { nav.navigate(Routes.Settings) } },
                             onFaultAction = { fault -> onFaultAction(fault, repository::startTalk, repository::reconnectNow) },
                         )
