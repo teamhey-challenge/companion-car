@@ -155,8 +155,8 @@ enum class CharacterSize(val width: Dp, val height: Dp) {
     /** C1/C2 right side. */
     Hero(500.dp, 440.dp),
 
-    /** C5 centre. */
-    Driving(280.dp, 300.dp),
+    /** C5 centre: studio `.character-stage` 480×480 (spec car-drive@1251x900 canvas); the rig is `Fit.Contain` + centre inside it. */
+    Driving(480.dp, 480.dp),
 
     /** C3/C4 in a 1/2 or 1/3 width multi-window (stacked layout). */
     Compact(320.dp, 340.dp),
