@@ -122,7 +122,7 @@ fun HeyButton(
             if (header) {
                 InkText(
                     text, ink.content, Modifier.padding(start = 4.dp), variant = textVariant, maxLines = 1,
-                    align = HeyTextAlign.Center, weight = androidx.compose.ui.text.font.FontWeight.Medium, size = 30.sp,
+                    align = HeyTextAlign.Center, weight = androidx.compose.ui.text.font.FontWeight.Medium, metrics = HeyTextMetrics(30.sp, 45.sp),
                 )
             } else {
                 InkText(text, ink.content, variant = textVariant, maxLines = 2, align = HeyTextAlign.Center)

@@ -144,10 +144,10 @@ fun MemoryRow(
         // delete glyph 6 dp higher and 9 dp further right.
         VStack(HeyGap.G16, modifier = Modifier.grow()) {
             VStack(HeyGap.G16) {
-                InkText(kind, colors.fgDefault, size = 22.sp, maxLines = 1)
-                InkText(text, colors.fgDefault, size = 28.sp, maxLines = 3)
+                InkText(kind, colors.fgDefault, metrics = HeyTextMetrics(22.sp, 33.sp), maxLines = 1)
+                InkText(text, colors.fgDefault, metrics = HeyTextMetrics(28.sp, 42.sp), maxLines = 3)
             }
-            if (date != null) InkText(date, colors.fgMuted, size = 20.sp, maxLines = 1)
+            if (date != null) InkText(date, colors.fgMuted, metrics = HeyTextMetrics(20.sp, 30.sp), maxLines = 1)
         }
         HeyIconButton(
             HeyIcons.Trash, deleteLabel, onDelete, enabled = enabled, bare = true,
@@ -315,15 +315,15 @@ fun StatusBadge(
             Waveform(color, moving, speaking = phase == TalkPhase.Speaking)
             InkText(
                 label, colors.fgMuted, Modifier.padding(start = 16.dp),
-                weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 20.sp, lineHeight = 30.sp, maxLines = 1,
+                weight = androidx.compose.ui.text.font.FontWeight.Normal, metrics = HeyTextMetrics(20.sp, 30.sp), maxLines = 1,
             )
         } else if (driving && online && (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)) {
-            InkText(label, if (phase == TalkPhase.Listening) colors.fgDefault else colors.fgMuted, size = 20.sp, lineHeight = 30.sp, maxLines = 1)
+            InkText(label, if (phase == TalkPhase.Listening) colors.fgDefault else colors.fgMuted, metrics = HeyTextMetrics(20.sp, 30.sp), maxLines = 1)
         } else {
             Box(Modifier.size(9.dp).clip(RoundedCornerShape(HeyTokens.Radius.full)).background(if (driving) colors.fgDefault else color))
             InkText(
                 label, if (driving) colors.fgDefault else color, Modifier.padding(start = 4.dp),
-                weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 24.sp, lineHeight = 36.sp, maxLines = 1,
+                weight = androidx.compose.ui.text.font.FontWeight.Normal, metrics = HeyTextMetrics(24.sp, 36.sp), maxLines = 1,
             )
         }
     }
@@ -368,11 +368,11 @@ fun ErrorPanel(
             VStack(HeyGap.G24, modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = alertMode }) {
                 InkText(
                     title ?: stringResource(copy.title), HeyTheme.colors.fgDefault, maxLines = 3,
-                    weight = androidx.compose.ui.text.font.FontWeight.Normal, trackingEm = -0.055f, size = 48.sp, lineHeight = 67.sp,
+                    weight = androidx.compose.ui.text.font.FontWeight.Normal, trackingEm = -0.055f, metrics = HeyTextMetrics(48.sp, 67.sp),
                 )
                 InkText(
                     message ?: stringResource(copy.message), HeyTheme.colors.fgMuted, Modifier.padding(top = 8.dp), maxLines = 4,
-                    weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 24.sp, lineHeight = 38.sp,
+                    weight = androidx.compose.ui.text.font.FontWeight.Normal, metrics = HeyTextMetrics(24.sp, 38.sp),
                 )
             }
             if (onAction != null || kind == ErrorKind.Connecting) {
@@ -421,12 +421,12 @@ fun Subtitle(
     VStack(HeyGap.G16, modifier = modifier) {
         InkText(
             text, HeyTheme.colors.fgDefault, maxLines = 3,
-            weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 32.sp, lineHeight = 48.sp,
+            weight = androidx.compose.ui.text.font.FontWeight.Normal, metrics = HeyTextMetrics(32.sp, 48.sp),
         )
         if (hint != null) {
             InkText(
                 hint, HeyTheme.colors.fgMuted, maxLines = 2,
-                weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 23.sp, lineHeight = 37.sp,
+                weight = androidx.compose.ui.text.font.FontWeight.Normal, metrics = HeyTextMetrics(23.sp, 37.sp),
             )
         }
     }

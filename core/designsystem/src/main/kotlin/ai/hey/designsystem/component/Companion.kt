@@ -395,7 +395,7 @@ private fun TalkPill(
                 label, ink.content,
                 modifier = if (icon != null) Modifier.padding(start = 4.dp) else Modifier,
                 maxLines = 2, align = HeyTextAlign.Center,
-                weight = androidx.compose.ui.text.font.FontWeight.SemiBold, size = 28.sp, lineHeight = 40.sp,
+                weight = androidx.compose.ui.text.font.FontWeight.SemiBold, metrics = HeyTextMetrics(28.sp, 40.sp),
             )
         }
     }
@@ -511,13 +511,13 @@ fun HeaderBar(
             if (onBack != null) HeyBackButton(backLabel, onBack)
             InkText(
                 title, HeyTheme.colors.fgDefault, variant = HeyTextVariant.Title, maxLines = 1,
-                weight = androidx.compose.ui.text.font.FontWeight.SemiBold, size = 42.sp, lineHeight = 63.sp,
+                weight = androidx.compose.ui.text.font.FontWeight.SemiBold, metrics = HeyTextMetrics(42.sp, 63.sp),
             )
             if (stateLabel != null) {
                 Box(Modifier.padding(start = 12.dp).size(HeyTokens.Border.hairline, 50.dp).background(HeyTheme.colors.borderDefault))
                 InkText(
                     stateLabel, HeyTheme.colors.fgMuted, Modifier.padding(start = 12.dp), maxLines = 1,
-                    weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 33.sp, lineHeight = 50.sp,
+                weight = androidx.compose.ui.text.font.FontWeight.Normal, metrics = HeyTextMetrics(33.sp, 50.sp),
                 )
             }
         }
@@ -586,9 +586,9 @@ fun ToggleRow(
         VStack(HeyGap.G16, modifier = Modifier.grow()) {
             InkText(
                 label, if (enabled) colors.fgDefault else colors.fgDisabled,
-                weight = androidx.compose.ui.text.font.FontWeight.Medium, size = 28.sp, maxLines = 2,
+                weight = androidx.compose.ui.text.font.FontWeight.Medium, metrics = HeyTextMetrics(28.sp, 42.sp), maxLines = 2,
             )
-            if (description != null) InkText(description, colors.fgMuted, size = 22.sp, maxLines = 3)
+            if (description != null) InkText(description, colors.fgMuted, metrics = HeyTextMetrics(22.sp, 33.sp), maxLines = 3)
         }
         if (saving) {
             HeySpinner(colors.fgMuted)
