@@ -11,7 +11,10 @@ import ai.hey.designsystem.component.HeyScrollColumn
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.PageHeading
 import ai.hey.designsystem.component.PhoneLinkPanel
+import ai.hey.designsystem.component.PhoneLinkCodeCard
 import ai.hey.designsystem.component.PhoneLinkUi
+import ai.hey.designsystem.layout.HeyArrange
+import ai.hey.designsystem.layout.fillWidth
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
@@ -85,6 +88,12 @@ fun PhoneLinkScreen(
                         heading()
                         PhoneLinkPanel(ui, compact = true)
                         actions()
+                    }
+                } else if (ui is PhoneLinkUi.Code) {
+                    // Studio `car/settings/phone`: the title alone, then the QR card centred in the rest of the page.
+                    VStack(HeyGap.G24, modifier = Modifier.fillSize()) {
+                        PageHeading(stringResource(R.string.phone_title))
+                        VStack(HeyGap.G24, modifier = Modifier.grow(1f).fillWidth(), arrange = HeyArrange.Center) { PhoneLinkCodeCard(ui.code, onRetry) }
                     }
                 } else {
                     HStack(HeyGap.G32, modifier = Modifier.fillSize(), align = HeyAlign.Center) {

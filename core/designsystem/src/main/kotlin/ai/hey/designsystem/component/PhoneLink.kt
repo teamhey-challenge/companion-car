@@ -2,18 +2,32 @@ package ai.hey.designsystem.component
 
 import ai.hey.designsystem.R
 import ai.hey.designsystem.icon.HeyIcons
+import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
 import ai.hey.designsystem.layout.VStack
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
+import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.designsystem.theme.HeyTone
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 private val QrFull = 320.dp
 private val QrCompact = 240.dp
@@ -69,6 +83,34 @@ fun PhoneLinkPanel(ui: PhoneLinkUi, modifier: Modifier = Modifier, compact: Bool
             HeyIcon(HeyIcons.Error, null, size = HeyIconSize.Large, tone = HeyTone.Danger)
             HeyText(stringResource(R.string.phone_link_offline), variant = HeyTextVariant.Title, tone = HeyTone.Danger, align = HeyTextAlign.Center)
             HeyText(stringResource(R.string.phone_link_offline_hint), tone = HeyTone.Muted, maxLines = 2, align = HeyTextAlign.Center)
+        }
+    }
+}
+
+/**
+ * Studio `car/settings/phone` pairing card (wide windows): a white 300 QR tile on the left, the title, the instruction, the code in
+ * 40/700 and the "새 QR 보기" action on the right. Drawn only for [PhoneLinkUi.Code], i.e. while parked.
+ */
+@Composable
+fun PhoneLinkCodeCard(code: String, onNewCode: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = HeyTheme.colors
+    HStack(HeyGap.G32, modifier = modifier.fillMaxWidth().padding(start = 217.dp), align = HeyAlign.Center) {
+        Box(
+            Modifier.size(300.dp).clip(RoundedCornerShape(26.dp)).background(colors.bgRaised).padding(22.dp),
+            contentAlignment = Alignment.Center,
+        ) { HeyQrCode(PHONE_LINK_URL_BASE + code, 256.dp) }
+        Spacer(Modifier.width(48.dp))
+        VStack(HeyGap.G24) {
+            InkText(
+                stringResource(R.string.phone_link_card_title), colors.fgDefault,
+                weight = FontWeight.SemiBold, trackingEm = -0.025f, metrics = HeyTextMetrics(30.sp, 43.5.sp), maxLines = 1,
+            )
+            InkText(stringResource(R.string.phone_link_card_body), colors.fgDefault, metrics = HeyTextMetrics(26.sp, 44.2.sp), maxLines = 3)
+            InkText(
+                code.chunked(4).joinToString(" "), colors.fgDefault,
+                weight = FontWeight.Bold, trackingEm = 0.12f, metrics = HeyTextMetrics(40.sp, 60.sp), maxLines = 1,
+            )
+            HeyButton(stringResource(R.string.phone_link_new_qr), onNewCode, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Refresh)
         }
     }
 }
