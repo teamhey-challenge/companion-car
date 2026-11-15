@@ -161,7 +161,7 @@ internal val HeaderTouch = 84.dp
 
 /** Header back button: white circle (mockup C2/C6/C7). */
 @Composable
-fun HeyBackButton(contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun HeyBackButton(contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier, ghost: Boolean = false) {
     val colors = HeyTheme.colors
     PressSurface(
         onClick = onClick,
@@ -169,7 +169,7 @@ fun HeyBackButton(contentDescription: String, onClick: () -> Unit, modifier: Mod
         modifier = modifier
             .size(HeaderTouch)
             .semantics { this.contentDescription = contentDescription },
-        ink = { pressed -> colors.ink(HeyButtonVariant.Soft, pressed, true) },
+        ink = { pressed -> colors.ink(if (ghost) HeyButtonVariant.Ghost else HeyButtonVariant.Soft, pressed, true) },
         radius = HeyTokens.Radius.full,
     ) { ink -> InkIcon(HeyIcons.ArrowLeft, null, ink.content) }
 }

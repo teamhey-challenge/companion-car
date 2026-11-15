@@ -1,0 +1,108 @@
+{
+ "screen": "car/drive",
+ "pass": false,
+ "shas": {
+  "app": "e2fbccd5c50090dd659ef8acae2edabec2d4fa63",
+  "appDirty": false,
+  "studio": "4dc8ad3",
+  "sharedTag": "v0.5.2"
+ },
+ "viewport": [
+  1251,
+  900
+ ],
+ "tolerances": {
+  "position": 4,
+  "size": 4,
+  "fontSize": 0,
+  "fontWeight": 0,
+  "letterSpacingEm": 0.01,
+  "lineHeight": 1,
+  "baseline": 2,
+  "color": "exact"
+ },
+ "pixel": {
+  "badPixels": 3922,
+  "total": 1125900
+ },
+ "failingValues": 4,
+ "rows": [
+  {
+   "text": "말하기",
+   "checks": [
+    {
+     "name": "x",
+     "design": "625",
+     "app": "613",
+     "delta": "-12",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "708",
+     "app": "689",
+     "delta": "-19",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "78",
+     "app": "78",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "739.5",
+     "app": "719",
+     "delta": "-20.5",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "28",
+     "app": "28",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "600",
+     "app": "600",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "42",
+     "app": "40",
+     "delta": "-2",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#203E50",
+     "app": "#203E50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  }
+ ],
+ "onlyDesign": [],
+ "onlyApp": []
+}

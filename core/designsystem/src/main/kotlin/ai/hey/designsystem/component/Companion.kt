@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -508,8 +509,14 @@ fun HeaderBar(
     ) {
         // Mockup `.app-header .identity`: 42px/600 title, 24 gap, 12 margin + hairline + 36 padding, 33px mode tag.
         HStack(HeyGap.G24) {
-            // Studio 713edb4 `.car .app-header .identity:has(.back-button){gap:40px}` + `padding-bottom:32px`: 24 gap + 16 here.
-            if (onBack != null) Box(Modifier.padding(end = 16.dp)) { HeyBackButton(backLabel, onBack) }
+            // Studio 4dc8ad3 `.app-header .back-button`: a bare 28 icon at x56 with the title at x106 (page margin 80 -> icon centre
+            // 70, title 26 right of the margin). The 84 touch circle is kept but laid out 2 wide (+24 gap), so the title lands on 106.
+            if (onBack != null) Box(
+                Modifier.layout { m, c ->
+                    val p = m.measure(c)
+                    layout(2.dp.roundToPx(), p.height) { p.place(-52.dp.roundToPx(), 0) }
+                },
+            ) { HeyBackButton(backLabel, onBack, ghost = true) }
             InkText(
                 title, HeyTheme.colors.fgDefault, variant = HeyTextVariant.Title, maxLines = 1,
                 weight = androidx.compose.ui.text.font.FontWeight.SemiBold, metrics = HeyTextMetrics(42.sp, 63.sp),
