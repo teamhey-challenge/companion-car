@@ -65,6 +65,8 @@ fun RiveCharacter(
     riveState: Int,
     mouth: Int,
     bodyColor: Int,
+    hat: Int,
+    neck: Int,
     modifier: Modifier = Modifier,
     onFailure: () -> Unit,
 ) {
@@ -94,5 +96,7 @@ fun RiveCharacter(
         LaunchedEffect(b, riveState) { b.instance.getNumberProperty("state").value = riveState.toFloat() }
         LaunchedEffect(b, mouth) { b.instance.getNumberProperty("mouth").value = mouth.coerceIn(0, 3).toFloat() }
         LaunchedEffect(b, bodyColor) { b.instance.getNumberProperty("bodyColor").value = bodyColor.toFloat() }
+        LaunchedEffect(b, hat) { b.instance.getNumberProperty("hat").value = hat.coerceIn(0, 2).toFloat() }
+        LaunchedEffect(b, neck) { b.instance.getNumberProperty("neck").value = neck.coerceIn(0, 1).toFloat() }
     }
 }

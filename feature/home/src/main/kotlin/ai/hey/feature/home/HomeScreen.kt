@@ -70,13 +70,15 @@ internal fun HomeCharacter(ui: HomeUi, reducedMotion: Boolean, size: CharacterSi
             RiveCharacter(
                 riveState = riveStateFor(ui),
                 mouth = ui.mouth,
-                bodyColor = if (dark) 1 else 0,
+                bodyColor = ui.look.body(dark),
+                hat = ui.look.hat,
+                neck = ui.look.neck,
                 modifier = Modifier.fillSize(),
                 onFailure = { riveFailed = true },
             )
         }
     }
-    CharacterSlot(size = size, modifier = modifier, live = live, contentDescription = description)
+    CharacterSlot(size = size, modifier = modifier, look = ui.look, live = live, contentDescription = description)
 }
 
 /**

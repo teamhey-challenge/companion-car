@@ -8,8 +8,8 @@
 |---|---|---|
 | `OceanBackground` | `animated`, `content` | 바다/심해 그라데이션 + 물방울 6개(목업 `oceanBubbles` 값). `animated=false` 또는 시스템 모션 줄이기면 정지. 정차 화면 C1~C4·C6~C8 |
 | `PageBackground` | `content` | 장식 없는 평면 배경. C5·주행·신호 미상 |
-| `CharacterSlot` | `size: CharacterSize`, `still = characterStill()`, `live?`, `contentDescription?` | `Stage` 580×620(C3/C4/C8), `Hero` 500×440(C1/C2), `Driving` 280×300(C5), `Small` 150×160. `live`에 Rive 뷰를 넘기면 정지 이미지 대신 그린다. 크기는 항상 고정 |
-| `characterStill()` | — | 테마별 정지 이미지(라이트 아쿠아, 다크 살구). `res/drawable-nodpi/hey_character_still*.webp` |
+| `CharacterSlot` | `size: CharacterSize`, `look = CharacterLook()`, `still = characterStill(look)`, `live?`, `contentDescription?` | `Stage` 580×620(C3/C4/C8), `Hero` 500×440(C1/C2), `Driving` 280×300(C5), `Small` 150×160. `live`에 Rive 뷰를 넘기면 정지 이미지 대신 그린다. 크기는 항상 고정 |
+| `characterStill(look)` | `CharacterLook(bodyColor?, hat, neck)` | 꾸미기(D-41) 조합별 정지 이미지 12장(몸 2 × 모자 3 × 스카프 2, `res/drawable-nodpi/hey_character_still_b{0,1}_h{0,1,2}_n{0,1}.webp`). 프레임은 `hey_companion.riv` 자체를 정지 자세로 그려 뽑았다. `bodyColor` null이면 테마를 따른다(라이트 아쿠아, 다크 살구). C5는 항상 이 그림이다(D-11) |
 | `CharacterStill` | `description`, `size`, `caption?` | 정지 + 아래 설명 한 줄(C1/C2) |
 | `TalkButton` | `phase: TalkPhase`, `onClick`, `driving`, `enabled`, `label?`, `onHoldStart?`, `onHoldEnd?` | 96dp×320dp 이상, 28sp 라벨·32dp 아이콘(시안 `.talk-button`). Thinking·Speaking은 막힌 모양, 입력 없음. 정차: 길게 누르기 콜백, 주행: 탭 `onClick` |
 | `StopListeningButton` | `onClick` | "그만 듣기"(D-24), 항상 누를 수 있음 |
