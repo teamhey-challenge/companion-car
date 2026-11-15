@@ -34,13 +34,6 @@ private val shots: List<Pair<String, Shot>> = listOf(
     "c7-save-failed" to Shot(SettingsUi(phonePaired = true), notice = "저장하지 못했어요"),
     "c7-withdraw-failed" to Shot(SettingsUi(phonePaired = true, accountFailure = AccountFailureUi.Withdraw)),
     "c7-debug-server" to Shot(SettingsUi(), server = ServerAddress("https://hey.lastmile.ltd/api") {}),
-    "c7-friends" to Shot(
-        SettingsUi(
-            phonePaired = true,
-            friends = listOf(FriendRowUi("f1", "민수", false), FriendRowUi("f2", "지은", true), FriendRowUi("f3", "하준", true, saving = true)),
-        ),
-    ),
-    "c7-friends-code" to Shot(SettingsUi(friendCode = FriendCodeUi.Shown("K7M2QX", "https://hey.lastmile.ltd/f/K7M2QX"))),
 )
 
 private val lookShots: List<Pair<String, CharacterLook>> = listOf(

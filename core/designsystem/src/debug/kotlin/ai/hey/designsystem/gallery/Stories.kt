@@ -395,6 +395,7 @@ object Stories {
             })
         }
         addAll(onboardingParts())
+        addAll(friendParts())
     }
 
     val screens: List<Story> = buildList {

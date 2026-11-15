@@ -46,6 +46,8 @@ private val driveShots: List<Pair<String, HomeUi>> = listOf(
     "c5-listening" to online.copy(phase = HomePhase.Listening),
     "c5-thinking" to online.copy(phase = HomePhase.Thinking),
     "c5-speaking" to online.copy(phase = HomePhase.Speaking, reply = LONG_REPLY),
+    // A friend's line while driving: character, reading state and "읽기 멈추기" only; the text never reaches the screen (D-47).
+    "c5-friend-reading" to online.copy(phase = HomePhase.Speaking, source = ai.hey.session.TurnSource.Friend, mouth = 2),
 )
 
 /** C5 with the live rig allowed (ocean background and status wave move; Paparazzi has no Rive runtime so the slot shows the still). */
@@ -63,7 +65,7 @@ private fun Paparazzi.recordAll() {
         homeShots.forEach { (name, ui) ->
             snapshot("$name-$theme") {
                 HeyTheme(dark) {
-                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
+                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {})
                 }
             }
         }
@@ -101,7 +103,7 @@ private fun Paparazzi.recordMulti() {
         multiShots.forEach { (name, ui) ->
             snapshot("$name-$theme") {
                 HeyTheme(dark) {
-                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
+                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {})
                 }
             }
         }
@@ -137,7 +139,7 @@ class HomeFriendNoteSnapshotTest {
                 HeyTheme(dark) {
                     HomeScreen(
                         online.copy(friendNote = "민수: 오늘 저녁에 같이 밥 먹자"),
-                        reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {},
+                        reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {},
                     )
                 }
             }

@@ -47,7 +47,7 @@ private fun Paparazzi.recordStates() {
         parkedShots.forEach { (name, ui) ->
             snapshot("$name-$theme") {
                 HeyTheme(dark) {
-                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
+                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {})
                 }
             }
         }

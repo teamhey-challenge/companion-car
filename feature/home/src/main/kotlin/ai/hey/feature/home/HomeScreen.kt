@@ -114,6 +114,7 @@ fun HomeScreen(
     onTalk: () -> Unit,
     onEndConversation: () -> Unit,
     onMemory: () -> Unit,
+    onFriends: () -> Unit,
     onSettings: () -> Unit,
     onFaultAction: (CarFault) -> Unit,
     modifier: Modifier = Modifier,
@@ -131,6 +132,7 @@ fun HomeScreen(
                     trailing = {
                         val size = if (compact) HeyButtonSize.Regular else HeyButtonSize.Header
                         HeyButton(stringResource(R.string.home_memory), onMemory, variant = HeyButtonVariant.Soft, size = size, icon = HeyIcons.Book)
+                        HeyButton(stringResource(R.string.home_friends), onFriends, variant = HeyButtonVariant.Soft, size = size, icon = HeyIcons.Users)
                         HeyButton(stringResource(R.string.home_settings), onSettings, variant = HeyButtonVariant.Soft, size = size, icon = HeyIcons.Gear)
                     },
                 )

@@ -9,6 +9,7 @@ import ai.hey.feature.home.Routes
 import ai.hey.feature.home.gateRoute
 import ai.hey.feature.home.homeUi
 import ai.hey.feature.memory.MemoryRoute
+import ai.hey.feature.settings.FriendsRoute
 import ai.hey.feature.settings.PhoneLinkRoute
 import ai.hey.feature.settings.ServerAddress
 import ai.hey.feature.settings.SettingsRoute
@@ -159,6 +160,7 @@ class MainActivity : ComponentActivity() {
                             onTalk = repository::startTalk,
                             onEndConversation = repository::cancelTalk,
                             onMemory = { state.parked?.let { if (nav.graph.findNode(Routes.Memory) != null) nav.navigate(Routes.Memory) } },
+                            onFriends = { state.parked?.let { nav.navigate(Routes.Friends) } },
                             onSettings = { state.parked?.let { nav.navigate(Routes.Settings) } },
                             onFaultAction = { fault -> onFaultAction(fault, repository::startTalk, repository::reconnectNow) },
                         )
@@ -189,6 +191,15 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(Routes.Memory) {
                         MemoryRoute(state = state.companion, commands = graph.companion, onBack = { nav.popBackStack() })
+                    }
+                    composable(Routes.Friends) {
+                        // Parked only (the gate leaves it for Drive). The read-aloud is a short spoken line, like the fault lines.
+                        FriendsRoute(
+                            state = state.companion,
+                            commands = graph.companion,
+                            onBack = { nav.popBackStack() },
+                            onReadAloud = { text, sender -> graph.speakFault("$sender: $text", "friend-reread") },
+                        )
                     }
                 }
             }

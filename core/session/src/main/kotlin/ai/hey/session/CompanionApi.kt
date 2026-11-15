@@ -3,6 +3,7 @@ package ai.hey.session
 import ai.hey.model.CompanionSettings
 import ai.hey.model.Friend
 import ai.hey.model.FriendInvite
+import ai.hey.model.ReceivedMessage
 import ai.hey.model.ConsentRecord
 import ai.hey.model.ConsentType
 import ai.hey.model.HeyJson
@@ -65,8 +66,11 @@ interface CompanionApi {
     /** GET /v1/friends (a plain JSON array). */
     suspend fun friends(): List<Friend>
 
-    /** PATCH /v1/friends/{id} {shareArrival} */
-    suspend fun setShareArrival(id: String, share: Boolean)
+    /** GET /v1/messages: what friends sent me, newest first (the sent ones are dropped here). */
+    suspend fun messages(): List<ReceivedMessage>
+
+    /** POST /v1/messages/{id}/report: the server hides the message (D-53). */
+    suspend fun reportMessage(id: String)
 }
 
 /** Every companion REST call is the driver waiting at C6/C7: the whole call (connect + read) ends within this (PLEOS-148). */
@@ -203,8 +207,22 @@ class HttpCompanionApi(
         }
     }
 
-    override suspend fun setShareArrival(id: String, share: Boolean) {
-        call("PATCH", "v1/friends/$id", buildJsonObject { put("shareArrival", share) })
+    override suspend fun messages(): List<ReceivedMessage> = decodeBody {
+        parse(call("GET", "v1/messages")).jsonObject.getValue("messages").jsonArray.mapNotNull {
+            val m = it.jsonObject
+            if (m["direction"]?.jsonPrimitive?.contentOrNull != "in") return@mapNotNull null
+            ReceivedMessage(
+                id = m["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
+                friendId = m["friendId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                friendName = m["friendName"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                text = m["text"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
+                at = m["at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            )
+        }
+    }
+
+    override suspend fun reportMessage(id: String) {
+        call("POST", "v1/messages/$id/report")
     }
 
     override suspend fun vehicleEvent(atEpochMs: Long, signals: VehicleSignals) {

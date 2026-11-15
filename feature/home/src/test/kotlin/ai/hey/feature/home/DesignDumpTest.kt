@@ -29,12 +29,12 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
         dump.write()
     }
     dump("car-home") {
-        HomeScreen(HomeUi(online = true), reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
+        HomeScreen(HomeUi(online = true), reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {})
     }
     dump("car-home-trip-end") {
         HomeScreen(
             HomeUi(online = true, tripNote = "오늘도 같이 달렸어. 오늘 일기 써 뒀어, 폰에서 봐!", tripDiary = true, tripMomentDone = true),
-            reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {},
+            reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {},
         )
     }
     dump("car-drive") { DriveScreen(HomeUi(online = true), onTalk = {}, onEndConversation = {}) }

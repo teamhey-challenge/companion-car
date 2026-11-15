@@ -10,12 +10,13 @@ object Routes {
     const val Drive = "drive"
     const val Memory = "memory"
     const val Settings = "settings"
+    const val Friends = "friends"
 
     /** `car/settings/phone`: QR + code, the linked Google account, unlink. */
     const val PhoneLink = "settings/phone"
 
     /** Parked-only routes: every one of them is left for [Drive] the moment the car is not parked (PRD 3.5). */
-    val parkedOnly = setOf(Flow, Home, Memory, Settings, PhoneLink)
+    val parkedOnly = setOf(Flow, Home, Memory, Settings, PhoneLink, Friends)
 }
 
 /**
