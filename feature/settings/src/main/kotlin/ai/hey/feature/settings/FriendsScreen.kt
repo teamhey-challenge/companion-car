@@ -1,6 +1,17 @@
 package ai.hey.feature.settings
 
 import ai.hey.designsystem.component.CarFrame
+import ai.hey.designsystem.component.CompactCarPage
+import ai.hey.designsystem.component.FriendBigAvatar
+import ai.hey.designsystem.component.FriendCodePanel
+import ai.hey.designsystem.component.FriendInviteCopy
+import ai.hey.designsystem.component.FriendNote
+import ai.hey.designsystem.component.FriendShortcut
+import ai.hey.designsystem.component.FriendsTitle
+import ai.hey.designsystem.component.FriendInviteButton
+import ai.hey.designsystem.component.FriendSpacer
+import ai.hey.designsystem.component.FriendSlotFill
+import androidx.compose.ui.unit.dp
 import ai.hey.designsystem.component.ConfirmDialog
 import ai.hey.designsystem.component.EmptyPanel
 import ai.hey.designsystem.component.FriendRow
@@ -117,7 +128,32 @@ fun FriendsScreen(ui: FriendsUi, view: FriendsView, actions: FriendsActions, mod
             }
         },
     ) {
-        CarFrame(
+        val request = ui.incoming.firstOrNull()
+        if (view == FriendsView.Invite && request != null && ui.accept !is AcceptUi.Done) {
+            // Studio `car-friends-invite`: the compact page with the asker's card.
+            CompactCarPage(
+                title = stringResource(R.string.friends_app_name),
+                stateLabel = stringResource(R.string.friends_parked),
+                backLabel = stringResource(R.string.friends_back),
+                onBack = actions.onBack,
+                heading = stringResource(R.string.friends_invite_heading),
+            ) {
+                FriendBigAvatar()
+                FriendSpacer(28.dp)
+                FriendInviteCopy(
+                    stringResource(R.string.friends_request_title, request.fromName),
+                    stringResource(R.string.friends_request_message),
+                )
+                if (ui.accept is AcceptUi.Failed) {
+                    FriendSpacer(16.dp)
+                    HeyNotice(stringResource(R.string.friends_invite_offline), HeyStatusTone.Danger, persistent = true)
+                }
+                FriendSpacer(24.dp)
+                FriendInviteButton(stringResource(R.string.friends_invite_accept), { actions.onAcceptRequest(request.id) }, primary = true)
+                FriendSpacer(24.dp)
+                FriendInviteButton(stringResource(R.string.friends_invite_later), { actions.onDeclineRequest(request.id) }, primary = false)
+            }
+        } else CarFrame(
             statusStrip = {
                 HeaderBar(
                     title = stringResource(R.string.friends_app_name),
@@ -143,11 +179,14 @@ fun FriendsScreen(ui: FriendsUi, view: FriendsView, actions: FriendsActions, mod
 
 @Composable
 private fun ai.hey.designsystem.layout.HeyStackScope.FriendList(ui: FriendsUi, actions: FriendsActions) {
-    PageHeading(stringResource(R.string.friends_title), subtitle = stringResource(R.string.friends_phone_only))
-    HStack(HeyGap.G16, align = HeyAlign.Center) {
-        HeyButton(stringResource(R.string.friends_open_code), { actions.onNavigate(FriendsView.Code) }, variant = HeyButtonVariant.Soft, icon = HeyIcons.Qr)
-        HeyButton(stringResource(R.string.friends_open_inbox), { actions.onNavigate(FriendsView.Inbox()) }, variant = HeyButtonVariant.Soft, icon = HeyIcons.Message)
-        HeyButton(stringResource(R.string.friends_open_invite), { actions.onNavigate(FriendsView.Invite) }, variant = HeyButtonVariant.Soft, icon = HeyIcons.User)
+    FriendsTitle(stringResource(R.string.friends_title))
+    HStack(HeyGap.G24, modifier = Modifier.fillWidth()) {
+        FriendShortcut(stringResource(R.string.friends_open_code), HeyIcons.Qr, { actions.onNavigate(FriendsView.Code) }, Modifier.grow())
+        FriendShortcut(stringResource(R.string.friends_open_inbox), HeyIcons.Message, { actions.onNavigate(FriendsView.Inbox()) }, Modifier.grow())
+        FriendShortcut(
+            stringResource(R.string.friends_open_invite), HeyIcons.User, { actions.onNavigate(FriendsView.Invite) }, Modifier.grow(),
+            count = ui.incoming.size,
+        )
     }
     when {
         ui.friendsFailed -> LoadFailed(actions.onRetryFriends)
@@ -157,32 +196,38 @@ private fun ai.hey.designsystem.layout.HeyStackScope.FriendList(ui: FriendsUi, a
             Modifier.fillWidth(),
             message = stringResource(R.string.friends_none_message),
         )
-        else -> ui.friends.forEach { f ->
-            FriendRow(
-                name = f.name,
-                onClick = { actions.onNavigate(FriendsView.Inbox(f.id)) },
-                modifier = Modifier.fillWidth(),
-                lastMessage = f.lastMessage,
-                badge = if (f.arrivalOn) stringResource(R.string.friends_arrival_on) else null,
-            )
+        else -> ui.friends.chunked(2).forEach { pair ->
+            HStack(HeyGap.G24, align = HeyAlign.Start, modifier = Modifier.fillWidth()) {
+                pair.forEach { f ->
+                    FriendRow(
+                        name = f.name,
+                        onClick = { actions.onNavigate(FriendsView.Inbox(f.id)) },
+                        modifier = Modifier.grow(),
+                        lastMessage = f.lastMessage,
+                        badge = if (f.arrivalOn) stringResource(R.string.friends_arrival_on) else null,
+                    )
+                }
+                if (pair.size == 1) FriendSlotFill()
+            }
         }
     }
+    FriendNote(stringResource(R.string.friends_phone_only))
 }
 
 @Composable
 private fun ai.hey.designsystem.layout.HeyStackScope.FriendCode(code: FriendCodeUi, onRetry: () -> Unit) {
-    PageHeading(stringResource(R.string.friends_code_title))
+    FriendsTitle(stringResource(R.string.friends_code_title))
     when (code) {
         FriendCodeUi.None, FriendCodeUi.Creating -> HeyText(stringResource(R.string.friends_code_creating), tone = HeyTone.Muted)
         FriendCodeUi.Failed -> {
             HeyNotice(stringResource(R.string.friends_code_failed), HeyStatusTone.Danger, persistent = true)
             HeyButton(stringResource(R.string.friends_retry), onRetry, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Refresh)
         }
-        is FriendCodeUi.Shown -> QrPanel(
+        is FriendCodeUi.Shown -> FriendCodePanel(
             content = code.url,
             code = code.code,
-            status = stringResource(R.string.friends_code_status),
-            modifier = Modifier.fillWidth(),
+            lead = stringResource(R.string.friends_code_lead),
+            note = stringResource(R.string.friends_code_status),
         )
     }
 }
