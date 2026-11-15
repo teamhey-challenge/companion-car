@@ -11,8 +11,6 @@ import ai.hey.feature.onboarding.TitleScreen
 import ai.hey.model.OnboardingStep
 import ai.hey.session.TurnState
 import ai.hey.feature.onboarding.ConsentFormUi
-import ai.hey.feature.onboarding.OnboardingFlow
-import ai.hey.feature.onboarding.OnboardingOutcome
 import ai.hey.feature.onboarding.OnboardingScreen
 import ai.hey.designsystem.component.PhoneLinkUi
 import ai.hey.feature.onboarding.QrStepScreen
@@ -20,13 +18,10 @@ import ai.hey.session.CompanionRepository
 import ai.hey.session.PairingUi
 import ai.hey.session.TalkRepository
 import ai.hey.vehicle.DrivingStatus
-import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -36,15 +31,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.selects.select
-import kotlinx.coroutines.flow.first
 
 private const val PRIVACY_URL = "https://hey.lastmile.ltd/privacy"
-private const val CAR_SPEED = "android.car.permission.CAR_SPEED"
 
 /** How long "연결됐어요!" stays before the phone-link step finishes (PRD 4.2.5). */
 private const val CLAIMED_HOLD_MS = 1500L
@@ -59,7 +48,7 @@ private const val CLAIMED_HOLD_MS = 1500L
 private fun ConsentStepRoute(
     companion: CompanionRepository,
     talk: TalkRepository,
-    onMicDenied: () -> Unit,
+    awaitPermissions: suspend () -> Unit,
     onDone: () -> Unit,
     onExit: () -> Unit,
 ) {
@@ -71,45 +60,15 @@ private fun ConsentStepRoute(
     var requiredShown by remember { mutableStateOf(false) }
     var started by remember { mutableStateOf(false) }
 
-    var pending by remember { mutableStateOf<CompletableDeferred<Boolean>?>(null) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        pending?.complete(granted)
-    }
-    val flow = remember {
-        OnboardingFlow(
-            requestPermission = { permission ->
-                // A permission dialog open when gear D arrives gets covered by the system's driving block: wait for Park.
-                talk.state.first { mayAskPermission(it.isParked) }
-                val answer = CompletableDeferred<Boolean>()
-                pending = answer
-                launcher.launch(permission)
-                // The gear leaves P while the dialog is open: MainActivity brings the app back above it and the answer is
-                // "no", so the flow goes on instead of waiting for a hidden dialog; the driver can be asked again while parked.
-                coroutineScope {
-                    val left = async { talk.state.first { !it.isParked }; false }
-                    val result = select<Boolean> {
-                        answer.onAwait { it }
-                        left.onAwait { it }
-                    }
-                    left.cancel()
-                    result
-                }
-            },
-            microphone = Manifest.permission.RECORD_AUDIO,
-            vehicleSpeed = CAR_SPEED,
-        )
-    }
-
     BackHandler(onBack = onExit)
 
-    // The server has recorded the consent: now (and only now) the runtime permissions.
-    LaunchedEffect(started, talkState.needsOnboarding) {
-        if (started && !talkState.needsOnboarding) {
-            // The microphone is asked again at the first question (the dialog is shown there too), so a refusal here goes on.
-            when (flow.afterConsent()) {
-                OnboardingOutcome.Done -> onDone()
-                OnboardingOutcome.MicDenied -> onDone()
-            }
+    // The server has recorded the consent: now (and only now) the runtime permissions, one dialog at a time, owned by the activity
+    // (PermissionSequence) so a drive or a process death in between does not lose a step. A refusal goes on: the microphone is
+    // asked again at the first question (CarOnbFix).
+    LaunchedEffect(talkState.needsOnboarding) {
+        if (!talkState.needsOnboarding) {
+            awaitPermissions()
+            onDone()
         }
     }
 
@@ -143,7 +102,7 @@ private fun ConsentStepRoute(
  * run: a drive in the middle leaves this route (the gate) and the stored step is picked up again when parked.
  */
 @Composable
-fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, onMicDenied: () -> Unit, onExit: () -> Unit) {
+fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, awaitPermissions: suspend () -> Unit, onExit: () -> Unit) {
     val talkState by talk.state.collectAsState()
     val companionState by companion.state.collectAsState()
     val step = talkState.onboardingStep
@@ -160,10 +119,7 @@ fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, on
         OnboardingStep.Consent -> ConsentStepRoute(
             companion = companion,
             talk = talk,
-            onMicDenied = {
-                onMicDenied()
-                talk.finishOnboardingStep(OnboardingStep.Consent)
-            },
+            awaitPermissions = awaitPermissions,
             onDone = { talk.finishOnboardingStep(OnboardingStep.Consent) },
             onExit = onExit,
         )

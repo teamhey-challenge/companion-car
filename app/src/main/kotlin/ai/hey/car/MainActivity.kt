@@ -34,6 +34,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalConfiguration
@@ -46,19 +48,14 @@ import androidx.navigation.compose.rememberNavController
 
 
 class MainActivity : ComponentActivity() {
-    // One launcher for both runtime permissions; only an answer that contains the microphone goes back to the session.
+    // One launcher, one dialog at a time (PermissionDialogs): the sequence after the consent and the microphone press share it.
     private var micLaunchedAt = 0L
-    private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-        val answer = voiceAnswer(result)
-        // No dialog could be shown (denied for good: the answer comes back at once and no rationale is offered): open the app's
-        // settings page so the driver can still allow the microphone ("마이크 허용").
-        if (answer == false && micLaunchedAt > 0 && android.os.SystemClock.elapsedRealtime() - micLaunchedAt < 500 &&
-            !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
-        ) {
-            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
-        }
-        answer?.let { (application as HeyApp).graph.repository.voicePermissionResult(it) }
+    private val dialogs: PermissionDialogs = PermissionDialogs { permission ->
+        if (permission == Manifest.permission.RECORD_AUDIO) micLaunchedAt = android.os.SystemClock.elapsedRealtime()
+        permissions.launch(arrayOf(permission))
     }
+    private val permissions: androidx.activity.result.ActivityResultLauncher<Array<String>> =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result -> dialogs.onResult(result) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,25 +69,48 @@ class MainActivity : ComponentActivity() {
             // session. While driving no permission screen opens (PRD 4.5.7): the press ends in the Microphone fault, which
             // is announced by voice only.
             val needsMic = state.turn is TurnState.NeedsPermission
-            val askedNotifications = remember { getSharedPreferences("hey_permissions", MODE_PRIVATE) }
-            LaunchedEffect(state.isParked, state.needsOnboarding, state.onboardingStep) {
-                val ask = shouldAskNotifications(
-                    parked = state.isParked,
-                    consented = !state.needsOnboarding,
-                    onboardingDone = state.onboardingStep == OnboardingStep.Done,
-                    alreadyAsked = askedNotifications.getBoolean("asked_notifications", false),
-                    granted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED,
-                    sdk = android.os.Build.VERSION.SDK_INT,
-                )
-                if (ask) {
-                    askedNotifications.edit().putBoolean("asked_notifications", true).apply()
-                    permissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+            val prefs = remember { getSharedPreferences("hey_permissions", MODE_PRIVATE) }
+            val gear by graph.vehicle.gear.collectAsState()
+            val moving = isTrulyMoving(gear, state.driving)
+            val sequence = remember {
+                val steps = buildList {
+                    add(Manifest.permission.RECORD_AUDIO)
+                    if (android.os.Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+                    add(CAR_SPEED)
                 }
+                PermissionSequence(
+                    steps = steps,
+                    microphone = Manifest.permission.RECORD_AUDIO,
+                    isGranted = { checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED },
+                    progress = object : PermissionProgress {
+                        override fun asked(permission: String) = prefs.getBoolean("asked_$permission", false)
+                        override fun markAsked(permission: String) = prefs.edit().putBoolean("asked_$permission", true).apply()
+                    },
+                    awaitParked = { repository.state.map { mayAskPermission(it.isParked) }.first { it } },
+                    ask = { permission ->
+                        cancelWhenDriving(
+                            moving = kotlinx.coroutines.flow.combine(graph.vehicle.gear, repository.state.map { it.driving }, ::isTrulyMoving),
+                            holdMillis = DRIVING_CANCEL_HOLD_MS,
+                        ) { dialogs.ask(permission) } ?: PermissionResult.Cancelled
+                    },
+                )
+            }
+            // After the consent is on the server the sequence runs from here, not only from the consent screen: a process death or
+            // a drive in the middle starts it again at the first undone step (C2).
+            LaunchedEffect(state.needsOnboarding) {
+                if (!state.needsOnboarding) sequence.run()
             }
             LaunchedEffect(needsMic, state.isParked) {
                 if (needsMic && mayAskPermission(state.isParked)) {
-                    micLaunchedAt = android.os.SystemClock.elapsedRealtime()
-                    permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+                    val answer = dialogs.ask(Manifest.permission.RECORD_AUDIO)
+                    // No dialog could be shown (denied for good: the answer comes back at once and no rationale is offered): open the
+                    // app's settings page so the driver can still allow the microphone ("마이크 허용").
+                    if (answer == PermissionResult.Denied && android.os.SystemClock.elapsedRealtime() - micLaunchedAt < 500 &&
+                        !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
+                    ) {
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+                    }
+                    if (answer != PermissionResult.Cancelled) repository.voicePermissionResult(answer == PermissionResult.Granted)
                 } else if (needsMic) {
                     repository.voicePermissionResult(false)
                 }
@@ -115,10 +135,11 @@ class MainActivity : ComponentActivity() {
             }
             LaunchedEffect(ui.fault, parked) { announcer.onFault(ui.fault, parked) }
             // A permission dialog (system, not distraction-optimized) that was open when the gear left P would keep covering C5 under
-            // the system's driving block (AC-3.5-05 evidence): bring this activity back above it. OnboardingRoute treats the
-            // request as denied, so nothing waits for the hidden dialog.
-            LaunchedEffect(parked) {
-                if (!parked) {
+            // the system's driving block (AC-3.5-05 evidence): bring this activity back above it once the car really
+            // drives (gear D/R or Driving for DRIVING_CANCEL_HOLD_MS). A parked-to-unknown blip neither cancels nor covers the dialog.
+            LaunchedEffect(moving) {
+                if (moving) {
+                    delay(DRIVING_CANCEL_HOLD_MS)
                     startActivity(
                         Intent(this@MainActivity, MainActivity::class.java)
                             .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -150,7 +171,7 @@ class MainActivity : ComponentActivity() {
                             OnboardingFlowRoute(
                                 companion = graph.companion,
                                 talk = repository,
-                                onMicDenied = repository::microphoneDeniedAtOnboarding,
+                                awaitPermissions = { sequence.run() },
                                 onExit = { finish() },
                             )
                         }
