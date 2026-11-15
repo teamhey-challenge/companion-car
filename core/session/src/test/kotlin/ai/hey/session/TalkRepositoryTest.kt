@@ -67,13 +67,15 @@ class TalkRepositoryTest {
         consented: Boolean = true,
         autoListenMillis: Long = 5_000,
         otherAudio: OtherAudioProbe? = null,
+        step: ai.hey.model.OnboardingStep = ai.hey.model.OnboardingStep.Done,
     ) {
         val vehicle = FakeVehicleGateway(scope, speechMillis = speechMillis)
         lateinit var transport: FakeTransport
+        lateinit var storage: InMemoryCarStorage
         val repo = TalkRepository(
             scope = scope,
             vehicle = vehicle,
-            storage = InMemoryCarStorage(initialConsents = if (consented) ConsentMirror(setOf(ConsentType.Record)) else ConsentMirror()),
+            storage = InMemoryCarStorage(initialConsents = if (consented) ConsentMirror(setOf(ConsentType.Record)) else ConsentMirror(), initialStep = step).also { storage = it },
             voiceInput = voice,
             transport = { FakeTransport(it).also { t -> transport = t } },
             newTurnId = { "t1" },
@@ -597,11 +599,11 @@ class TalkRepositoryTest {
         val rig = Rig(cs, voice)
         rig.vehicle.setDriving(false)
         val l = rig.transport.listener
-        l.onFrame(ServerFrame.FriendArrived("fa1", "지은", "집"))
+        l.onFrame(ServerFrame.FriendArrived("fa1", "지은"))
         l.onFrame(ServerFrame.ReplyStart("fa1", AudioSpec.None))
-        l.onFrame(ServerFrame.ReplyEnd("fa1", "지은이 집에 도착했대?", 100, 900))
+        l.onFrame(ServerFrame.ReplyEnd("fa1", "지은이 도착했대?", 100, 900))
         testScheduler.advanceUntilIdle()
-        assertEquals(listOf("지은이 집에 도착했대?"), rig.vehicle.spoken)
+        assertEquals(listOf("지은이 도착했대?"), rig.vehicle.spoken)
         assertNull(rig.repo.state.value.friendNote)
         assertEquals(0, voice.listens) // the line ends with a question mark, yet the microphone stays closed
         assertEquals(TurnState.Idle, rig.repo.state.value.turn)
@@ -688,6 +690,106 @@ class TalkRepositoryTest {
         rig.vehicle.setSignals { it.copy(naviGuiding = false, destKm = null) }
         testScheduler.advanceTimeBy(1100)
         assertTrue(!rig.transport.sent.last { it.contains("\"type\":\"ctx\"") }.contains("destKm"))
+        cs.cancel()
+    }
+
+    // ---------------------------------------------------------------- D-48 onboarding step machine
+
+    private fun onboardingFrame(rig: Rig, step: String, id: String, text: String) {
+        rig.transport.listener.onFrame(ServerFrame.Onboarding(step, id, text))
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart(id, AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd(id, text, 100, 900))
+    }
+
+    @Test fun `D-48 the whale intro is asked at once, spoken, and moves on to the first question`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "뚱"), step = ai.hey.model.OnboardingStep.WhaleIntro)
+        testScheduler.runCurrent()
+        assertTrue(rig.transport.sent.any { it.contains("\"type\":\"onboarding\"") && it.contains("whale_intro") })
+        onboardingFrame(rig, "whale_intro", "o1", "여기는 바다 같은 곳이야")
+        testScheduler.advanceUntilIdle()
+        assertEquals(ai.hey.model.OnboardingStep.Q1, rig.storage.onboardingStep.value)
+        assertEquals("여기는 바다 같은 곳이야", rig.repo.state.value.onboardingLine)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a question opens the microphone by itself, sends the answer and moves on only on ok`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "뚱")
+        val rig = Rig(cs, voice, step = ai.hey.model.OnboardingStep.Q1)
+        testScheduler.runCurrent()
+        onboardingFrame(rig, "q1", "o1", "뭐라고 불러 줄까?")
+        testScheduler.runCurrent()
+        assertEquals(1, voice.listens) // no tap
+        assertTrue(rig.transport.sent.any { it.contains("onboarding.answer") && it.contains("\"q1\"") && it.contains("뚱") })
+        // the filter refuses: the same question is asked again, the step stays
+        rig.transport.listener.onFrame(ServerFrame.OnboardingAck("q1", false, null))
+        testScheduler.runCurrent()
+        assertEquals(ai.hey.model.OnboardingStep.Q1, rig.storage.onboardingStep.value)
+        assertEquals(2, rig.transport.sent.count { it.contains("\"type\":\"onboarding\"") && it.contains("\"q1\"") })
+        onboardingFrame(rig, "q1", "o2", "다시, 뭐라고 불러 줄까?")
+        testScheduler.runCurrent()
+        rig.transport.listener.onFrame(ServerFrame.OnboardingAck("q1", true, "뚱"))
+        testScheduler.advanceUntilIdle()
+        assertEquals(ai.hey.model.OnboardingStep.Q2, rig.storage.onboardingStep.value)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 the spoken steps run while driving, the parked-only summon step waits and the stored step survives`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "회사랑 집")
+        val rig = Rig(cs, voice, step = ai.hey.model.OnboardingStep.Q2)
+        rig.vehicle.setDriving(true)
+        testScheduler.runCurrent()
+        onboardingFrame(rig, "q2", "o1", "이 차로 주로 어디 다녀?")
+        testScheduler.runCurrent()
+        assertEquals(1, voice.listens) // listening opened while driving
+        rig.transport.listener.onFrame(ServerFrame.OnboardingAck("q2", true, null))
+        testScheduler.advanceUntilIdle()
+        assertEquals(ai.hey.model.OnboardingStep.Q3, rig.storage.onboardingStep.value)
+        // q3 answered too, then the flow is at Summon: nothing is asked on the socket for it (parked-only), and it is not lost
+        rig.transport.sent.clear()
+        onboardingFrame(rig, "q3", "o2", "차 안에서는 어떤 얘기가 좋아?")
+        testScheduler.runCurrent()
+        rig.transport.listener.onFrame(ServerFrame.OnboardingAck("q3", true, null))
+        testScheduler.advanceUntilIdle()
+        assertEquals(ai.hey.model.OnboardingStep.Summon, rig.storage.onboardingStep.value)
+        assertTrue(rig.transport.sent.none { it.contains("\"type\":\"onboarding\"") && !it.contains("answer") && !it.contains("q3") })
+        assertEquals(ai.hey.model.OnboardingStep.Summon, rig.repo.state.value.onboardingStep)
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a restart resumes at the stored step and the summon step is finished from the screen`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(), step = ai.hey.model.OnboardingStep.Summon)
+        testScheduler.runCurrent()
+        assertEquals(ai.hey.model.OnboardingStep.Summon, rig.repo.state.value.onboardingStep)
+        assertTrue(rig.transport.sent.none { it.contains("\"type\":\"onboarding\"") })
+        rig.repo.finishOnboardingStep(ai.hey.model.OnboardingStep.Summon)
+        testScheduler.runCurrent()
+        assertEquals(ai.hey.model.OnboardingStep.Greeting, rig.storage.onboardingStep.value)
+        // the greeting is a spoken step: it is asked at once
+        assertTrue(rig.transport.sent.any { it.contains("\"type\":\"onboarding\"") && it.contains("greeting") })
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a tap on the talk button during a spoken step does not open a second turn`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "안녕")
+        val rig = Rig(cs, voice, step = ai.hey.model.OnboardingStep.Q1)
+        testScheduler.runCurrent()
+        rig.repo.startTalk()
+        testScheduler.runCurrent()
+        assertTrue(rig.transport.sent.none { it.contains("turn.start") })
+        cs.cancel()
+    }
+
+    @Test fun `D-48 a proactive line is refused while the onboarding runs`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(), step = ai.hey.model.OnboardingStep.Look)
+        rig.transport.listener.onFrame(ServerFrame.Proactive("p1", "wiper"))
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertTrue(rig.transport.sent.any { it.contains("turn.cancel") && it.contains("p1") })
         cs.cancel()
     }
 }

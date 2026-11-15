@@ -1,5 +1,15 @@
 package ai.hey.car
 
+import ai.hey.designsystem.component.CharacterLook
+import ai.hey.designsystem.component.TalkPhase
+import ai.hey.feature.onboarding.FirstLookScreen
+import ai.hey.feature.onboarding.KnownCardsScreen
+import ai.hey.feature.onboarding.SpokenStepScreen
+import ai.hey.feature.onboarding.SpokenStepUi
+import ai.hey.feature.onboarding.SummonScreen
+import ai.hey.model.MemoryKind
+import ai.hey.model.OnboardingStep
+import ai.hey.session.TurnState
 import ai.hey.feature.onboarding.ConsentFormUi
 import ai.hey.feature.onboarding.OnboardingFlow
 import ai.hey.feature.onboarding.OnboardingOutcome
@@ -122,6 +132,73 @@ fun OnboardingRoute(
         },
     )
 }
+
+/**
+ * The steps after C1 (D-48 2): one screen per stored step. The spoken steps are driven by the talk repository (they run while
+ * driving too, then C5 is on screen); this route only draws them and handles the parked-only steps: long press, memory cards,
+ * first look, phone link. A drive in the middle leaves this route (the gate) and the stored step is picked up again when parked.
+ */
+@Composable
+fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository) {
+    val talkState by talk.state.collectAsState()
+    val companionState by companion.state.collectAsState()
+    val step = talkState.onboardingStep
+    when {
+        step.spoken -> SpokenStepScreen(
+            SpokenStepUi(
+                step = step,
+                line = talkState.onboardingLine,
+                phase = when (talkState.turn) {
+                    TurnState.Listening -> TalkPhase.Listening
+                    TurnState.Thinking -> TalkPhase.Thinking
+                    TurnState.Replying -> TalkPhase.Speaking
+                    else -> TalkPhase.Idle
+                },
+                heard = talkState.heard,
+            ),
+        )
+        step == OnboardingStep.Summon -> {
+            var summoned by remember { mutableStateOf(false) }
+            LaunchedEffect(summoned) {
+                if (summoned) {
+                    delay(SUMMON_HOLD_MS)
+                    talk.finishOnboardingStep(OnboardingStep.Summon)
+                }
+            }
+            SummonScreen(summoned = summoned, onSummon = { summoned = true })
+        }
+        step == OnboardingStep.Cards -> {
+            LaunchedEffect(Unit) { companion.loadMemory() }
+            val memory = companionState.memory
+            KnownCardsScreen(
+                items = memory.items.filter { it.kind == MemoryKind.Fact }.take(3).map { it.text },
+                loading = memory.loading || !memory.loaded,
+                memoryEnabled = companionState.settings.memoryEnabled,
+                onNext = { talk.finishOnboardingStep(OnboardingStep.Cards) },
+            )
+        }
+        step == OnboardingStep.Look -> {
+            val s = companionState.settings
+            FirstLookScreen(
+                look = CharacterLook(s.bodyColor, s.hat, s.neck),
+                onLook = { look -> companion.updateSettings { it.copy(bodyColor = look.bodyColor, hat = look.hat, neck = look.neck) } },
+                onDone = { talk.finishOnboardingStep(OnboardingStep.Look) },
+            )
+        }
+        step == OnboardingStep.Pair -> PairRoute(
+            companion = companion,
+            talk = talk,
+            onDone = { talk.finishOnboardingStep(OnboardingStep.Pair) },
+            onBack = { talk.finishOnboardingStep(OnboardingStep.Pair) },
+            onDriving = {},
+        )
+        else -> Unit
+    }
+}
+
+/** How long heyri's fade-in is shown after the long press before the flow goes on. */
+private const val SUMMON_HOLD_MS = 2_000L
+
 
 /** C2 route: asks for a code while open, leaves for /home on "나중에" and (after a short hold) when the phone claimed it. */
 @Composable

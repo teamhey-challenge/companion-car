@@ -2,6 +2,7 @@ package ai.hey.session
 
 import ai.hey.model.AudioSpec
 import ai.hey.model.VehicleSignals
+import ai.hey.model.OnboardingStep
 import ai.hey.model.CarSettings
 import ai.hey.model.ClientFrames
 import ai.hey.model.Wire
@@ -32,6 +33,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import java.util.UUID
 
 private const val TAG = "Talk"
@@ -136,6 +140,14 @@ class TalkRepository(
         scope.launch {
             storage.consents.collect { c -> _state.update { it.copy(needsOnboarding = !c.recordDone) } }
         }
+        scope.launch { storage.onboardingStep.collect { st -> _state.update { it.copy(onboardingStep = st) } } }
+        scope.launch {
+            // A spoken step runs while the car is moving too; a parked-only step is the screen's. collectLatest restarts the step
+            // when the step, the link or the consent changes, so a restart of the app resumes at the stored step.
+            _state.map { it.onboardingStep to (it.onboardingStep.spoken && it.online && !it.needsOnboarding) }
+                .distinctUntilChanged()
+                .collectLatest { (step, run) -> if (run) runSpokenStep(step) }
+        }
         companion?.let { c ->
             scope.launch { c.state.collect { s -> _state.update { it.copy(companion = s) } } }
         }
@@ -202,7 +214,7 @@ class TalkRepository(
                     armWatchdog(frame.turnId, REPLY_END_TIMEOUT_MILLIS)
                     replyText.append(frame.text)
                     // A friend line is shown only as [CarUiState.friendNote] (parked), never as the reply subtitle.
-                    _state.update { if (it.source == TurnSource.Friend) it else it.copy(reply = replyText.toString()) }
+                    _state.update { if (it.source.quiet()) it else it.copy(reply = replyText.toString()) }
                 }
                 is ServerFrame.ReplyEnd -> if (frame.turnId == turnId) onReplyEnd(frame)
                 is ServerFrame.Error -> {
@@ -220,9 +232,11 @@ class TalkRepository(
                 }
                 is ServerFrame.Proactive -> onProactive(frame)
                 is ServerFrame.FriendMessage -> onFriend(frame.id, frame.fromName, frame.text, showText = true)
-                is ServerFrame.FriendArrived -> onFriend(frame.id, frame.fromName, frame.place.orEmpty(), showText = false)
+                is ServerFrame.FriendArrived -> onFriend(frame.id, frame.fromName, "", showText = false)
                 is ServerFrame.Settings -> companion?.onServerSettings(frame.settings)
                 is ServerFrame.Pairing -> companion?.onServerPairing(frame.phase)
+                is ServerFrame.Onboarding -> onOnboardingFrame(frame)
+                is ServerFrame.OnboardingAck -> onOnboardingAck(frame)
             }
         }
 
@@ -238,7 +252,7 @@ class TalkRepository(
         replyText.append(frame.text)
         val id = turnId
         turnId = null
-        _state.update { if (it.source == TurnSource.Friend) it else it.copy(reply = frame.text) }
+        _state.update { if (it.source.quiet()) it else it.copy(reply = frame.text) }
         val spec = replyAudio
         if (spec is AudioSpec.Pcm && audio != null) {
             audio.finish() // the turn ends on screen when the playback does
@@ -278,6 +292,7 @@ class TalkRepository(
 
     private fun endSpeaking() {
         _state.update { if (it.turn == TurnState.Replying) it.copy(turn = TurnState.Idle) else it }
+        if (_state.value.source == TurnSource.Onboarding) lineDone?.complete(Unit)
     }
 
     private fun failAudio() {
@@ -309,7 +324,7 @@ class TalkRepository(
     private fun afterReply() {
         endSpeaking()
         val s = _state.value
-        if (s.turn != TurnState.Idle || s.source == TurnSource.Friend) return
+        if (s.turn != TurnState.Idle || s.source.quiet()) return
         if (s.source == TurnSource.AutoListen) {
             // PLEOS-79: at most one automatic listening per driver-started turn, or a repeating voice loops forever.
             HeyLog.i(TAG, "talk ignored: auto-listen skipped, the turn was itself an auto-listen")
@@ -335,6 +350,7 @@ class TalkRepository(
         val s = _state.value
         val why = when {
             s.needsOnboarding -> "consent not recorded"
+            s.onboardingStep != OnboardingStep.Done -> "onboarding is running"
             s.turn != TurnState.Idle -> "busy (${s.turn})"
             // D-14: no new line while navigation guides. The one exception is scenario 2 (range vs the destination) at a parked stop:
             // a destination is set but the car stands still, so no guidance voice is running.
@@ -443,10 +459,106 @@ class TalkRepository(
         }
     }
 
+    // ---------------------------------------------------------------- spoken onboarding (D-48 2, 3)
+
+    /** `onboarding` frame: the whale's (or heyri's) line of the step follows as `reply.*` + PCM with turn id [ServerFrame.Onboarding.id]. */
+    private fun onOnboardingFrame(frame: ServerFrame.Onboarding) {
+        val s = _state.value
+        if (s.source != TurnSource.Onboarding || s.turn != TurnState.Idle) {
+            HeyLog.i(TAG, "onboarding line dropped: busy (${s.turn})")
+            link.send(ClientFrames.turnCancel(frame.id))
+            return
+        }
+        HeyLog.i(TAG, "onboarding line step=${frame.step}")
+        replyText.setLength(0)
+        replyAudio = AudioSpec.None
+        turnId = frame.id
+        turnEndSentAt = clock()
+        _state.update { it.copy(turn = TurnState.Replying, heard = null, reply = "", onboardingLine = frame.text, error = null, audioFailed = false) }
+        armWatchdog(frame.id, REPLY_START_TIMEOUT_MILLIS)
+    }
+
+    private fun onOnboardingAck(frame: ServerFrame.OnboardingAck) {
+        HeyLog.i(TAG, "onboarding ack step=${frame.step} ok=${frame.ok}")
+        ack?.complete(frame)
+    }
+
+    @Volatile private var lineDone: CompletableDeferred<Unit>? = null
+    @Volatile private var ack: CompletableDeferred<ServerFrame.OnboardingAck>? = null
+
+    /**
+     * Runs one spoken onboarding step at its stored place: asks the server to speak it, waits for the line to end, and for a
+     * question opens the microphone by itself (no tap), sends the answer and waits for the verdict. Works in every driving
+     * state. A refused answer (safety filter) asks the question again; [ONBOARDING_MAX_SILENCES] silences move on; a missing
+     * microphone permission ends the flow (C8 shows it). The step is written to the device only when it is over, so a
+     * restart or a drive repeats at most the step that was running.
+     */
+    private suspend fun runSpokenStep(step: OnboardingStep) {
+        val wire = step.wire ?: return
+        var silences = 0
+        while (true) {
+            _state.first { it.turn == TurnState.Idle }
+            val done = CompletableDeferred<Unit>().also { lineDone = it }
+            _state.update { it.copy(source = TurnSource.Onboarding, heard = null, reply = "", onboardingLine = "", error = null) }
+            if (!link.send(ClientFrames.onboarding(wire))) { delay(ONBOARDING_RETRY_MILLIS); continue }
+            HeyLog.i(TAG, "onboarding step=$wire asked")
+            if (withTimeoutOrNull(ONBOARDING_LINE_TIMEOUT_MILLIS) { done.await() } == null) {
+                HeyLog.w(TAG, "onboarding step=$wire: no line, asking again")
+                silence()
+                endTurn(null)
+                delay(ONBOARDING_RETRY_MILLIS)
+                continue
+            }
+            if (!step.isQuestion) {
+                storage.setOnboardingStep(step.next())
+                return
+            }
+            _state.update { it.copy(turn = TurnState.Listening, heard = null, reply = "", error = null) }
+            HeyLog.i(TAG, "listen start source=Onboarding")
+            when (val result = voiceInput.listen()) {
+                is VoiceResult.Text -> {
+                    val verdict = CompletableDeferred<ServerFrame.OnboardingAck>().also { ack = it }
+                    link.send(ClientFrames.onboardingAnswer(wire, result.text))
+                    HeyLog.content(TAG, "onboarding answer chars=${result.text.length}", result.text)
+                    _state.update { it.copy(turn = TurnState.Thinking, heard = result.text) }
+                    val reply = withTimeoutOrNull(ONBOARDING_ACK_TIMEOUT_MILLIS) { verdict.await() }
+                    endTurn(null)
+                    if (reply?.ok == true) {
+                        storage.setOnboardingStep(step.next())
+                        return
+                    }
+                }
+                VoiceResult.NoSpeech, is VoiceResult.Unavailable -> {
+                    endTurn(null)
+                    if (++silences >= ONBOARDING_MAX_SILENCES) {
+                        storage.setOnboardingStep(step.next())
+                        return
+                    }
+                }
+                VoiceResult.PermissionDenied -> {
+                    endTurn(TurnError.PermissionDenied)
+                    storage.setOnboardingStep(OnboardingStep.Done)
+                    return
+                }
+            }
+        }
+    }
+
+    /** A parked-only step (summon, cards, look, phone link) was done on its screen: go on to the next one. */
+    fun finishOnboardingStep(step: OnboardingStep) {
+        scope.launch { if (storage.onboardingStep.value == step) storage.setOnboardingStep(step.next()) }
+    }
+
     // ---------------------------------------------------------------- talking
 
     override fun startTalk() {
         val s = _state.value
+        // The onboarding turn owns the microphone: a press must not cut the whale's line or open a second turn.
+        if (s.source == TurnSource.Onboarding && s.turn != TurnState.Idle && s.turn != TurnState.NeedsPermission) return
+        if (s.onboardingStep.spoken && !s.needsOnboarding) {
+            HeyLog.i(TAG, "talk ignored: onboarding step ${s.onboardingStep} is running")
+            return
+        }
         if (s.needsOnboarding) {
             HeyLog.i(TAG, "talk ignored: consent not recorded, showing onboarding")
             _state.update { it.copy(onboardingRequests = it.onboardingRequests + 1) }
@@ -491,6 +603,7 @@ class TalkRepository(
 
     private fun listenOnce(source: TurnSource) {
         voiceJob?.cancel()
+        HeyLog.i(TAG, "listen start source=$source")
         replyText.setLength(0)
         _state.update {
             if (source == TurnSource.AutoListen) it.copy(turn = TurnState.Listening, source = source, error = null)
@@ -583,6 +696,14 @@ class TalkRepository(
 }
 
 const val AUTO_LISTEN_MILLIS = 5_000L
+
+/** A source whose reply text never shows as a subtitle and that never opens the automatic listening: a friend line, an onboarding line. */
+private fun TurnSource.quiet(): Boolean = this == TurnSource.Friend || this == TurnSource.Onboarding
+
+private const val ONBOARDING_RETRY_MILLIS = 2_000L
+private const val ONBOARDING_LINE_TIMEOUT_MILLIS = 45_000L
+private const val ONBOARDING_ACK_TIMEOUT_MILLIS = 15_000L
+private const val ONBOARDING_MAX_SILENCES = 3
 const val CTX_DEBOUNCE_MILLIS = 1_000L
 
 /** How long a friend's message text stays on C3 after it arrived. */

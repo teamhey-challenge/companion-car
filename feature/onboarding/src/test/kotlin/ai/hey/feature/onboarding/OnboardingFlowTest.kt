@@ -29,4 +29,12 @@ class OnboardingFlowTest {
     @Test fun `denied speed alone still goes on`() = runBlocking {
         assertEquals(OnboardingOutcome.Done, flow(micGranted = true, speedGranted = false).afterConsent())
     }
+
+    @Test fun `memory off shows the guidance and never the cards, even when items are known`() {
+        assertEquals(KnownCardsMode.MemoryOff, knownCardsMode(memoryEnabled = false, items = listOf("a"), loading = false))
+        assertEquals(KnownCardsMode.MemoryOff, knownCardsMode(memoryEnabled = false, items = emptyList(), loading = true))
+        assertEquals(KnownCardsMode.Cards, knownCardsMode(memoryEnabled = true, items = listOf("a"), loading = false))
+        assertEquals(KnownCardsMode.Loading, knownCardsMode(memoryEnabled = true, items = emptyList(), loading = true))
+        assertEquals(KnownCardsMode.Empty, knownCardsMode(memoryEnabled = true, items = emptyList(), loading = false))
+    }
 }

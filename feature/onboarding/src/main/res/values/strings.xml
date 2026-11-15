@@ -40,4 +40,36 @@
     <string name="pair_code_label">연결 코드 %1$s</string>
     <string name="pair_retry">새 QR 만들기</string>
     <string name="pair_later">나중에</string>
+
+    <string name="step_whale_title">안녕, 나는 여기 안내자야</string>
+    <string name="step_q1_title">뭐라고 불러 줄까?</string>
+    <string name="step_q2_title">이 차로 주로 어디 다녀?</string>
+    <string name="step_q3_title">차 안에서는 어떤 얘기가 좋아?</string>
+    <string name="step_greeting_title">헤이리가 인사해요</string>
+    <string name="step_answer_hint">말로 대답해 주세요</string>
+    <string name="step_summon_title">이제 헤이리를 만나요</string>
+    <string name="step_summon_subtitle">버튼을 길게 눌러 주세요</string>
+    <string name="step_summon_button">길게 눌러 헤이리 만나기</string>
+    <string name="step_cards_title">너를 이만큼 알아</string>
+    <string name="step_cards_subtitle">헤이리가 알게 된 이야기예요</string>
+    <string name="step_cards_empty">아직 기억한 이야기가 없어요</string>
+    <string name="step_cards_memory_off">기억 저장을 켜면 이렇게 기억해요</string>
+    <string name="step_cards_kind">기억</string>
+    <string name="step_next">다음</string>
+    <string name="step_look_title">처음 꾸미기</string>
+    <string name="step_look_subtitle">나중에 설정에서 바꿀 수 있어요</string>
+    <string name="step_look_done">다 골랐어요</string>
+    <string name="step_look_body">몸 색</string>
+    <string name="step_look_hat">모자</string>
+    <string name="step_look_neck">목</string>
+    <string name="step_look_aqua">아쿠아</string>
+    <string name="step_look_peach">피치</string>
+    <string name="step_look_none">없음</string>
+    <string name="step_look_beanie">비니</string>
+    <string name="step_look_bucket">버킷</string>
+    <string name="step_look_scarf">스카프</string>
+    <string name="asset_whale">고래 그림 (준비 중)</string>
+    <string name="asset_whale_description">고래</string>
+    <string name="asset_summon">헤이리가 나타날 자리</string>
+    <string name="asset_summon_description">헤이리가 나타날 자리</string>
 </resources>

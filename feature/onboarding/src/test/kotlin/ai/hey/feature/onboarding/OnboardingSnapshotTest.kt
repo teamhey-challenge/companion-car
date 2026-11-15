@@ -1,6 +1,9 @@
 package ai.hey.feature.onboarding
 
 import ai.hey.designsystem.theme.HeyTheme
+import ai.hey.designsystem.component.CharacterLook
+import ai.hey.designsystem.component.TalkPhase
+import ai.hey.model.OnboardingStep
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams.RenderingMode
@@ -33,10 +36,25 @@ private val c2: List<Pair<String, PairUi>> = listOf(
     "c2-expired" to PairUi.Expired("K7M2QX9P"),
     "c2-failed" to PairUi.Failed,
 )
+private val cardTexts = listOf("이름은 민수", "주로 출퇴근길을 다녀요", "차에서는 음악 얘기를 좋아해요")
+
+private fun Paparazzi.recordSteps(theme: String, dark: Boolean) {
+    snapshot("step-whale-$theme") { HeyTheme(dark) { SpokenStepScreen(SpokenStepUi(OnboardingStep.WhaleIntro, line = "바다 너머에서 온 안내자야.")) } }
+    snapshot("step-q1-listening-$theme") { HeyTheme(dark) { SpokenStepScreen(SpokenStepUi(OnboardingStep.Q1, line = "뭐라고 불러 줄까?", phase = TalkPhase.Listening)) } }
+    snapshot("step-q2-heard-$theme") { HeyTheme(dark) { SpokenStepScreen(SpokenStepUi(OnboardingStep.Q2, line = "이 차로 주로 어디 다녀?", phase = TalkPhase.Thinking, heard = "회사랑 집")) } }
+    snapshot("step-q3-idle-$theme") { HeyTheme(dark) { SpokenStepScreen(SpokenStepUi(OnboardingStep.Q3, line = "차 안에서는 어떤 얘기가 좋아?")) } }
+    snapshot("step-summon-$theme") { HeyTheme(dark) { SummonScreen(summoned = false, onSummon = {}) } }
+    snapshot("step-summoned-$theme") { HeyTheme(dark) { SummonScreen(summoned = true, onSummon = {}) } }
+    snapshot("step-greeting-$theme") { HeyTheme(dark) { SpokenStepScreen(SpokenStepUi(OnboardingStep.Greeting, line = "반가워, 민수! 난 헤이리야.")) } }
+    snapshot("step-cards-$theme") { HeyTheme(dark) { KnownCardsScreen(items = cardTexts, loading = false, onNext = {}) } }
+    snapshot("step-cards-memory-off-$theme") { HeyTheme(dark) { KnownCardsScreen(items = emptyList(), loading = false, onNext = {}, memoryEnabled = false) } }
+    snapshot("step-look-$theme") { HeyTheme(dark) { FirstLookScreen(look = CharacterLook(), onLook = {}, onDone = {}) } }
+}
 
 private fun Paparazzi.recordAll() {
     listOf(true, false).forEach { dark ->
         val theme = if (dark) "dark" else "light"
+        recordSteps(theme, dark)
         c1.forEach { (name, ui) ->
             snapshot("$name-$theme") {
                 HeyTheme(dark) { OnboardingScreen(ui, {}, {}, {}, {}, {}, {}) }

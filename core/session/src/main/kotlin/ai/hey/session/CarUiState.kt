@@ -52,6 +52,9 @@ enum class TurnSource {
 
     /** A friend's message or arrival (`friend_message` / `friend_arrived`): spoken at once, never opens the microphone, text only when parked. */
     Friend,
+
+    /** D-48 onboarding: a spoken step (whale line, whale question, heyri's first greeting) and the listening for the answer to it. */
+    Onboarding,
 }
 
 /** A friend's message as shown on C3 while parked (subtitle); never set while driving. */
@@ -88,6 +91,10 @@ data class CarUiState(
     val reply: String = "",
     /** The friend message on screen (parked only, cleared a few seconds after it was read or when the car moves). */
     val friendNote: FriendNote? = null,
+    /** Where the first-run flow is (D-48 2); [OnboardingStep.Done] when it is over or was never started. */
+    val onboardingStep: ai.hey.model.OnboardingStep = ai.hey.model.OnboardingStep.Done,
+    /** What the whale / heyri just said in the spoken onboarding step (parked screen text; never shown while driving). */
+    val onboardingLine: String = "",
     val error: TurnError? = null,
     /** Mouth openness 0..3 of the character while a voice plays (D-13). */
     val mouth: Int = 0,

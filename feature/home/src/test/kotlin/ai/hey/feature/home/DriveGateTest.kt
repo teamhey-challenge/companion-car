@@ -27,6 +27,18 @@ class DriveGateTest {
         assertNull(gateRoute(Routes.Onboarding, parked = true, needsOnboarding = true))
     }
 
+    @Test fun `D-48 an active onboarding flow wins over home and keeps parked screens on the flow, driving still shows drive`() {
+        assertEquals(Routes.Flow, gateRoute(Routes.Drive, parked = true, needsOnboarding = false, flowActive = true))
+        assertEquals(Routes.Flow, gateRoute(Routes.Home, parked = true, needsOnboarding = false, flowActive = true))
+        assertEquals(Routes.Flow, gateRoute(Routes.Onboarding, parked = true, needsOnboarding = false, flowActive = true))
+        assertNull(gateRoute(Routes.Flow, parked = true, needsOnboarding = false, flowActive = true))
+        assertEquals(Routes.Drive, gateRoute(Routes.Flow, parked = false, needsOnboarding = false, flowActive = true))
+        assertNull(gateRoute(Routes.Drive, parked = false, needsOnboarding = false, flowActive = true))
+        // the flow ended: leave it for home
+        assertEquals(Routes.Home, gateRoute(Routes.Flow, parked = true, needsOnboarding = false, flowActive = false))
+        // consent first
+        assertEquals(Routes.Onboarding, gateRoute(Routes.Drive, parked = true, needsOnboarding = true, flowActive = true))
+    }
     @Test fun `a fault is spoken once per cause while driving and never while parked`() {
         val said = ArrayList<CarFault>()
         val a = FaultAnnouncer { said += it }

@@ -3,6 +3,7 @@ package ai.hey.session
 import ai.hey.model.CompanionSettings
 import ai.hey.model.Friend
 import ai.hey.model.ConsentType
+import ai.hey.model.OnboardingStep
 import ai.hey.model.HeyLog
 import ai.hey.model.MemoryItem
 import ai.hey.model.PairingPhase
@@ -264,9 +265,13 @@ class CompanionRepository(
         _state.update { it.copy(onboarding = OnboardingUi(saving = true)) }
         scope.launch {
             try {
+                val before = storage.consents.value.granted
                 val required = listOf(ConsentType.Terms, ConsentType.Privacy, ConsentType.Record, ConsentType.ExternalAi)
                 for (t in required) withRetry { api.postConsent(t, CONSENT_VERSION, true) }
                 withRetry { api.postConsent(ConsentType.Memory, CONSENT_VERSION, memory) }
+                // D-48: a first consent starts the spoken onboarding (whale, questions, summon, greeting, cards, look, phone);
+                // the step is stored before the consent flips needsOnboarding, so the app never shows an empty moment.
+                if (storage.onboardingStep.value == OnboardingStep.Done && ConsentType.Record !in before) storage.setOnboardingStep(OnboardingStep.WhaleIntro)
                 for (t in required) storage.setConsent(t, true)
                 storage.setConsent(ConsentType.Memory, memory)
                 // AC-4.1-06: "기억 저장" off here is the same value as C7.

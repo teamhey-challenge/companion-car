@@ -41,6 +41,12 @@ object ClientFrames {
     fun turnEnd(turnId: String): String = obj { put("type", "turn.end"); put("turnId", turnId) }
 
     fun turnCancel(turnId: String): String = obj { put("type", "turn.cancel"); put("turnId", turnId) }
+    /** D-48 onboarding: "speak this step now" (`whale_intro`, `q1`, `q2`, `q3`, `greeting`). */
+    fun onboarding(step: String): String = obj { put("type", "onboarding"); put("step", step) }
+
+    /** The recognized answer to a whale question (`q1`..`q3`). */
+    fun onboardingAnswer(step: String, text: String): String =
+        obj { put("type", "onboarding.answer"); put("step", step); put("text", text) }
 
     /** Vehicle context; null values are left out. Keys follow contract.md. */
     fun ctx(s: VehicleSignals): String = obj {
@@ -84,8 +90,14 @@ sealed interface ServerFrame {
     /** A friend's message: the spoken line follows as `reply.*` + PCM with turn id [id]; [text] is only shown when parked. */
     data class FriendMessage(val id: String, val fromName: String, val text: String) : ServerFrame
 
-    /** A friend arrived (spoken only): same audio path as [FriendMessage]. */
-    data class FriendArrived(val id: String, val fromName: String, val place: String?) : ServerFrame
+    /** A friend arrived (spoken only): same audio path as [FriendMessage]. D-52: the frame never carries, and the app never reads, a place. */
+    data class FriendArrived(val id: String, val fromName: String) : ServerFrame
+
+    /** The spoken onboarding line follows as `reply.*` + PCM with turn id [id], like a friend line. */
+    data class Onboarding(val step: String, val id: String, val text: String) : ServerFrame
+
+    /** The server's verdict on an answer: `ok = false` (safety filter) means ask again. */
+    data class OnboardingAck(val step: String, val ok: Boolean, val name: String?) : ServerFrame
     data class Settings(val settings: CompanionSettings) : ServerFrame
 
     /** The pairing status changed on the server (a phone or the car ended it: [phase] None). */
@@ -127,7 +139,13 @@ private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
         )
         "proactive" -> ServerFrame.Proactive(s("id") ?: return null, s("reason").orEmpty())
         "friend_message" -> ServerFrame.FriendMessage(s("id") ?: return null, s("fromName").orEmpty(), s("text") ?: return null)
-        "friend_arrived" -> ServerFrame.FriendArrived(s("id") ?: return null, s("fromName").orEmpty(), s("place"))
+        "friend_arrived" -> ServerFrame.FriendArrived(s("id") ?: return null, s("fromName").orEmpty())
+        "onboarding" -> ServerFrame.Onboarding(s("step") ?: return null, s("id") ?: return null, s("text").orEmpty())
+        "onboarding.ack" -> ServerFrame.OnboardingAck(
+            step = s("step") ?: return null,
+            ok = o["ok"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: return null,
+            name = s("name"),
+        )
         "settings" -> ServerFrame.Settings(parseCompanionSettings(o["settings"]?.jsonObject ?: return null) ?: return null)
         "pairing" -> ServerFrame.Pairing(
             when (s("status")) {
