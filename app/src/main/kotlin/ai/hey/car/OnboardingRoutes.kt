@@ -124,6 +124,7 @@ private fun ConsentStepRoute(
         onMemoryChange = { memory = it },
         onStart = { started = true; companion.submitConsent(memory) },
         onStartWithoutVoice = { requiredShown = true },
+        onDecline = { voice = false; requiredShown = true },
         onPolicy = {
             try {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

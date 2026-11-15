@@ -51,7 +51,7 @@ private fun CarPaparazzi.recordAll() {
     listOf(true, false).forEach { dark ->
         val theme = if (dark) "dark" else "light"
         recordSteps(theme, dark)
-        consent.forEach { (name, ui) -> shot("$name-$theme", dark) { OnboardingScreen(ui, {}, {}, {}, {}, {}) } }
+        consent.forEach { (name, ui) -> shot("$name-$theme", dark) { OnboardingScreen(ui, {}, {}, {}, {}, {}, {}) } }
     }
 }
 
