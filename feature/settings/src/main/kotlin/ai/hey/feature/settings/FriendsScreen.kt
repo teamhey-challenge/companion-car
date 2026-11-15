@@ -25,6 +25,7 @@ import ai.hey.designsystem.layout.fillSize
 import ai.hey.designsystem.layout.fillWidth
 import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTone
+import ai.hey.model.FriendRequest
 import ai.hey.session.AcceptUi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -74,6 +75,7 @@ data class FriendsUi(
     val reporting: Boolean = false,
     val reportFailed: Boolean = false,
     val accept: AcceptUi = AcceptUi.None,
+    val incoming: List<FriendRequest> = emptyList(),
 )
 
 class FriendsActions(
@@ -84,8 +86,10 @@ class FriendsActions(
     val onRetryMessages: () -> Unit,
     val onReadAloud: (MessageUi) -> Unit,
     val onReport: (String) -> Unit,
-    val onAccept: (String) -> Unit = {},
+    val onSendRequest: (String) -> Unit = {},
     val onClearAccept: () -> Unit = {},
+    val onAcceptRequest: (String) -> Unit = {},
+    val onDeclineRequest: (String) -> Unit = {},
 )
 
 /**
@@ -130,7 +134,7 @@ fun FriendsScreen(ui: FriendsUi, view: FriendsView, actions: FriendsActions, mod
                     FriendsView.Code -> FriendCode(ui.code, actions.onCreateCode)
                     is FriendsView.Inbox -> Inbox(ui, view.friendId, actions)
                     is FriendsView.Message -> MessageDetail(ui, open, actions)
-                    FriendsView.Invite -> InviteAccept(ui.accept, actions)
+                    FriendsView.Invite -> InviteAccept(ui, actions)
                 }
             }
         }
@@ -232,8 +236,10 @@ internal fun cleanInviteCode(raw: String): String = raw.filter { it.isLetterOrDi
 internal const val INVITE_CODE_LENGTH = 6
 
 @Composable
-private fun ai.hey.designsystem.layout.HeyStackScope.InviteAccept(accept: AcceptUi, actions: FriendsActions) {
+private fun ai.hey.designsystem.layout.HeyStackScope.InviteAccept(ui: FriendsUi, actions: FriendsActions) {
+    val accept = ui.accept
     var code by remember { mutableStateOf("") }
+    val request = ui.incoming.firstOrNull()
     PageHeading(stringResource(R.string.friends_invite_title))
     if (accept is AcceptUi.Done) {
         EmptyPanel(
@@ -241,6 +247,31 @@ private fun ai.hey.designsystem.layout.HeyStackScope.InviteAccept(accept: Accept
             stringResource(R.string.friends_invite_done_title, accept.name),
             Modifier.fillWidth(),
             message = stringResource(R.string.friends_invite_done_message),
+        )
+        HeyButton(stringResource(R.string.friends_invite_to_list), { actions.onClearAccept(); actions.onNavigate(FriendsView.List) }, variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large)
+        return
+    }
+    if (request != null) {
+        // 받은 초대: the person asking, answered here (parked only like everything in this area).
+        EmptyPanel(
+            HeyIcons.User,
+            stringResource(R.string.friends_request_title, request.fromName),
+            Modifier.fillWidth(),
+            message = stringResource(R.string.friends_request_message),
+        )
+        if (accept is AcceptUi.Failed) HeyNotice(stringResource(R.string.friends_invite_offline), HeyStatusTone.Danger, persistent = true)
+        HStack(HeyGap.G16, align = HeyAlign.Center) {
+            HeyButton(stringResource(R.string.friends_invite_accept), { actions.onAcceptRequest(request.id) }, variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large)
+            HeyButton(stringResource(R.string.friends_invite_later), { actions.onDeclineRequest(request.id) }, variant = HeyButtonVariant.Secondary)
+        }
+        return
+    }
+    if (accept is AcceptUi.Sent) {
+        EmptyPanel(
+            HeyIcons.Check,
+            stringResource(R.string.friends_invite_sent_title),
+            Modifier.fillWidth(),
+            message = stringResource(R.string.friends_invite_sent_message, accept.name),
         )
         HeyButton(stringResource(R.string.friends_invite_to_list), { actions.onClearAccept(); actions.onNavigate(FriendsView.List) }, variant = HeyButtonVariant.Primary, size = HeyButtonSize.Large)
         return
@@ -271,8 +302,8 @@ private fun ai.hey.designsystem.layout.HeyStackScope.InviteAccept(accept: Accept
     }
     HStack(HeyGap.G16, align = HeyAlign.Center) {
         HeyButton(
-            stringResource(R.string.friends_invite_accept),
-            { actions.onAccept(code) },
+            stringResource(R.string.friends_invite_send),
+            { actions.onSendRequest(code) },
             variant = HeyButtonVariant.Primary,
             size = HeyButtonSize.Large,
             enabled = code.length == INVITE_CODE_LENGTH && accept != AcceptUi.Working,
