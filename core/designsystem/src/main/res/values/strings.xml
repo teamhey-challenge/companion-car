@@ -45,4 +45,7 @@
     <string name="phone_link_account_unknown">Google 계정으로 연결돼 있어요</string>
     <string name="phone_link_offline">연결이 끊겼어요</string>
     <string name="phone_link_offline_hint">인터넷에 다시 연결되면 QR을 보여 드려요</string>
+    <string name="phone_link_card_title">폰에서도 함께해요</string>
+    <string name="phone_link_card_body">Google 로그인 후 QR을 찍거나 8자리 코드를 입력해 주세요.</string>
+    <string name="phone_link_new_qr">새 QR 보기</string>
 </resources>

@@ -21,8 +21,12 @@ import ai.hey.designsystem.component.HeySegmentOption
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyTextField
 import ai.hey.designsystem.component.PageHeading
-import ai.hey.designsystem.component.ToggleRow
-import ai.hey.designsystem.component.ToggleSurface
+import ai.hey.designsystem.component.HeyCardChevron
+import ai.hey.designsystem.component.HeyCardList
+import ai.hey.designsystem.component.HeyCardRow
+import ai.hey.designsystem.component.HeyCardSwitch
+import ai.hey.designsystem.component.HeyFaceBadge
+import ai.hey.designsystem.component.HeyListCard
 import ai.hey.designsystem.icon.HeyIcons
 import ai.hey.designsystem.layout.HStack
 import ai.hey.designsystem.layout.HeyAlign
@@ -145,7 +149,7 @@ fun SettingsScreen(
             driving = false,
         ) {
             HeyScrollColumn(HeyGap.G32, modifier = Modifier.fillSize()) {
-                PageHeading(stringResource(R.string.settings_title), subtitle = stringResource(R.string.settings_subtitle))
+                PageHeading(stringResource(R.string.settings_title))
                 // The save-failure line sits in the page flow: the header and the back button stay visible.
                 if (notice != null) HeyNotice(notice, HeyStatusTone.Danger, persistent = true)
                 if (settings.accountFailure != AccountFailureUi.None) {
@@ -160,56 +164,86 @@ fun SettingsScreen(
                         )
                     }
                 }
-                NameSection(settings.name, enabled = SettingField.Name !in settings.saving, onSave = onName)
                 val proactiveSaving = SettingField.Proactive in settings.saving
-                ToggleRow(
-                    label = stringResource(R.string.settings_proactive),
-                    description = stringResource(R.string.settings_proactive_desc),
-                    checked = settings.proactive != ProactiveUi.Off,
-                    // Turning it back on returns to the usual step, not to a step the driver never picked.
-                    onCheckedChange = { on -> onProactive(if (on) ProactiveUi.Normal else ProactiveUi.Off) },
-                    saving = proactiveSaving,
-                    surface = ToggleSurface.Info,
-                    modifier = Modifier.fillWidth(),
-                )
-                if (settings.proactive != ProactiveUi.Off) {
-                    ChoiceRow(
-                        options = listOf(
-                            HeySegmentOption(ProactiveUi.Low, stringResource(R.string.settings_freq_low)),
-                            HeySegmentOption(ProactiveUi.Normal, stringResource(R.string.settings_freq_normal)),
-                            HeySegmentOption(ProactiveUi.High, stringResource(R.string.settings_freq_high)),
-                        ),
-                        selected = settings.proactive,
-                        onSelect = onProactive,
-                        label = stringResource(R.string.settings_freq),
-                        enabled = !proactiveSaving,
-                        modifier = Modifier.fillWidth(),
-                    )
+                var lookOpen by remember { mutableStateOf(false) }
+                // Studio C7 (`.mk-card` list): one white card per group, the switch or chevron at the end of its row.
+                HeyCardList {
+                    HeyListCard(onClick = { lookOpen = !lookOpen }) {
+                        HeyCardRow(
+                            title = stringResource(R.string.settings_look_card),
+                            line = stringResource(R.string.settings_look_card_line),
+                            leading = { HeyFaceBadge(settings.look) },
+                            trailing = { HeyCardChevron() },
+                        )
+                        if (lookOpen) {
+                            VStack(HeyGap.G16, modifier = Modifier.fillWidth()) {
+                                LookSection(settings.look, onLook, enabled = SettingField.Look !in settings.saving)
+                            }
+                        }
+                    }
+                    HeyListCard {
+                        HeyCardRow(
+                            title = stringResource(R.string.settings_proactive),
+                            line = stringResource(R.string.settings_proactive_desc),
+                            trailing = {
+                                HeyCardSwitch(
+                                    label = stringResource(R.string.settings_proactive),
+                                    checked = settings.proactive != ProactiveUi.Off,
+                                    // Turning it back on returns to the usual step, not to a step the driver never picked.
+                                    onCheckedChange = { on -> onProactive(if (on) ProactiveUi.Normal else ProactiveUi.Off) },
+                                    saving = proactiveSaving,
+                                )
+                            },
+                        )
+                        if (settings.proactive != ProactiveUi.Off) {
+                            HeyCardRow(
+                                title = stringResource(R.string.settings_freq_title),
+                                line = stringResource(R.string.settings_freq_line),
+                                trailing = {
+                                    ChoiceRow(
+                                        options = listOf(
+                                            HeySegmentOption(ProactiveUi.Low, stringResource(R.string.settings_freq_low)),
+                                            HeySegmentOption(ProactiveUi.Normal, stringResource(R.string.settings_freq_normal)),
+                                            HeySegmentOption(ProactiveUi.High, stringResource(R.string.settings_freq_high)),
+                                        ),
+                                        selected = settings.proactive,
+                                        onSelect = onProactive,
+                                        enabled = !proactiveSaving,
+                                    )
+                                },
+                            )
+                        }
+                    }
+                    HeyListCard {
+                        HeyCardRow(
+                            title = stringResource(R.string.settings_memory),
+                            line = stringResource(R.string.settings_memory_desc),
+                            trailing = {
+                                HeyCardSwitch(
+                                    label = stringResource(R.string.settings_memory),
+                                    checked = settings.memoryEnabled,
+                                    onCheckedChange = onMemoryEnabled,
+                                    saving = SettingField.Memory in settings.saving,
+                                )
+                            },
+                        )
+                    }
+                    // 폰 연결 opens the phone-connection screen, where the unlink is confirmed.
+                    HeyListCard(onClick = onOpenPair) {
+                        HeyCardRow(
+                            title = stringResource(R.string.phone_title),
+                            line = stringResource(if (settings.phonePaired) R.string.settings_phone_linked else R.string.settings_phone_unlinked),
+                            trailing = { HeyCardChevron() },
+                        )
+                    }
                 }
-                ToggleRow(
-                    label = stringResource(R.string.settings_memory),
-                    description = stringResource(R.string.settings_memory_desc),
-                    checked = settings.memoryEnabled,
-                    onCheckedChange = onMemoryEnabled,
-                    saving = SettingField.Memory in settings.saving,
-                    surface = ToggleSurface.Plain,
-                    modifier = Modifier.fillWidth(),
-                )
-                // Studio C7 order: 폰 연결 해제 (the unlink itself is confirmed on the phone-connection screen), then the withdraw.
-                HeyButton(
-                    stringResource(if (settings.phonePaired) R.string.settings_unpair else R.string.settings_pair),
-                    onOpenPair,
-                    variant = HeyButtonVariant.Secondary,
-                    icon = if (settings.phonePaired) HeyIcons.Link else HeyIcons.Qr,
-                )
                 HeyButton(
                     stringResource(R.string.settings_withdraw),
                     { confirm = Confirm.Withdraw },
-                    variant = HeyButtonVariant.Danger,
-                    icon = HeyIcons.Trash,
+                    variant = HeyButtonVariant.Secondary,
                 )
-                // Not in the studio's C7 (car-only extras): 꾸미기 (D-41), 말투, 기억 보기, the debug server field.
-                LookSection(settings.look, onLook, enabled = SettingField.Look !in settings.saving)
+                // Not in the studio's C7 (car-only extras): 부를 이름, 말투, 기억 보기, the debug server field.
+                HeyListCard { NameSection(settings.name, enabled = SettingField.Name !in settings.saving, onSave = onName) }
                 ChoiceRow(
                     options = listOf(
                         HeySegmentOption(SpeechUi.Banmal, stringResource(R.string.settings_speech_banmal)),

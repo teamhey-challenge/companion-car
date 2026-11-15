@@ -3,10 +3,13 @@
     <string name="settings_back">뒤로</string>
     <string name="settings_parked">정차 중</string>
     <string name="settings_title">설정</string>
-    <string name="settings_subtitle">말을 거는 순간도, 기억하는 방식도 내가 정해요.</string>
     <string name="settings_proactive">먼저 말 걸기</string>
     <string name="settings_proactive_desc">새로운 일이 생기면 먼저 말을 걸어요</string>
-    <string name="settings_freq">말 거는 빈도 (5분 · 10분 · 20분 · 끔)</string>
+    <string name="settings_freq_title">말 거는 빈도</string>
+    <string name="settings_freq_line">5분 · 10분 · 20분 · 끔</string>
+    <string name="settings_look_card">헤이리 꾸미기</string>
+    <string name="settings_look_card_line">오늘은 어떤 모습이 좋을까요?</string>
+    <string name="settings_phone_unlinked">아직 연결되지 않았어요</string>
     <string name="settings_freq_low">20분</string>
     <string name="settings_freq_normal">10분</string>
     <string name="settings_freq_high">5분</string>
