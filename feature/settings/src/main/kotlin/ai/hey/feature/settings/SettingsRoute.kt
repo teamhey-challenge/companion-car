@@ -1,5 +1,6 @@
 package ai.hey.feature.settings
 
+import ai.hey.designsystem.component.CharacterLook
 import ai.hey.model.ProactiveLevel
 import ai.hey.model.SpeechStyle
 import ai.hey.session.CompanionCommands
@@ -39,6 +40,7 @@ fun settingsUi(state: CompanionState, lastField: SettingField?): SettingsUi = Se
     memoryEnabled = state.settings.memoryEnabled,
     speech = if (state.settings.speech == SpeechStyle.Jondaetmal) SpeechUi.Jondaetmal else SpeechUi.Banmal,
     phonePaired = state.paired,
+    look = CharacterLook(state.settings.bodyColor, state.settings.hat, state.settings.neck),
     saving = if (state.settingsSave == SettingsSave.Saving && lastField != null) setOf(lastField) else emptySet(),
     accountFailure = when (state.accountFailure) {
         AccountFailure.None -> AccountFailureUi.None
@@ -77,6 +79,10 @@ fun SettingsRoute(
         onSpeech = { style ->
             last = SettingField.Speech
             commands.updateSettings { it.copy(speech = if (style == SpeechUi.Jondaetmal) SpeechStyle.Jondaetmal else SpeechStyle.Banmal) }
+        },
+        onLook = { look ->
+            last = SettingField.Look
+            commands.updateSettings { it.copy(bodyColor = look.bodyColor, hat = look.hat, neck = look.neck) }
         },
         onOpenMemory = onOpenMemory,
         onOpenPair = onOpenPair,

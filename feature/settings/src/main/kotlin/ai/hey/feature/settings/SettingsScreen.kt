@@ -1,7 +1,14 @@
 package ai.hey.feature.settings
 
 import ai.hey.designsystem.component.CarFrame
+import ai.hey.designsystem.component.CharacterLook
+import ai.hey.designsystem.component.CharacterSize
+import ai.hey.designsystem.component.CharacterSlot
 import ai.hey.designsystem.component.ChoiceRow
+import ai.hey.designsystem.component.HeyText
+import ai.hey.designsystem.layout.VStack
+import ai.hey.designsystem.theme.HeyTextVariant
+import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.designsystem.component.ConfirmDialog
 import ai.hey.designsystem.component.HeaderBar
 import ai.hey.designsystem.component.HeyButton
@@ -46,7 +53,7 @@ enum class AccountFailureUi { None, Withdraw, Unpair }
 enum class SettingsPending { None, Unpair, Withdraw }
 
 /** The settings fields that can have a save in flight (each saves on its own, PRD 4.7.5 Partial = n/a). */
-enum class SettingField { Proactive, Memory, Speech }
+enum class SettingField { Proactive, Memory, Speech, Look }
 
 data class SettingsUi(
     val proactive: ProactiveUi = ProactiveUi.Normal,
@@ -59,6 +66,8 @@ data class SettingsUi(
     val accountFailure: AccountFailureUi = AccountFailureUi.None,
     /** The confirmed unpair/withdraw request that is still running (its dialog shows work; the retry button waits). */
     val pending: SettingsPending = SettingsPending.None,
+    /** What the character wears (D-41); the 꾸미기 section previews and edits it. */
+    val look: CharacterLook = CharacterLook(),
 )
 
 /** The debug-only server address field; null in release builds, which never show it. */
@@ -79,6 +88,7 @@ fun SettingsScreen(
     onProactive: (ProactiveUi) -> Unit,
     onMemoryEnabled: (Boolean) -> Unit,
     onSpeech: (SpeechUi) -> Unit,
+    onLook: (CharacterLook) -> Unit,
     onOpenMemory: () -> Unit,
     /** C7 is the only way to C2 (D-33): shown while no phone is linked. */
     onOpenPair: () -> Unit,
@@ -206,6 +216,7 @@ fun SettingsScreen(
                     enabled = SettingField.Speech !in settings.saving,
                     modifier = Modifier.fillWidth(),
                 )
+                LookSection(settings.look, onLook, enabled = SettingField.Look !in settings.saving)
                 HStack(HeyGap.G16, align = HeyAlign.Center) {
                     HeyButton(
                         stringResource(R.string.settings_open_memory),
@@ -235,6 +246,61 @@ fun SettingsScreen(
                     { confirm = Confirm.Withdraw },
                     variant = HeyButtonVariant.Danger,
                     icon = HeyIcons.Trash,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 꾸미기 (D-41, parked only like all of C7): the Rive file's two bodies, two hats and the scarf, picked with the same choice
+ * pills as the other settings and previewed on the still of exactly that combination. No shop, no payment.
+ */
+@Composable
+internal fun LookSection(look: CharacterLook, onLook: (CharacterLook) -> Unit, enabled: Boolean) {
+    val dark = HeyTheme.dark
+    VStack(HeyGap.G16, modifier = Modifier.fillWidth()) {
+        HeyText(stringResource(R.string.settings_look), variant = HeyTextVariant.Heading)
+        HStack(HeyGap.G32, align = HeyAlign.Center, modifier = Modifier.fillWidth()) {
+            CharacterSlot(
+                size = CharacterSize.Small,
+                look = look,
+                contentDescription = stringResource(R.string.settings_look_preview),
+            )
+            VStack(HeyGap.G16, modifier = Modifier.grow()) {
+                ChoiceRow(
+                    options = listOf(
+                        HeySegmentOption(0, stringResource(R.string.settings_look_body_aqua)),
+                        HeySegmentOption(1, stringResource(R.string.settings_look_body_peach)),
+                    ),
+                    selected = look.body(dark),
+                    onSelect = { onLook(look.copy(bodyColor = it)) },
+                    label = stringResource(R.string.settings_look_body),
+                    enabled = enabled,
+                    modifier = Modifier.fillWidth(),
+                )
+                ChoiceRow(
+                    options = listOf(
+                        HeySegmentOption(0, stringResource(R.string.settings_look_none)),
+                        HeySegmentOption(1, stringResource(R.string.settings_look_hat_beanie)),
+                        HeySegmentOption(2, stringResource(R.string.settings_look_hat_bucket)),
+                    ),
+                    selected = look.hat,
+                    onSelect = { onLook(look.copy(hat = it)) },
+                    label = stringResource(R.string.settings_look_hat),
+                    enabled = enabled,
+                    modifier = Modifier.fillWidth(),
+                )
+                ChoiceRow(
+                    options = listOf(
+                        HeySegmentOption(0, stringResource(R.string.settings_look_none)),
+                        HeySegmentOption(1, stringResource(R.string.settings_look_neck_scarf)),
+                    ),
+                    selected = look.neck,
+                    onSelect = { onLook(look.copy(neck = it)) },
+                    label = stringResource(R.string.settings_look_neck),
+                    enabled = enabled,
+                    modifier = Modifier.fillWidth(),
                 )
             }
         }

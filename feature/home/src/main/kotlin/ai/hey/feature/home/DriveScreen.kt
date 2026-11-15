@@ -49,7 +49,7 @@ fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, onEndListening: () -> Unit, modi
             modifier = Modifier.fillSize().driveTop(),
             align = HeyAlign.Center,
         ) {
-            CharacterSlot(size = CharacterSize.Driving, live = null, contentDescription = stringResource(R.string.home_character))
+            CharacterSlot(size = CharacterSize.Driving, look = ui.look, live = null, contentDescription = stringResource(R.string.home_character))
             // The status line has a fixed slot so the button never moves between phases (mockup C5).
             VStack(HeyGap.G4, modifier = Modifier.driveStatusSlot(), align = HeyAlign.Center) {
                 when {

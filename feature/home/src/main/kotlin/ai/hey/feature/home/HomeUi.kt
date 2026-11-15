@@ -1,5 +1,6 @@
 package ai.hey.feature.home
 
+import ai.hey.designsystem.component.CharacterLook
 import ai.hey.session.CarFault
 import ai.hey.session.CarUiState
 import ai.hey.session.TurnSource
@@ -22,6 +23,8 @@ data class HomeUi(
     /** Mouth openness 0..3 from the playback loudness (D-13). */
     val mouth: Int = 0,
     val source: TurnSource = TurnSource.Ptt,
+    /** What the character wears (D-41); C3/C4 pass it to Rive, C5/C8/fallback draw the matching still. */
+    val look: CharacterLook = CharacterLook(),
 ) {
     /** C4 is C3 with a turn on it. */
     val inTalk: Boolean get() = phase != HomePhase.Idle || reply.isNotEmpty() || heard != null
@@ -42,5 +45,6 @@ fun homeUi(s: CarUiState): HomeUi {
         reply = s.reply,
         mouth = if (phase == HomePhase.Speaking) s.mouth else 0,
         source = s.source,
+        look = CharacterLook(s.companion.settings.bodyColor, s.companion.settings.hat, s.companion.settings.neck),
     )
 }

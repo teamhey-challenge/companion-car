@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
@@ -40,6 +41,10 @@ data class CompanionSettings(
     val memoryEnabled: Boolean = true,
     val speech: SpeechStyle = SpeechStyle.Banmal,
     val nickname: String? = null,
+    /** Look (D-41, Rive values): bodyColor 0 aqua / 1 peach / null = follows the theme; hat 0 none / 1 beanie / 2 bucket; neck 0 none / 1 scarf. */
+    val bodyColor: Int? = null,
+    val hat: Int = 1,
+    val neck: Int = 0,
 )
 
 fun parseCompanionSettings(o: JsonObject): CompanionSettings? {
@@ -50,6 +55,9 @@ fun parseCompanionSettings(o: JsonObject): CompanionSettings? {
         memoryEnabled = o["memoryEnabled"]?.jsonPrimitive?.booleanOrNull ?: d.memoryEnabled,
         speech = SpeechStyle.fromWire(o["speech"]?.jsonPrimitive?.contentOrNull) ?: return null,
         nickname = if (nick is JsonPrimitive) nick.contentOrNull else null,
+        bodyColor = (o["bodyColor"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 0..1 },
+        hat = (o["hat"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 0..2 } ?: d.hat,
+        neck = (o["neck"] as? JsonPrimitive)?.intOrNull?.takeIf { it in 0..1 } ?: d.neck,
     )
 }
 
@@ -59,6 +67,9 @@ fun settingsPatch(from: CompanionSettings, to: CompanionSettings): JsonObject = 
     if (to.memoryEnabled != from.memoryEnabled) put("memoryEnabled", to.memoryEnabled)
     if (to.speech != from.speech) put("speech", to.speech.wire)
     if (to.nickname != from.nickname) put("nickname", to.nickname)
+    if (to.bodyColor != from.bodyColor) put("bodyColor", to.bodyColor)
+    if (to.hat != from.hat) put("hat", to.hat)
+    if (to.neck != from.neck) put("neck", to.neck)
 }
 
 enum class MemoryKind { Fact, Summary }

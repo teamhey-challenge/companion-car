@@ -157,10 +157,33 @@ enum class CharacterSize(val width: Dp, val height: Dp) {
     Small(150.dp, 160.dp),
 }
 
-/** Theme-aware still: aqua in the sea theme, peach in the deep-sea theme (design "헤이파리 테마별 기본 색상"). */
+/**
+ * What the character wears (D-41), in the `hey_companion.riv` Companion view-model values (rive-rig.md): [bodyColor] 0 aqua,
+ * 1 peach, null = follow the theme (light 0, dark 1); [hat] 0 none, 1 beanie (the default look), 2 bucket; [neck] 0 none, 1 scarf.
+ */
+data class CharacterLook(val bodyColor: Int? = null, val hat: Int = 1, val neck: Int = 0) {
+    fun body(dark: Boolean): Int = (bodyColor ?: if (dark) 1 else 0).coerceIn(0, 1)
+}
+
+private val Stills: Array<IntArray> = arrayOf(
+    intArrayOf(R.drawable.hey_character_still_b0_h0_n0, R.drawable.hey_character_still_b0_h0_n1),
+    intArrayOf(R.drawable.hey_character_still_b0_h1_n0, R.drawable.hey_character_still_b0_h1_n1),
+    intArrayOf(R.drawable.hey_character_still_b0_h2_n0, R.drawable.hey_character_still_b0_h2_n1),
+    intArrayOf(R.drawable.hey_character_still_b1_h0_n0, R.drawable.hey_character_still_b1_h0_n1),
+    intArrayOf(R.drawable.hey_character_still_b1_h1_n0, R.drawable.hey_character_still_b1_h1_n1),
+    intArrayOf(R.drawable.hey_character_still_b1_h2_n0, R.drawable.hey_character_still_b1_h2_n1),
+)
+
+/**
+ * The still for [look]: one prepared WebP per combination (2 bodies x 3 hats x 2 necks), frames taken from the Rive file itself
+ * in its parked pose, so C5 stays a plain image (D-11) and matches what C3 shows. Default look: aqua in the sea theme, peach in
+ * the deep-sea theme (design "헤이파리 테마별 기본 색상").
+ */
 @Composable
-fun characterStill(): Painter =
-    painterResource(if (HeyTheme.dark) R.drawable.hey_character_still_peach else R.drawable.hey_character_still)
+fun characterStill(look: CharacterLook = CharacterLook()): Painter {
+    val row = look.body(HeyTheme.dark) * 3 + look.hat.coerceIn(0, 2)
+    return painterResource(Stills[row][look.neck.coerceIn(0, 1)])
+}
 
 /**
  * Hosts the character. With no [live] view it draws [still]; a Rive view (or any composable) passed as [live] replaces the
@@ -170,7 +193,8 @@ fun characterStill(): Painter =
 fun CharacterSlot(
     size: CharacterSize,
     modifier: Modifier = Modifier,
-    still: Painter = characterStill(),
+    look: CharacterLook = CharacterLook(),
+    still: Painter = characterStill(look),
     live: (@Composable () -> Unit)? = null,
     contentDescription: String? = null,
 ) {
