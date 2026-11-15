@@ -102,6 +102,9 @@ data class ReceivedMessage(val id: String, val friendId: String, val friendName:
 /** POST /v1/friends/invites: a 6-character code (24 h) and the link the QR carries. */
 data class FriendInvite(val code: String, val url: String, val expiresAt: String)
 
+/** GET /v1/friends/requests `incoming` item: [fromName] wants to be my friend; accepting makes both sides friends. */
+data class FriendRequest(val id: String, val fromName: String, val createdAt: String)
+
 /**
  * What the car reads from itself and tells the server in `ctx` frames (contract.md). Null = signal not available.
  * Coordinates are never part of it.

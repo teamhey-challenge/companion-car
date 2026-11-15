@@ -47,7 +47,8 @@ private val friendShots: List<Pair<String, FriendShot>> = listOf(
     "friends-invite" to FriendShot(ready, FriendsView.Invite),
     "friends-invite-working" to FriendShot(ready.copy(accept = ai.hey.session.AcceptUi.Working), FriendsView.Invite),
     "friends-invite-unknown" to FriendShot(ready.copy(accept = ai.hey.session.AcceptUi.Failed(ai.hey.session.AcceptUi.Reason.Unknown)), FriendsView.Invite),
-    "friends-invite-expired" to FriendShot(ready.copy(accept = ai.hey.session.AcceptUi.Failed(ai.hey.session.AcceptUi.Reason.Expired)), FriendsView.Invite),
+    "friends-invite-sent" to FriendShot(ready.copy(accept = ai.hey.session.AcceptUi.Sent("서연")), FriendsView.Invite),
+    "friends-invite-request" to FriendShot(ready.copy(incoming = listOf(ai.hey.model.FriendRequest("r1", "서연", "2026-11-15T12:00:00Z"))), FriendsView.Invite),
     "friends-invite-done" to FriendShot(ready.copy(accept = ai.hey.session.AcceptUi.Done("서연")), FriendsView.Invite),
 )
 

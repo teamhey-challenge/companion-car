@@ -362,21 +362,26 @@ class CompanionRepositoryTest {
         cs.cancel()
     }
 
-    @Test fun `accepting a friend's code adds the friend and maps each server answer to a reason`() = runTest {
+    @Test fun `a friend code sends a request, an incoming request is accepted into the friend list, and each server answer maps to a reason`() = runTest {
         val cs = scope(testScheduler)
         val rig = Rig(cs)
-        rig.repo.acceptInvite("zzzzzz")
+        rig.repo.sendFriendRequest("zzzzzz")
         assertEquals(AcceptUi.Failed(AcceptUi.Reason.Unknown), rig.repo.state.value.friends.accept)
-        rig.repo.acceptInvite("abc234")
-        assertEquals(AcceptUi.Done("서연"), rig.repo.state.value.friends.accept)
-        assertTrue(rig.repo.state.value.friends.items.any { it.name == "서연" })
-        rig.repo.acceptInvite("ABC234")
-        assertEquals(AcceptUi.Failed(AcceptUi.Reason.Already), rig.repo.state.value.friends.accept)
+        rig.repo.sendFriendRequest("abc234")
+        assertEquals(AcceptUi.Sent("서연"), rig.repo.state.value.friends.accept)
+        assertEquals(listOf("ABC234"), rig.api.sentRequests)
         rig.api.failing = true
-        rig.repo.acceptInvite("ABC234")
+        rig.repo.sendFriendRequest("ABC234")
         assertEquals(AcceptUi.Failed(AcceptUi.Reason.Offline), rig.repo.state.value.friends.accept)
+        rig.api.failing = false
         rig.repo.clearAccept()
         assertEquals(AcceptUi.None, rig.repo.state.value.friends.accept)
+        rig.repo.loadRequests()
+        assertEquals(listOf("서연"), rig.repo.state.value.friends.incoming.map { it.fromName })
+        rig.repo.acceptRequest("r1")
+        assertEquals(AcceptUi.Done("서연"), rig.repo.state.value.friends.accept)
+        assertTrue(rig.repo.state.value.friends.incoming.isEmpty())
+        assertTrue(rig.repo.state.value.friends.items.any { it.name == "서연" })
         cs.cancel()
     }
 }

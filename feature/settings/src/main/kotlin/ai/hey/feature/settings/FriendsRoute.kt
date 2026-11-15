@@ -44,6 +44,7 @@ fun friendsUi(state: CompanionState, zone: ZoneId = ZoneId.systemDefault()): Fri
         reporting = state.messages.reporting,
         reportFailed = state.messages.reportFailed,
         accept = state.friends.accept,
+        incoming = state.friends.incoming,
     )
 }
 
@@ -62,7 +63,7 @@ fun FriendsRoute(
     initial: FriendsView = FriendsView.List,
 ) {
     var view by remember { mutableStateOf(initial) }
-    LaunchedEffect(Unit) { commands.loadFriends(); commands.loadMessages() }
+    LaunchedEffect(Unit) { commands.loadFriends(); commands.loadMessages(); commands.loadRequests() }
     LaunchedEffect(view is FriendsView.Code) { if (view is FriendsView.Code) commands.createInvite() }
     DisposableEffect(Unit) { onDispose { commands.closeInvite(); commands.clearAccept() } }
     // A reported message leaves the list: the open card then closes by itself.
@@ -83,8 +84,10 @@ fun FriendsRoute(
                 }
             },
             onCreateCode = commands::createInvite,
-            onAccept = commands::acceptInvite,
+            onSendRequest = commands::sendFriendRequest,
             onClearAccept = commands::clearAccept,
+            onAcceptRequest = commands::acceptRequest,
+            onDeclineRequest = commands::declineRequest,
             onRetryFriends = commands::loadFriends,
             onRetryMessages = commands::loadMessages,
             onReadAloud = { onReadAloud(it.text, it.sender) },

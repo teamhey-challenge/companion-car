@@ -3,6 +3,7 @@ package ai.hey.session
 import ai.hey.model.CompanionSettings
 import ai.hey.model.Friend
 import ai.hey.model.FriendInvite
+import ai.hey.model.FriendRequest
 import ai.hey.model.ReceivedMessage
 import ai.hey.model.ConsentRecord
 import ai.hey.model.ConsentType
@@ -133,15 +134,36 @@ class FakeCompanionApi(
         return FriendInvite("K7M2QX", "https://hey.lastmile.ltd/f/K7M2QX", "2026-11-16T00:00:00Z")
     }
 
-    /** Codes the fake server knows: code -> the friend that owns it. */
-    val inviteOwners = mutableMapOf("ABC234" to Friend("f9", "서연", "2026-11-15", false))
+    /** Friend codes the fake server knows: code -> owner name. */
+    val codeOwners = mutableMapOf("ABC234" to "서연")
+    val incomingRequests = mutableListOf(FriendRequest("r1", "서연", "2026-11-15T12:00:00Z"))
+    val sentRequests = ArrayList<String>()
 
-    override suspend fun acceptFriendInvite(code: String): Friend {
+    override suspend fun sendFriendRequest(code: String): String {
         check()
-        val f = inviteOwners[code.uppercase()] ?: throw HttpFailure(404)
-        if (friendList.any { it.id == f.id }) throw HttpFailure(409)
+        val name = codeOwners[code.uppercase()] ?: throw HttpFailure(404)
+        if (friendList.any { it.name == name }) throw HttpFailure(409)
+        sentRequests += code.uppercase()
+        return name
+    }
+
+    override suspend fun friendRequests(): List<FriendRequest> {
+        check()
+        return incomingRequests.toList()
+    }
+
+    override suspend fun acceptFriendRequest(id: String): Friend {
+        check()
+        val r = incomingRequests.firstOrNull { it.id == id } ?: throw HttpFailure(404)
+        incomingRequests.remove(r)
+        val f = Friend("f-$id", r.fromName, "2026-11-15", false)
         friendList += f
         return f
+    }
+
+    override suspend fun declineFriendRequest(id: String) {
+        check()
+        incomingRequests.removeAll { it.id == id }
     }
 
     override suspend fun friends(): List<Friend> {

@@ -2,6 +2,7 @@ package ai.hey.session
 
 import ai.hey.model.CompanionSettings
 import ai.hey.model.Friend
+import ai.hey.model.FriendRequest
 import ai.hey.model.ReceivedMessage
 import ai.hey.model.ConsentType
 import ai.hey.model.OnboardingStep
@@ -97,22 +98,27 @@ sealed interface InviteUi {
     data object Failed : InviteUi
 }
 
-/** "친구 초대 수락": the code a friend showed is sent to the server; [Done] carries the new friend's name. */
+/**
+ * "친구 초대": [Sending] a friend's code as a request, [Sent] = the friend was asked (name) and will be told when they accept,
+ * [Failed] with the server's reason. [incoming] requests are answered with 수락하기 / 나중에.
+ */
 sealed interface AcceptUi {
     data object None : AcceptUi
     data object Working : AcceptUi
+    data class Sent(val name: String) : AcceptUi
     data class Done(val name: String) : AcceptUi
     enum class Reason { Unknown, Expired, Own, Already, Offline }
     data class Failed(val reason: Reason) : AcceptUi
 }
 
-/** Friend section of settings: read-only list of the friends (adding, removing and 도착 알리기 are phone-only, D-47). */
+/** Friend section of settings: the friends (adding and removing are on the phone, D-47), plus friend requests by code. */
 data class FriendsState(
     val items: List<Friend> = emptyList(),
     val loaded: Boolean = false,
     val failed: Boolean = false,
     val invite: InviteUi = InviteUi.None,
     val accept: AcceptUi = AcceptUi.None,
+    val incoming: List<FriendRequest> = emptyList(),
 )
 
 /** The received-messages view: [reporting] = the report request is in flight, [reportFailed] = the last one did not go through. */
@@ -177,9 +183,14 @@ interface CompanionCommands {
     fun createInvite()
     fun closeInvite()
 
-    /** "친구 초대 수락": accepts the friend's code (6 characters); the friend list is reloaded on success. */
-    fun acceptInvite(code: String)
+    /** "친구 추가": sends a friend request for the 6-character code a friend showed. */
+    fun sendFriendRequest(code: String)
     fun clearAccept()
+
+    /** Reads the incoming friend requests ("받은 초대"). */
+    fun loadRequests()
+    fun acceptRequest(id: String)
+    fun declineRequest(id: String)
 
     /** Received messages opened: reads what friends sent me. */
     fun loadMessages()
@@ -287,23 +298,51 @@ class CompanionRepository(
 
     override fun closeInvite() = _state.update { it.copy(friends = it.friends.copy(invite = InviteUi.None)) }
 
-    override fun acceptInvite(code: String) {
+    override fun sendFriendRequest(code: String) {
         if (_state.value.friends.accept == AcceptUi.Working) return
         _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Working)) }
         scope.launch {
             try {
-                val f = api.acceptFriendInvite(code.trim())
-                _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Done(f.name), items = (it.friends.items.filter { x -> x.id != f.id } + f), loaded = true)) }
+                val name = api.sendFriendRequest(code.trim())
+                _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Sent(name))) }
             } catch (e: HttpFailure) {
-                log("accept", e)
+                log("request", e)
                 val why = when (e.code) {
                     404 -> AcceptUi.Reason.Unknown
                     410 -> AcceptUi.Reason.Expired
-                    400 -> AcceptUi.Reason.Own
-                    409 -> AcceptUi.Reason.Already
+                    409 -> AcceptUi.Reason.Already // self / already friends / friend limit: the car says one thing for all three
                     else -> AcceptUi.Reason.Offline
                 }
                 _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Failed(why))) }
+            } catch (e: IOException) {
+                log("request", e)
+                _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Failed(AcceptUi.Reason.Offline))) }
+            }
+        }
+    }
+
+    override fun clearAccept() = _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.None)) }
+
+    override fun loadRequests() {
+        scope.launch {
+            runCatching { api.friendRequests() }
+                .onSuccess { list -> _state.update { it.copy(friends = it.friends.copy(incoming = list)) } }
+                .onFailure { log("requests", it) }
+        }
+    }
+
+    override fun acceptRequest(id: String) {
+        scope.launch {
+            try {
+                val f = api.acceptFriendRequest(id)
+                _state.update {
+                    it.copy(friends = it.friends.copy(
+                        accept = AcceptUi.Done(f.name),
+                        incoming = it.friends.incoming.filter { r -> r.id != id },
+                        items = it.friends.items.filter { x -> x.id != f.id } + f,
+                        loaded = true,
+                    ))
+                }
             } catch (e: IOException) {
                 log("accept", e)
                 _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.Failed(AcceptUi.Reason.Offline))) }
@@ -311,7 +350,12 @@ class CompanionRepository(
         }
     }
 
-    override fun clearAccept() = _state.update { it.copy(friends = it.friends.copy(accept = AcceptUi.None)) }
+    override fun declineRequest(id: String) {
+        scope.launch {
+            runCatching { api.declineFriendRequest(id) }.onFailure { log("decline", it) }
+            _state.update { it.copy(friends = it.friends.copy(incoming = it.friends.incoming.filter { r -> r.id != id })) }
+        }
+    }
 
     // ---------------------------------------------------------------- received messages
 

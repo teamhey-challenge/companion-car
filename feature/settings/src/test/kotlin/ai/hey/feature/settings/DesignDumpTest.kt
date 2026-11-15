@@ -46,7 +46,9 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
     )
     dump("car-friends") { FriendsScreen(ui, FriendsView.List, noop) }
     dump("car-friends-code") { FriendsScreen(ui, FriendsView.Code, noop) }
-    dump("car-friends-invite") { FriendsScreen(ui, FriendsView.Invite, noop) }
+    dump("car-friends-invite") {
+        FriendsScreen(ui.copy(incoming = listOf(ai.hey.model.FriendRequest("r1", "서연", "2026-11-15T12:00:00Z"))), FriendsView.Invite, noop)
+    }
 }
 
 class SettingsDesignDump1600Test {

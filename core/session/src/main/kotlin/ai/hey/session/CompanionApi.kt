@@ -3,6 +3,7 @@ package ai.hey.session
 import ai.hey.model.CompanionSettings
 import ai.hey.model.Friend
 import ai.hey.model.FriendInvite
+import ai.hey.model.FriendRequest
 import ai.hey.model.ReceivedMessage
 import ai.hey.model.ConsentRecord
 import ai.hey.model.ConsentType
@@ -63,8 +64,17 @@ interface CompanionApi {
     /** POST /v1/friends/invites */
     suspend fun createFriendInvite(): FriendInvite
 
-    /** POST /v1/friends/invites/{code}/accept: the code a friend showed (their "내 친구 코드"); 404 unknown, 410 expired, 400 own code, 409 already friends or friend limit. */
-    suspend fun acceptFriendInvite(code: String): Friend
+    /** POST /v1/friends/requests {code}: asks the owner of a friend code to be friends; returns the receiver's name. 404 unknown, 410 expired, 409 self/already friends/limit. */
+    suspend fun sendFriendRequest(code: String): String
+
+    /** GET /v1/friends/requests: only `incoming` is used on the car. */
+    suspend fun friendRequests(): List<FriendRequest>
+
+    /** POST /v1/friends/requests/{id}/accept */
+    suspend fun acceptFriendRequest(id: String): Friend
+
+    /** POST /v1/friends/requests/{id}/decline (204) */
+    suspend fun declineFriendRequest(id: String)
 
     /** GET /v1/friends (a plain JSON array). */
     suspend fun friends(): List<Friend>
@@ -198,14 +208,34 @@ class HttpCompanionApi(
         )
     }
 
-    override suspend fun acceptFriendInvite(code: String): Friend = decodeBody {
-        val o = parse(call("POST", "v1/friends/invites/${code.uppercase()}/accept")).jsonObject.getValue("friend").jsonObject
+    override suspend fun sendFriendRequest(code: String): String = decodeBody {
+        val o = parse(call("POST", "v1/friends/requests", buildJsonObject { put("code", code.uppercase()) })).jsonObject
+        o["to"]?.jsonObject?.get("name")?.jsonPrimitive?.contentOrNull.orEmpty()
+    }
+
+    override suspend fun friendRequests(): List<FriendRequest> = decodeBody {
+        parse(call("GET", "v1/friends/requests")).jsonObject["incoming"]?.jsonArray.orEmpty().mapNotNull {
+            val r = it.jsonObject
+            FriendRequest(
+                id = r["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
+                fromName = r["from"]?.jsonObject?.get("name")?.jsonPrimitive?.contentOrNull.orEmpty(),
+                createdAt = r["createdAt"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            )
+        }
+    }
+
+    override suspend fun acceptFriendRequest(id: String): Friend = decodeBody {
+        val o = parse(call("POST", "v1/friends/requests/$id/accept")).jsonObject.getValue("friend").jsonObject
         Friend(
             id = o.getValue("id").jsonPrimitive.content,
             name = o["name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             since = o["since"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             shareArrival = o["shareArrival"]?.jsonPrimitive?.contentOrNull == "true",
         )
+    }
+
+    override suspend fun declineFriendRequest(id: String) {
+        call("POST", "v1/friends/requests/$id/decline")
     }
 
     override suspend fun friends(): List<Friend> = decodeBody {
