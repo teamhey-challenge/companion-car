@@ -84,3 +84,9 @@ fun HeyFaceBadge(look: CharacterLook, modifier: Modifier = Modifier) {
 fun HeyCardChevron(modifier: Modifier = Modifier) {
     InkIcon(HeyIcons.ChevronRight, null, HeyTheme.colors.fgMuted, modifier)
 }
+
+/** The 28dp breathing space between two rows inside one list card (studio 45 between the lines, 8 already from the card). */
+@Composable
+fun HeyCardGap() {
+    androidx.compose.foundation.layout.Spacer(Modifier.size(width = 1.dp, height = 28.dp))
+}

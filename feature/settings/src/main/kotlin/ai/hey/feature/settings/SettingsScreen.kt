@@ -21,6 +21,7 @@ import ai.hey.designsystem.component.HeySegmentOption
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyTextField
 import ai.hey.designsystem.component.PageHeading
+import ai.hey.designsystem.component.HeyCardGap
 import ai.hey.designsystem.component.HeyCardChevron
 import ai.hey.designsystem.component.HeyCardList
 import ai.hey.designsystem.component.HeyCardRow
@@ -196,6 +197,7 @@ fun SettingsScreen(
                             },
                         )
                         if (settings.proactive != ProactiveUi.Off) {
+                            HeyCardGap()
                             HeyCardRow(
                                 title = stringResource(R.string.settings_freq_title),
                                 line = stringResource(R.string.settings_freq_line),
