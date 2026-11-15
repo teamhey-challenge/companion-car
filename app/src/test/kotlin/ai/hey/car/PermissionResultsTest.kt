@@ -29,8 +29,19 @@ class PermissionResultsTest {
         assertEquals(false, mayAskPermission(parked = false)) // driving or unknown
     }
 
-    @Test fun microphoneIsTheOnlyRuntimePermissionRequested() {
-        assertEquals(setOf(mic), requestedRuntimePermissions)
-        assertEquals(false, notif in requestedRuntimePermissions)
+    @Test fun notificationsAreAskedOnlyParkedAfterConsentAndOnboardingOnce() {
+        fun ask(parked: Boolean = true, consented: Boolean = true, done: Boolean = true, asked: Boolean = false, granted: Boolean = false, sdk: Int = 34) =
+            shouldAskNotifications(parked, consented, done, asked, granted, sdk)
+        assertEquals(true, ask())
+        assertEquals(false, ask(parked = false)) // driving or unknown
+        assertEquals(false, ask(consented = false))
+        assertEquals(false, ask(done = false))
+        assertEquals(false, ask(asked = true)) // a denial is kept
+        assertEquals(false, ask(granted = true))
+        assertEquals(false, ask(sdk = 32)) // no runtime permission before Android 13
+    }
+
+    @Test fun microphoneAndNotificationsAreTheRuntimePermissionsRequested() {
+        assertEquals(setOf(mic, notif), requestedRuntimePermissions)
     }
 }
