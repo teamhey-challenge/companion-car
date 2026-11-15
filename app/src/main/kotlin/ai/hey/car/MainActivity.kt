@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
             HeyTheme(dark = dark) {
                 NavHost(nav, startDestination = Routes.Drive) {
                     composable(Routes.Drive) {
-                        DriveScreen(ui, onTalk = repository::startTalk, onEndListening = repository::endListening, reducedMotion = reducedMotion())
+                        DriveScreen(ui, onTalk = repository::startTalk, onEndConversation = repository::cancelTalk, reducedMotion = drivingStill())
                     }
                     composable(Routes.Onboarding) {
                         OnboardingRoute(
@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity() {
                             ui = ui,
                             reducedMotion = reducedMotion(),
                             onTalk = repository::startTalk,
-                            onEndListening = repository::endListening,
+                            onEndConversation = repository::cancelTalk,
                             onMemory = { state.parked?.let { if (nav.graph.findNode(Routes.Memory) != null) nav.navigate(Routes.Memory) } },
                             onSettings = { state.parked?.let { nav.navigate(Routes.Settings) } },
                             onFaultAction = { fault -> onFaultAction(fault, repository::startTalk, repository::reconnectNow) },
@@ -181,14 +181,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** C5 motion (PLEOS-195): the app is on screen. Off while stopped/hidden, the still character replaces the Rive rig. */
+    private var appShown by mutableStateOf(false)
+
+    /** Debug/settings input: the runtime says the motion budget is exceeded, C5 shows the still. Nothing sets it automatically yet. */
+    private var motionBudgetExceeded by mutableStateOf(false)
+
+    override fun onStart() {
+        super.onStart()
+        appShown = true
+    }
+
+    override fun onStop() {
+        appShown = false
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
-        (application as HeyApp).graph.repository.refreshVoicePermission()
+        val app = application as HeyApp
+        app.graph.repository.refreshVoicePermission()
+        motionBudgetExceeded = getSharedPreferences("hey_debug", MODE_PRIVATE).getBoolean("motion_budget_exceeded", false)
     }
 
     /** Motion off in the system (animator scale 0) is reduced motion: the still image replaces Rive, bubbles stop. */
     private fun reducedMotion(): Boolean =
         Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+
+    /** C5 draws the live rig by default (D-52 3); still when the OS reduces motion, the app is hidden, or the budget input is on. */
+    private fun drivingStill(): Boolean = reducedMotion() || !appShown || motionBudgetExceeded
 
     private fun onFaultAction(fault: CarFault, retryTalk: () -> Unit, reconnect: () -> Unit) {
         when (fault) {

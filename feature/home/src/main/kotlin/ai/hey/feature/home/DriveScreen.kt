@@ -2,9 +2,8 @@ package ai.hey.feature.home
 
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
-import ai.hey.designsystem.component.PageBackground
+import ai.hey.designsystem.component.OceanBackground
 import ai.hey.designsystem.component.StatusBadge
-import ai.hey.designsystem.component.StopListeningButton
 import ai.hey.designsystem.component.TalkButton
 import ai.hey.designsystem.component.TalkPhase
 import ai.hey.designsystem.layout.HeyAlign
@@ -29,15 +28,15 @@ const val DRIVE_WAIT_MILLIS = 2_000L
 /**
  * C5 while the car moves (or its motion is unknown): the same animated Rive character as C3 (D-48 8, cancels D-45: idle motion,
  * mouth from the voice level, talk states; still image while Rive loads, fails or motion is reduced), one status line and one
- * big button. Rive is capped at 30 fps (see [RiveCharacter]). There are no subtitles (D-25) and no way to another screen.
- * The one button is the D-24 button: idle starts listening; listening ends it and sends; while the character talks it is
- * "그만 듣기" and stops the voice and listens. Errors never change this screen (voice only, see FaultAnnouncer).
+ * big button. Rive is capped at 30 fps (see [RiveCharacter]); the ocean background and the status wave move like C3 (D-48 8).
+ * There are no subtitles (D-25) and no way to another screen. The one button is "말하기" while idle and "대화 마치기" in every
+ * active phase (PLEOS-194): it ends the conversation. Errors never change this screen (voice only, see FaultAnnouncer).
  */
 @Composable
 fun DriveScreen(
     ui: HomeUi,
     onTalk: () -> Unit,
-    onEndListening: () -> Unit,
+    onEndConversation: () -> Unit,
     modifier: Modifier = Modifier,
     reducedMotion: Boolean = true,
 ) {
@@ -50,7 +49,7 @@ fun DriveScreen(
             waiting = true
         }
     }
-    PageBackground(modifier = modifier.fillSize()) {
+    OceanBackground(modifier = modifier.fillSize(), animated = !reducedMotion) {
         VStack(
             gap = HeyGap.G4,
             modifier = Modifier.fillSize().driveTop(),
@@ -61,19 +60,15 @@ fun DriveScreen(
             VStack(HeyGap.G4, modifier = Modifier.driveStatusSlot(), align = HeyAlign.Center) {
                 when {
                     ui.phase == HomePhase.Listening || ui.phase == HomePhase.Speaking ->
-                        StatusBadge(phase = ui.phase.toTalk(), driving = true, animated = false)
-                    waiting -> StatusBadge(phase = TalkPhase.Thinking, driving = true, animated = false)
+                        StatusBadge(phase = ui.phase.toTalk(), driving = true, animated = !reducedMotion)
+                    waiting -> StatusBadge(phase = TalkPhase.Thinking, driving = true, animated = !reducedMotion)
                 }
             }
-            if (ui.phase == HomePhase.Speaking) {
-                StopListeningButton(onClick = onTalk)
-            } else {
-                TalkButton(
-                    phase = ui.phase.toTalk(),
-                    onClick = if (ui.phase == HomePhase.Listening) onEndListening else onTalk,
-                    driving = true,
-                )
-            }
+            TalkButton(
+                phase = ui.phase.toTalk(),
+                onClick = if (ui.phase == HomePhase.Idle) onTalk else onEndConversation,
+                driving = true,
+            )
         }
     }
 }

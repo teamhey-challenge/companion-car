@@ -301,6 +301,41 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
+    @Test fun `PLEOS-194 the end-conversation button cancels listening, thinking and speaking`() = runTest {
+        val cs = rigScope(testScheduler)
+        val (hang, _) = askThenHang()
+        val rig = Rig(cs, hang)
+        // thinking: the sentence is sent, the button ends it and tells the server
+        rig.repo.startTalk()
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        rig.repo.cancelTalk()
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertNull(rig.repo.state.value.heard)
+        assertTrue(rig.transport.sent.any { it.contains("turn.cancel") })
+        // speaking: the voice stops and the screen is idle again
+        val audio = FakeReplyAudio()
+        val rig2 = Rig(cs, ScriptedVoiceInput(text = "안녕", silentAfterReply = true), audio = audio)
+        rig2.repo.startTalk()
+        rig2.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.Pcm(24_000, 1)))
+        assertEquals(TurnState.Replying, rig2.repo.state.value.turn)
+        rig2.repo.cancelTalk()
+        assertEquals(TurnState.Idle, rig2.repo.state.value.turn)
+        assertEquals("", rig2.repo.state.value.reply)
+        assertEquals(1, audio.stops)
+        // listening: the microphone closes without sending anything
+        val rig3 = Rig(cs, askThenHang().first)
+        rig3.repo.startTalk()
+        rig3.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.None))
+        rig3.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", "오늘 어땠어?", 100, 900))
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Listening, rig3.repo.state.value.turn)
+        rig3.transport.sent.clear()
+        rig3.repo.cancelTalk()
+        assertEquals(TurnState.Idle, rig3.repo.state.value.turn)
+        assertEquals(emptyList<String>(), types(rig3.transport.sent))
+        cs.cancel()
+    }
+
     @Test fun `the server going away mid reply hands the rest to the Pleos voice`() = runTest {
         val cs = rigScope(testScheduler)
         val audio = FakeReplyAudio()

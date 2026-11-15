@@ -275,7 +275,7 @@ private fun glassInk(phase: TalkPhase, pressed: Boolean, blocked: Boolean): Glas
     }
 }
 
-/** One pill used by [TalkButton] and [StopListeningButton]: 96dp x 320dp minimum, icon + label, tap or press-and-hold. */
+/** One pill used by [TalkButton] and [GlassButton]: 96dp x 320dp minimum, icon + label, tap or press-and-hold. */
 @Composable
 private fun TalkPill(
     label: String,
@@ -346,11 +346,12 @@ private fun TalkPill(
 }
 
 /**
- * The primary action. 96dp high, 320dp wide at least. Idle/Listening can be pressed; Thinking and
- * Speaking (and [enabled] = false) draw the blocked look and take no input.
+ * The primary action. 96dp high, 320dp wide at least. Idle is "말하기" and starts a conversation; in every other phase
+ * (Listening, Thinking, Speaking) the same button is "대화 마치기" and ends it (PLEOS-194: never a send button). Only
+ * [enabled] = false draws the blocked look and takes no input.
  *
- * Parked: pass [onHoldStart]/[onHoldEnd] for press-and-hold ("누르고 말하기"); [onClick] is then only the accessibility
- * action. Driving: leave them null; a tap is [onClick] ("말하기" / "말하기 끝내기").
+ * Parked: pass [onHoldStart]/[onHoldEnd] for press-and-hold; [onClick] is then only the accessibility
+ * action. Driving: leave them null; a tap is [onClick].
  */
 @Composable
 fun TalkButton(
@@ -363,37 +364,17 @@ fun TalkButton(
     onHoldStart: (() -> Unit)? = null,
     onHoldEnd: (() -> Unit)? = null,
 ) {
-    val blocked = !enabled || phase == TalkPhase.Thinking || phase == TalkPhase.Speaking
-    val text = label ?: stringResource(
-        when (phase) {
-            TalkPhase.Idle -> if (driving) R.string.hey_talk_idle_driving else R.string.hey_talk_idle
-            TalkPhase.Listening -> if (driving) R.string.hey_talk_listening_driving else R.string.hey_talk_listening
-            TalkPhase.Thinking -> R.string.hey_talk_thinking
-            TalkPhase.Speaking -> R.string.hey_talk_speaking
-        },
-    )
+    val idle = phase == TalkPhase.Idle
+    val text = label ?: stringResource(if (idle) R.string.hey_talk_idle else R.string.hey_talk_end)
     TalkPill(
         label = text,
-        icon = if (phase == TalkPhase.Listening) HeyIcons.Pause else HeyIcons.Mic,
+        icon = if (idle) HeyIcons.Mic else HeyIcons.Close,
         phase = phase,
-        blocked = blocked,
+        blocked = !enabled,
         onClick = onClick,
         modifier = modifier,
         onHoldStart = if (driving) null else onHoldStart,
         onHoldEnd = if (driving) null else onHoldEnd,
-    )
-}
-
-/** "그만 듣기": stops the assistant's speech and listens (D-24). Same size and look as the talk button, always pressable. */
-@Composable
-fun StopListeningButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    TalkPill(
-        label = stringResource(R.string.hey_stop_listening),
-        icon = HeyIcons.Pause,
-        phase = TalkPhase.Idle,
-        blocked = false,
-        onClick = onClick,
-        modifier = modifier,
     )
 }
 

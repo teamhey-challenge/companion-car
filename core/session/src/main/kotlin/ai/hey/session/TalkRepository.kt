@@ -536,11 +536,16 @@ class TalkRepository(
         if (_state.value.turn == TurnState.Listening) voiceInput.finishListening()
     }
 
+    /**
+     * "대화 마치기" (PLEOS-194): the one button of every active phase. Stops the microphone, drops a turn that has not been
+     * answered, silences the voice and clears the conversation on screen, so the home is idle again.
+     */
     override fun cancelTalk() {
         voiceJob?.cancel()
         turnId?.let { link.send(ClientFrames.turnCancel(it)) }
         silence()
         endTurn(null)
+        _state.update { it.copy(heard = null, reply = "") }
     }
 
     override fun voicePermissionResult(granted: Boolean) {
