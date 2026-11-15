@@ -1,5 +1,6 @@
 package ai.hey.feature.onboarding
 
+import ai.hey.designsystem.component.OnbSpace
 import ai.hey.designsystem.component.OnbGap
 import ai.hey.designsystem.component.OnbGhostButton
 import ai.hey.designsystem.component.OnbPrimaryButton
@@ -73,14 +74,14 @@ fun QrStepScreen(
                 modifier = if (compact) Modifier.carCharacterBand() else Modifier,
             ) {
                 OnbPanelTitle(stringResource(R.string.onb_qr_title), compact = compact)
-                OnbGap(20.dp)
+                OnbGap(OnbSpace.S20)
                 OnbPanelText(stringResource(R.string.onb_qr_body), large = true)
-                OnbGap(40.dp)
+                OnbGap(OnbSpace.S40)
                 PhoneLinkPanel(ui, compact = compact)
-                OnbGap(40.dp)
+                OnbGap(OnbSpace.S40)
                 if (ui is PhoneLinkUi.Offline) {
                     OnbPrimaryButton(stringResource(R.string.pair_retry), onRetry)
-                    OnbGap(16.dp)
+                    OnbGap(OnbSpace.S16)
                 }
                 HStack(HeyGap.G16, modifier = Modifier.fillWidth()) {
                     OnbGhostButton(stringResource(R.string.onb_qr_later), onLater, Modifier.grow())
