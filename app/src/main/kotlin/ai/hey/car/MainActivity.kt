@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
             HeyTheme(dark = dark) {
                 NavHost(nav, startDestination = Routes.Drive) {
                     composable(Routes.Drive) {
-                        DriveScreen(ui, onTalk = repository::startTalk, onEndListening = repository::endListening)
+                        DriveScreen(ui, onTalk = repository::startTalk, onEndListening = repository::endListening, reducedMotion = reducedMotion())
                     }
                     composable(Routes.Onboarding) {
                         OnboardingRoute(
