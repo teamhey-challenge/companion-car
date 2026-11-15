@@ -197,10 +197,11 @@ fun MemoryScreen(
 
 private fun Modifier.widenForStudioMargin(): Modifier = layout { m, c ->
     val left = 16.dp.roundToPx()
-    val extra = left + 40.dp.roundToPx()
-    val w = c.maxWidth + extra
-    val p = m.measure(c.copy(minWidth = w, maxWidth = w))
-    layout(c.maxWidth, p.height) { p.place(-left, 0) }
+    val up = 91.dp.roundToPx()
+    val w = c.maxWidth + left + 40.dp.roundToPx()
+    val h = c.maxHeight + up
+    val p = m.measure(c.copy(minWidth = w, maxWidth = w, minHeight = h, maxHeight = h))
+    layout(c.maxWidth, c.maxHeight) { p.place(-left, -up) }
 }
 
 /** Moves the drawing without changing the space the node takes. */
