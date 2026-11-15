@@ -405,19 +405,28 @@ fun ErrorPanel(
 
 /**
  * Caption of what is being said/heard: at most 3 lines, ellipsis; composes nothing while [driving] (no captions on the road).
- * Mockup `.caption`: 32 regular, line height 1.5, default ink.
+ * Mockup `.caption`: 32 regular, line height 1.5, default ink. [hint] is the small muted line under it ("말을 마치면 알아서 보내요").
  */
 @Composable
 fun Subtitle(
     text: String,
     modifier: Modifier = Modifier,
     driving: Boolean = false,
+    hint: String? = null,
 ) {
     if (driving) return
-    InkText(
-        text, HeyTheme.colors.fgDefault, modifier, maxLines = 3,
-        weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 32.sp, lineHeight = 48.sp,
-    )
+    VStack(HeyGap.G16, modifier = modifier) {
+        InkText(
+            text, HeyTheme.colors.fgDefault, maxLines = 3,
+            weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 32.sp, lineHeight = 48.sp,
+        )
+        if (hint != null) {
+            InkText(
+                hint, HeyTheme.colors.fgMuted, maxLines = 2,
+                weight = androidx.compose.ui.text.font.FontWeight.Normal, size = 23.sp, lineHeight = 37.sp,
+            )
+        }
+    }
 }
 
 // ---------------------------------------------------------------- QR panel

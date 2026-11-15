@@ -1,6 +1,7 @@
 package ai.hey.feature.home
 
 import ai.hey.session.CarFault
+import ai.hey.session.TurnSource
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
 import ai.hey.designsystem.component.ErrorKind
@@ -15,7 +16,6 @@ import ai.hey.designsystem.component.HeyTextAlign
 import ai.hey.designsystem.component.OceanBackground
 import ai.hey.designsystem.component.PageHeading
 import ai.hey.designsystem.component.StatusBadge
-import ai.hey.designsystem.component.StopListeningButton
 import ai.hey.designsystem.component.Subtitle
 import ai.hey.designsystem.component.TalkButton
 import ai.hey.designsystem.component.TalkPhase
@@ -105,7 +105,7 @@ fun HomeScreen(
     ui: HomeUi,
     reducedMotion: Boolean,
     onTalk: () -> Unit,
-    onEndListening: () -> Unit,
+    onEndConversation: () -> Unit,
     onMemory: () -> Unit,
     onSettings: () -> Unit,
     onFaultAction: (CarFault) -> Unit,
@@ -138,14 +138,14 @@ fun HomeScreen(
                             )
                         }
                         VStack(HeyGap.G24, modifier = Modifier.fillWidth(), arrange = HeyArrange.SpaceBetween) {
-                            HomeLeft(ui, onTalk, onEndListening, onFaultAction)
+                            HomeLeft(ui, onTalk, onEndConversation, onFaultAction)
                         }
                     }
                 } else {
                     // Mockup grid: the body starts 48 under the header row gap; left column 713 wide, right column 679, 48 between.
                     HStack(HeyGap.G32, modifier = Modifier.fillSize().carBodyTop()) {
                         VStack(HeyGap.G24, modifier = Modifier.grow().fillSize().carGutter(), arrange = HeyArrange.SpaceBetween) {
-                            HomeLeft(ui, onTalk, onEndListening, onFaultAction)
+                            HomeLeft(ui, onTalk, onEndConversation, onFaultAction)
                         }
                         VStack(HeyGap.G8, modifier = Modifier.carSideColumn().fillHeight(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
                             HomeCharacter(
@@ -166,7 +166,7 @@ fun HomeScreen(
 private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
     ui: HomeUi,
     onTalk: () -> Unit,
-    onEndListening: () -> Unit,
+    onEndConversation: () -> Unit,
     onFaultAction: (CarFault) -> Unit,
 ) {
     val fault = ui.fault
@@ -179,11 +179,19 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
         talking || ui.inTalk -> {
             VStack(HeyGap.G24) {
                 StatusBadge(phase = ui.phase.toTalk(), connection = HeyConnection.Online)
-                // Mockup C4 shows the driver's words as the caption while thinking, the character's own reply while it speaks;
-                // the caption starts 8 lower than the stack gap (status slot 40 + 24 + 8).
+                // PLEOS-194 captions (parked only): listening says what the app does ("말을 마치면 알아서 보내요", after an answer
+                // "더 하고 싶은 말 있어요?"); thinking shows the driver's words, speaking the character's own reply.
                 VStack(HeyGap.G16, modifier = Modifier.carCaptionTop()) {
-                    if (ui.phase == HomePhase.Thinking) ui.heard?.let { Subtitle(text = "“$it”") }
-                    if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)
+                    if (ui.phase == HomePhase.Listening) {
+                        val followUp = ui.source == TurnSource.AutoListen
+                        Subtitle(
+                            text = stringResource(if (followUp) R.string.talk_followup_caption else R.string.talk_listening_caption),
+                            hint = stringResource(if (followUp) R.string.talk_followup_hint else R.string.talk_listening_hint),
+                        )
+                    } else {
+                        if (ui.phase == HomePhase.Thinking) ui.heard?.let { Subtitle(text = "“$it”") }
+                        if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)
+                    }
                     ui.friendNote?.let { Subtitle(text = it) }
                 }
             }
@@ -196,16 +204,12 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
             }
         }
     }
-    // D-48 4: one tap opens listening, the end of the speech sends by itself (a tap while listening sends at once), and after the
-    // answer the microphone stays open a few seconds. While the character talks the button is "그만 듣기" (D-24).
+    // PLEOS-194: idle is "말하기"; in every active phase (listening, thinking, speaking) the same button is "대화 마치기" and
+    // ends the conversation (cancels listening and playback). It never sends: the end of the speech sends by itself.
     if (faultShown) return
-    if (ui.phase == HomePhase.Speaking) {
-        StopListeningButton(onClick = onTalk)
-    } else {
-        TalkButton(
-            phase = ui.phase.toTalk(),
-            onClick = if (ui.phase == HomePhase.Listening) onEndListening else onTalk,
-            enabled = talking || ui.inTalk || ui.online,
-        )
-    }
+    TalkButton(
+        phase = ui.phase.toTalk(),
+        onClick = if (ui.phase == HomePhase.Idle) onTalk else onEndConversation,
+        enabled = talking || ui.inTalk || ui.online,
+    )
 }

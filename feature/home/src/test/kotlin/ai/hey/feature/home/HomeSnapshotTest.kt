@@ -29,6 +29,7 @@ private val homeShots: List<Pair<String, HomeUi>> = listOf(
     "c3-idle" to online,
     "c3-connecting" to HomeUi(online = false, fault = CarFault.Connecting),
     "c4-listening" to online.copy(phase = HomePhase.Listening),
+    "c4-followup" to online.copy(phase = HomePhase.Listening, source = ai.hey.session.TurnSource.AutoListen),
     "c4-thinking" to online.copy(phase = HomePhase.Thinking, heard = "오늘 날씨 어때?"),
     "c4-speaking" to online.copy(phase = HomePhase.Speaking, heard = "오늘 날씨 어때?", reply = "비가 올 것 같아. 우산 챙겼어?", mouth = 2),
     "c4-long" to online.copy(phase = HomePhase.Speaking, heard = "오늘 너무 힘들었어", reply = LONG_REPLY, mouth = 1),
@@ -52,13 +53,13 @@ private fun Paparazzi.recordAll() {
         homeShots.forEach { (name, ui) ->
             snapshot("$name-$theme") {
                 HeyTheme(dark) {
-                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndListening = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
+                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
                 }
             }
         }
         driveShots.forEach { (name, ui) ->
             snapshot("$name-$theme") {
-                HeyTheme(dark) { DriveScreen(ui, onTalk = {}, onEndListening = {}) }
+                HeyTheme(dark) { DriveScreen(ui, onTalk = {}, onEndConversation = {}) }
             }
         }
     }
@@ -85,13 +86,13 @@ private fun Paparazzi.recordMulti() {
         multiShots.forEach { (name, ui) ->
             snapshot("$name-$theme") {
                 HeyTheme(dark) {
-                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndListening = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
+                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
                 }
             }
         }
         driveShots.forEach { (name, ui) ->
             snapshot("$name-$theme") {
-                HeyTheme(dark) { DriveScreen(ui, onTalk = {}, onEndListening = {}) }
+                HeyTheme(dark) { DriveScreen(ui, onTalk = {}, onEndConversation = {}) }
             }
         }
     }
@@ -121,7 +122,7 @@ class HomeFriendNoteSnapshotTest {
                 HeyTheme(dark) {
                     HomeScreen(
                         online.copy(friendNote = "민수: 오늘 저녁에 같이 밥 먹자"),
-                        reducedMotion = true, onTalk = {}, onEndListening = {}, onMemory = {}, onSettings = {}, onFaultAction = {},
+                        reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {},
                     )
                 }
             }

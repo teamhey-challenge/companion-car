@@ -7,12 +7,7 @@
     <string name="hey_stepper_increase">늘리기</string>
 
     <string name="hey_talk_idle">말하기</string>
-    <string name="hey_talk_idle_driving">말하기</string>
-    <string name="hey_talk_listening">다 말했어요</string>
-    <string name="hey_talk_listening_driving">다 말했어요</string>
-    <string name="hey_talk_thinking">잠시 기다려 주세요</string>
-    <string name="hey_talk_speaking">말하는 중</string>
-    <string name="hey_stop_listening">그만 듣기</string>
+    <string name="hey_talk_end">대화 마치기</string>
 
     <string name="hey_status_ready">대화할 준비가 됐어요</string>
     <string name="hey_status_listening">듣는 중</string>

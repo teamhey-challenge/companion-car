@@ -36,7 +36,6 @@ import ai.hey.designsystem.component.HeyTextField
 import ai.hey.designsystem.component.OceanBackground
 import ai.hey.designsystem.component.PageHeading
 import ai.hey.designsystem.component.StatusStrip
-import ai.hey.designsystem.component.StopListeningButton
 import ai.hey.designsystem.component.TalkButton
 import ai.hey.designsystem.component.TalkPhase
 import ai.hey.designsystem.component.ChoiceRow
@@ -274,7 +273,7 @@ object Stories {
                 HStack(HeyGap.G16) {
                     TalkButton(TalkPhase.Speaking, {})
                     TalkButton(TalkPhase.Idle, {}, enabled = false)
-                    StopListeningButton({})
+                    TalkButton(TalkPhase.Listening, {}, label = null)
                 }
                 HStack(HeyGap.G16) {
                     TalkButton(TalkPhase.Idle, {}, driving = true)
