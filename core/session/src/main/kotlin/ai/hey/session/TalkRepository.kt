@@ -261,6 +261,7 @@ class TalkRepository(
                 is ServerFrame.Proactive -> onProactive(frame)
                 is ServerFrame.FriendMessage -> onFriend(frame.id, frame.fromName, frame.text, showText = true)
                 is ServerFrame.FriendArrived -> onFriend(frame.id, frame.fromName, "", showText = false)
+                is ServerFrame.FriendMore -> onFriendMore(frame)
                 is ServerFrame.TripDone -> onTripDone(frame.carLine ?: frame.text) // the notification centre ([FrameNotifier]) reads it too
                 is ServerFrame.Settings -> companion?.onServerSettings(frame.settings)
                 is ServerFrame.Pairing -> companion?.onServerPairing(frame.phase, frame.googleName)
@@ -423,7 +424,7 @@ class TalkRepository(
      * voice, phone call) still wins through the normal playback path. The text goes on screen only while parked, and
      * only for a message ([showText]); an arrival is spoken only. The microphone never opens after it.
      */
-    private fun onFriend(id: String, fromName: String, text: String, showText: Boolean) {
+    private fun onFriend(id: String, fromName: String, text: String, showText: Boolean, spoken: String? = null) {
         val s = _state.value
         if (s.needsOnboarding) {
             // Without the record consent the server has no friend to deliver; nothing to keep.
@@ -435,20 +436,35 @@ class TalkRepository(
         // waits: an automatic listening gives way to it, a running reply or the first-run flow lets it come after them.
         if (s.turn != TurnState.Idle || s.onboardingStep != OnboardingStep.Done) {
             HeyLog.i(TAG, "friend line kept: busy (${s.turn})")
-            pendingFriends += PendingFriend(id, fromName, text, showText)
+            pendingFriends += PendingFriend(id, fromName, text, showText, spoken)
             if (s.turn == TurnState.Listening && s.source == TurnSource.AutoListen) {
                 // The open microphone gives way: this friend line is read now, with the server's voice that is just arriving.
                 pendingFriends.removeLastOrNull()
                 voiceJob?.cancel()
                 endTurn(null)
-                startFriend(PendingFriend(id, fromName, text, showText), serverVoice = true)
+                startFriend(PendingFriend(id, fromName, text, showText, spoken), serverVoice = true)
             }
             return
         }
-        startFriend(PendingFriend(id, fromName, text, showText), serverVoice = true)
+        startFriend(PendingFriend(id, fromName, text, showText, spoken), serverVoice = true)
     }
 
-    private class PendingFriend(val id: String, val fromName: String, val text: String, val showText: Boolean)
+    /**
+     * `friend_more`: after three friend messages read while driving the server keeps the rest and says so once. The line is spoken
+     * like a friend line (server audio follows with turn id [ServerFrame.FriendMore.id]); the screen keeps the notice
+     * ([CarUiState.friendMore]) until the driver opens the friends list after parking ([dismissFriendMore]).
+     */
+    private fun onFriendMore(f: ServerFrame.FriendMore) {
+        val line = f.text.trim()
+        _state.update { it.copy(friendMore = line.ifEmpty { FRIEND_MORE_FALLBACK }) }
+        onFriend(f.id, "", "", showText = false, spoken = line.ifEmpty { FRIEND_MORE_FALLBACK })
+    }
+
+    fun dismissFriendMore() {
+        _state.update { it.copy(friendMore = null) }
+    }
+
+    private class PendingFriend(val id: String, val fromName: String, val text: String, val showText: Boolean, val spoken: String? = null)
 
     private val pendingFriends = ArrayDeque<PendingFriend>()
 
@@ -480,7 +496,7 @@ class TalkRepository(
             }
         }
         if (serverVoice) armWatchdog(f.id, REPLY_START_TIMEOUT_MILLIS)
-        else readWithPleos(if (f.showText) "${f.fromName}가 그러는데, ${f.text}" else "${f.fromName}가 도착했대", f.id)
+        else readWithPleos(f.spoken ?: if (f.showText) "${f.fromName}가 그러는데, ${f.text}" else "${f.fromName}가 도착했대", f.id)
     }
 
     private fun sendCtx(signals: VehicleSignals) {
@@ -925,6 +941,9 @@ const val TRIP_NOTE_MILLIS = 60_000L
 
 /** How long a friend's message text stays on C3 after it arrived. */
 const val FRIEND_NOTE_MILLIS = 8_000L
+
+/** Spoken and shown when `friend_more` arrives without text. */
+const val FRIEND_MORE_FALLBACK = "친구 말이 더 있어요, 멈추시면 보여 드릴게요"
 
 /** A sent turn with no `reply.start` for this long ends with the server fault (PLEOS-134). */
 const val REPLY_START_TIMEOUT_MILLIS = 12_000L

@@ -37,6 +37,18 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
             reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {},
         )
     }
+    dump("car-home-talk") {
+        HomeScreen(
+            HomeUi(online = true, phase = HomePhase.Speaking, reply = "어제 준비하던 발표는 잘 마쳤어요?", mouth = 1),
+            reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {},
+        )
+    }
+    dump("car-error") {
+        HomeScreen(
+            HomeUi(online = false, fault = ai.hey.session.CarFault.Offline),
+            reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {},
+        )
+    }
     dump("car-drive") { DriveScreen(HomeUi(online = true), onTalk = {}, onEndConversation = {}) }
 }
 

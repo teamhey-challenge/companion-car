@@ -106,6 +106,8 @@ data class CarUiState(
     val reply: String = "",
     /** The friend message on screen (parked only, cleared a few seconds after it was read or when the car moves). */
     val friendNote: FriendNote? = null,
+    /** `friend_more`: more friend messages wait in the inbox (set while driving, shown parked until the friends list is opened). */
+    val friendMore: String? = null,
     /** Trip end (`trip_done`): the character's one-line farewell, parked only; cleared after [TRIP_NOTE_MILLIS] or when the car moves. */
     val tripNote: String? = null,
     /** Where the first-run flow is (D-48); [OnboardingStep.Done] when it is over or was never started. */

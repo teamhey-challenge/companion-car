@@ -1,12 +1,12 @@
 <resources>
-    <string name="home_title">헤이리</string>
+    <string name="home_title">Hey</string>
     <string name="home_parked">정차 중</string>
     <string name="home_memory">기억</string>
     <string name="home_friends">친구</string>
     <string name="home_settings">설정</string>
     <string name="home_character_idle">헤이리 대기 중</string>
     <string name="home_character">헤이리</string>
-    <string name="home_hint">오늘은 어떤 하루였어?</string>
+    <string name="home_hint">오늘은 어떤 하루였어요?</string>
     <string name="home_phone_hint">폰 연결하면 일기를 볼 수 있어</string>
     <string name="trip_end_diary">폰에 오늘 일기가 가요</string>
     <string name="trip_end_writing">헤이리가 오늘 일기를 쓰고 있어요</string>

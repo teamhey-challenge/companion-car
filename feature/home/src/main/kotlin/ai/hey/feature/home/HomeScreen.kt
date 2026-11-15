@@ -241,6 +241,7 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
                     PageHeading(title = stringResource(R.string.home_hint), hero = true, modifier = Modifier.heroWidth())
                 }
                 ui.friendNote?.let { Subtitle(text = it) }
+                ui.friendMore?.let { Subtitle(text = it) }
                 if (ui.phoneHint) Subtitle(text = stringResource(R.string.home_phone_hint))
                 if (!ui.online) StatusBadge(phase = TalkPhase.Idle, connection = HeyConnection.Reconnecting)
             }
