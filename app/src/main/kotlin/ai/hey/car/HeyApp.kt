@@ -56,6 +56,9 @@ class AppGraph(private val app: Application) {
     /** Pleos SpeechToText (ON_DEVICE, Locale.KOREA); the debug/e2e builds wrap it so adb can inject a sentence (default: real mic). */
     val voice: VoiceInput by lazy { demoVoiceOrNull(app) ?: PleosVoiceInput(app) }
     val companion: CompanionRepository by lazy { CompanionRepository(scope, HttpCompanionApi(storage, newHttpClient(), AndroidConnectivity(app)), storage) }
+
+    /** D-52 2: friend messages and trip-end diaries also go to the notification centre (two kinds only). */
+    private val notifier by lazy { FrameNotifier(AndroidNoticeSink(app)) }
     val repository: TalkRepository by lazy {
         val http = newHttpClient()
         TalkRepository(
@@ -69,7 +72,7 @@ class AppGraph(private val app: Application) {
                     http = http,
                     storage = storage,
                     scope = scope,
-                    listener = listener,
+                    listener = listener.alsoTo(notifier),
                     appVersion = BuildConfig.VERSION_NAME,
                     provisionSecret = { readProvisionSecret(app) },
                     pacer = ReconnectPacer(clock = { System.nanoTime() / 1_000_000 }, connectivity = AndroidConnectivity(app)),

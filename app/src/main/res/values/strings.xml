@@ -3,6 +3,11 @@
     <string name="service_channel_name">헤이리 연결</string>
     <string name="service_notification_title">헤이리가 곁에 있어요</string>
     <string name="service_notification_text">눌러서 화면을 열 수 있어요</string>
+    <string name="notice_channel_name">친구 말·운행 일기</string>
+    <string name="notice_friend_title_ga">%1$s가 말을 전했어</string>
+    <string name="notice_friend_title_i">%1$s이 말을 전했어</string>
+    <string name="notice_friend_unknown">친구</string>
+    <string name="notice_trip_title">오늘도 같이 달렸어</string>
     <string name="voice_error_offline">연결이 끊겼어요. 잠시 뒤에 다시 이야기해요</string>
     <string name="voice_error_microphone">멈춘 뒤에 마이크 권한을 확인해 주세요</string>
     <string name="voice_error_audio">소리를 낼 수 없어요. 멈춘 뒤에 확인해 주세요</string>

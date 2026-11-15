@@ -19,8 +19,10 @@ class SessionService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val manager = getSystemService(NotificationManager::class.java)
+        // An existing channel keeps the importance it was created with, so the quiet one has its own id; the old one is removed.
+        manager.deleteNotificationChannel(OLD_CHANNEL)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, getString(R.string.service_channel_name), NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CHANNEL, getString(R.string.service_channel_name), NotificationManager.IMPORTANCE_MIN),
         )
         val open = PendingIntent.getActivity(
             this,
@@ -46,7 +48,8 @@ class SessionService : Service() {
     }
 
     companion object {
-        private const val CHANNEL = "hey_session"
+        private const val CHANNEL = "hey_session_min"
+        private const val OLD_CHANNEL = "hey_session"
         private const val NOTIFICATION_ID = 4001
 
         fun start(context: Context) {
