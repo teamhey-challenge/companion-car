@@ -141,7 +141,7 @@ fun HeyIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     bare: Boolean = false,
-    glyph: Dp = 56.dp,
+    compactGlyph: Boolean = false,
 ) {
     val colors = HeyTheme.colors
     PressSurface(
@@ -155,7 +155,7 @@ fun HeyIconButton(
             else colors.ink(HeyButtonVariant.Secondary, pressed, enabled)
         },
         radius = if (bare) HeyTokens.Radius.full else HeyTokens.Radius.md,
-    ) { ink -> InkIcon(icon, null, ink.content, if (bare) Modifier.size(glyph) else Modifier) }
+    ) { ink -> InkIcon(icon, null, ink.content, if (bare) Modifier.size(if (compactGlyph) 28.dp else 56.dp) else Modifier) }
 }
 
 /** Header touch size of the mockups (ui-spec "헤더 84"): header pills are 84 high, the back button is an 84 circle. */

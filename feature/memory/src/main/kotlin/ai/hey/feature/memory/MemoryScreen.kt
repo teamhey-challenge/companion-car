@@ -29,11 +29,11 @@ import ai.hey.designsystem.component.HeyCardList
 import ai.hey.designsystem.component.HeyCardRow
 import ai.hey.designsystem.component.HeyIconButton
 import ai.hey.designsystem.component.HeyListCard
+import ai.hey.designsystem.layout.carCardTrailing
+import ai.hey.designsystem.layout.carStudioHeader
+import ai.hey.designsystem.layout.carStudioPage
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 
 enum class MemoryKindUi { Fact, Summary }
 
@@ -123,14 +123,14 @@ fun MemoryScreen(
                     onBack = onBack,
                     backLabel = stringResource(R.string.memory_back),
                     stateLabel = stringResource(R.string.memory_parked),
-                    modifier = Modifier.shifted(y = (-45.5).dp),
+                    modifier = Modifier.carStudioHeader(),
                 )
             },
             driving = false,
         ) {
             // Studio page margin is 64 and the cards end at 1536: widen the scroll viewport 16 left and 40 right
             // (the scroll column keeps its own 24 end padding for the scrollbar).
-            HeyScrollColumn(HeyGap.G32, modifier = Modifier.fillSize().widenForStudioMargin()) {
+            HeyScrollColumn(HeyGap.G32, modifier = Modifier.fillSize().carStudioPage()) {
                 PageHeading(stringResource(R.string.memory_title))
                 // The failure line sits in the page flow: the header and the back button stay visible.
                 if (notice != null) HeyNotice(notice, HeyStatusTone.Danger, persistent = true)
@@ -168,7 +168,7 @@ fun MemoryScreen(
                                             // Studio glyph is 28 dp at the card's right padding; the 76 dp touch target is centred on it.
                                             HeyIconButton(
                                                 HeyIcons.Trash, deleteLabel, { pendingId = row.id },
-                                                modifier = Modifier.shifted(x = 24.dp), enabled = enabled, bare = true, glyph = 28.dp,
+                                                modifier = Modifier.carCardTrailing(), enabled = enabled, bare = true, compactGlyph = true,
                                             )
                                         },
                                     )
@@ -193,19 +193,4 @@ fun MemoryScreen(
             }
         }
     }
-}
-
-private fun Modifier.widenForStudioMargin(): Modifier = layout { m, c ->
-    val left = 16.dp.roundToPx()
-    val up = 91.dp.roundToPx()
-    val w = c.maxWidth + left + 40.dp.roundToPx()
-    val h = c.maxHeight + up
-    val p = m.measure(c.copy(minWidth = w, maxWidth = w, minHeight = h, maxHeight = h))
-    layout(c.maxWidth, c.maxHeight) { p.place(-left, -up) }
-}
-
-/** Moves the drawing without changing the space the node takes. */
-private fun Modifier.shifted(x: Dp = 0.dp, y: Dp = 0.dp): Modifier = layout { m, c ->
-    val p = m.measure(c)
-    layout(p.width, p.height) { p.place(x.roundToPx(), y.roundToPx()) }
 }
