@@ -6,6 +6,7 @@ import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.designsystem.theme.HeyTone
 import ai.hey.designsystem.theme.resolve
 import ai.hey.designsystem.theme.style
+import ai.hey.designsystem.theme.cssLeading
 import ai.hey.designsystem.token.HeyTokens
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -68,6 +69,12 @@ internal fun keepKoreanWords(text: String): String {
 
 private fun Char.isHangulSyllable() = this in '\uAC00'..'\uD7A3'
 
+/**
+ * A size that is not one of the tokens, with the line height it needs. Both values are required together: a size alone
+ * used to bring a derived line height with it (x 1.4), which silently differed from the studio CSS.
+ */
+data class HeyTextMetrics(val size: androidx.compose.ui.unit.TextUnit, val lineHeight: androidx.compose.ui.unit.TextUnit)
+
 /** Text in an arbitrary resolved colour; used by components whose ink is not one of the [HeyTone]s. */
 @Composable
 internal fun InkText(
@@ -81,17 +88,18 @@ internal fun InkText(
     weight: androidx.compose.ui.text.font.FontWeight? = null,
     /** Overrides the token tracking, in em. */
     trackingEm: Float? = null,
-    /** Overrides the token size where the mockup measures a value between two tokens (line height follows at 1.4). */
-    size: androidx.compose.ui.unit.TextUnit? = null,
-    /** Overrides the line height where the mockup measures it (otherwise the token's, or 1.4 x [size]). */
+    /** Overrides the token size and line height where the mockup measures values between two tokens. */
+    metrics: HeyTextMetrics? = null,
+    /** Overrides only the line height (token size kept). */
     lineHeight: androidx.compose.ui.unit.TextUnit? = null,
 ) {
     val base = variant.spec.style(color).copy(textAlign = align.toCompose())
     val style = base.copy(
         fontWeight = weight ?: base.fontWeight,
         letterSpacing = if (trackingEm != null) androidx.compose.ui.unit.TextUnit(trackingEm, androidx.compose.ui.unit.TextUnitType.Em) else base.letterSpacing,
-    ).let { if (size != null) it.copy(fontSize = size, lineHeight = size * 1.4f) else it }
+    ).let { if (metrics != null) it.copy(fontSize = metrics.size, lineHeight = metrics.lineHeight) else it }
         .let { if (lineHeight != null) it.copy(lineHeight = lineHeight) else it }
+        .cssLeading()
     val probe = LocalHeyTextProbe.current
     val layout = remember { arrayOfNulls<androidx.compose.ui.text.TextLayoutResult>(1) }
     val density = androidx.compose.ui.platform.LocalDensity.current.density

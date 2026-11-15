@@ -401,7 +401,7 @@ fun OnbCaption(
             if (text.isNotBlank()) {
                 InkText(
                     text, SceneText, Modifier.fillMaxWidth(), maxLines = 4, align = textAlign,
-                    weight = FontWeight.Normal, size = if (compact) 28.sp else 39.sp, lineHeight = if (compact) 40.sp else 56.sp,
+                    weight = FontWeight.Normal, metrics = if (compact) HeyTextMetrics(28.sp, 40.sp) else HeyTextMetrics(39.sp, 56.sp),
                 )
             }
         }
@@ -431,7 +431,7 @@ fun OnbListenPill(label: String, skipLabel: String, onSkip: (() -> Unit)?, modif
                 Box(Modifier.size(4.dp, 26.dp * k).clip(RoundedCornerShape(2.dp)).background(HeyDarkColors.accent))
             }
         }
-        InkText(label, SceneText, maxLines = 1, size = 28.sp, weight = FontWeight.Normal)
+        InkText(label, SceneText, maxLines = 1, metrics = HeyTextMetrics(28.sp, 33.04.sp), weight = FontWeight.Normal)
         if (onSkip != null) GlassButton(skipLabel, onSkip)
     }
 }
@@ -444,9 +444,9 @@ fun OnbTitle(title: String, tagline: String, modifier: Modifier = Modifier, comp
     VStack(HeyGap.G24, modifier = modifier.fillMaxWidth(), align = HeyAlign.Center) {
         InkText(
             title, HeyLightColors.accentContainer, maxLines = 1, align = HeyTextAlign.Center,
-            weight = FontWeight.ExtraBold, size = if (compact) 96.sp else 150.sp, lineHeight = if (compact) 110.sp else 170.sp, trackingEm = -0.04f,
+            weight = FontWeight.ExtraBold, metrics = if (compact) HeyTextMetrics(96.sp, 96.sp) else HeyTextMetrics(150.sp, 150.sp), trackingEm = -0.04f,
         )
-        InkText(tagline, SceneText, maxLines = 2, align = HeyTextAlign.Center, size = if (compact) 24.sp else 30.sp, weight = FontWeight.Normal)
+        InkText(tagline, SceneText, maxLines = 2, align = HeyTextAlign.Center, metrics = if (compact) HeyTextMetrics(24.sp, 28.32.sp) else HeyTextMetrics(30.sp, 35.4.sp), weight = FontWeight.Normal)
     }
 }
 
@@ -455,7 +455,7 @@ fun OnbTitle(title: String, tagline: String, modifier: Modifier = Modifier, comp
 fun OnbMeetTitle(name: String, modifier: Modifier = Modifier, compact: Boolean = false) {
     InkText(
         name, SceneText, modifier, maxLines = 1, align = HeyTextAlign.Center,
-        size = if (compact) 56.sp else 84.sp, lineHeight = if (compact) 72.sp else 109.sp, weight = FontWeight.Medium, trackingEm = -0.02f,
+        metrics = if (compact) HeyTextMetrics(56.sp, 72.sp) else HeyTextMetrics(84.sp, 109.sp), weight = FontWeight.Medium, trackingEm = -0.02f,
     )
 }
 
@@ -466,7 +466,7 @@ fun OnbParkedBanner(text: String, modifier: Modifier = Modifier) {
     InkText(
         text, SceneText,
         modifier.clip(shape).background(SceneInk.copy(alpha = 0.7f), shape).padding(horizontal = 24.dp, vertical = 12.dp),
-        maxLines = 2, size = 22.sp, align = HeyTextAlign.Center, weight = FontWeight.Normal,
+        maxLines = 2, metrics = HeyTextMetrics(22.sp, 25.96.sp), align = HeyTextAlign.Center, weight = FontWeight.Normal,
     )
 }
 
@@ -563,7 +563,7 @@ fun OnbPolaroids(
         val step = card * 1.1f
         InkText(
             eyebrow, SceneText, Modifier.align(Alignment.TopCenter).padding(top = 60.dp).alpha(1f - away),
-            maxLines = 1, size = 17.sp, weight = FontWeight.Bold, trackingEm = 0.02f,
+            maxLines = 1, metrics = HeyTextMetrics(17.sp, 20.06.sp), weight = FontWeight.Bold, trackingEm = 0.02f,
         )
         items.forEachIndexed { i, item ->
             val order = i - (items.size - 1) / 2f
@@ -590,7 +590,7 @@ fun OnbPolaroids(
                     )
                     InkText(
                         item.caption, Color(0xFF2A2A2A), Modifier.padding(bottom = 16.dp), maxLines = 2,
-                        align = HeyTextAlign.Center, size = if (card < 220.dp) 20.sp else 26.sp, weight = FontWeight.Medium,
+                        align = HeyTextAlign.Center, metrics = if (card < 220.dp) HeyTextMetrics(20.sp, 23.6.sp) else HeyTextMetrics(26.sp, 30.68.sp), weight = FontWeight.Medium,
                     )
                 }
             }
@@ -694,7 +694,7 @@ private fun OnbDressTile(c: OnbDressChoice, modifier: Modifier) {
             .padding(HeyTokens.Space.s16),
     ) {
         Box(Modifier.size(40.dp).clip(RoundedCornerShape(HeyTokens.Radius.full)).background(c.swatch).border(HeyTokens.Border.strong, Color.Black.copy(alpha = 0.12f), RoundedCornerShape(HeyTokens.Radius.full)))
-        InkText(c.label, ink, Modifier.grow(), maxLines = 2, size = 28.sp, weight = FontWeight.Medium)
+        InkText(c.label, ink, Modifier.grow(), maxLines = 2, metrics = HeyTextMetrics(28.sp, 33.04.sp), weight = FontWeight.Medium)
     }
 }
 
@@ -703,12 +703,12 @@ private fun OnbDressTile(c: OnbDressChoice, modifier: Modifier) {
 fun OnbPanelTitle(text: String, modifier: Modifier = Modifier, compact: Boolean = false) {
     InkText(
         text, SceneText, modifier, maxLines = 3, weight = FontWeight.Normal, trackingEm = -0.055f,
-        size = if (compact) 44.sp else 60.sp, lineHeight = if (compact) 58.sp else 78.sp,
+        metrics = if (compact) HeyTextMetrics(44.sp, 58.sp) else HeyTextMetrics(60.sp, 78.sp),
     )
 }
 
 /** Panel body line in the panel's muted ink. */
 @Composable
 fun OnbPanelText(text: String, modifier: Modifier = Modifier, large: Boolean = false) {
-    InkText(text, HeyDarkColors.fgMuted, modifier, size = if (large) 28.sp else 26.sp, weight = FontWeight.Normal, lineHeight = if (large) 42.sp else 42.sp)
+    InkText(text, HeyDarkColors.fgMuted, modifier, metrics = if (large) HeyTextMetrics(28.sp, 42.sp) else HeyTextMetrics(26.sp, 41.6.sp), weight = FontWeight.Normal)
 }
