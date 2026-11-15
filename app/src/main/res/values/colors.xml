@@ -1,6 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Launcher icon only; the same values as the design tokens primary / fgInverse / accent (HeyTokens.kt, light). -->
-    <color name="ic_launcher_background">#344C37</color>
-    <color name="ic_launcher_letters">#F4F3ED</color>
-    <color name="ic_launcher_accent">#D2F264</color>
+    <color name="ic_launcher_background">#F0F8FB</color>
 </resources>
