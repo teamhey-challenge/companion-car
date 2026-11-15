@@ -709,9 +709,11 @@ private class OnbColumnScope(private val scope: ColumnScope) : HeyStackScope {
 }
 
 /** The space the studio puts between two blocks of a panel (its margins are not on the 4-step scale). */
+enum class OnbSpace(internal val value: Dp) { S8(8.dp), S16(16.dp), S18(18.dp), S20(20.dp), S24(24.dp), S28(28.dp), S32(32.dp), S40(40.dp) }
+
 @Composable
-fun OnbGap(height: Dp) {
-    Spacer(Modifier.height(height))
+fun OnbGap(space: OnbSpace) {
+    Spacer(Modifier.height(space.value))
 }
 
 /** One line of a panel's promise list: a dot, then 26 sp muted text. */

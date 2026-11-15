@@ -13,6 +13,7 @@ import ai.hey.designsystem.component.OnbHoldRing
 import ai.hey.designsystem.component.OnbLights
 import ai.hey.designsystem.component.OnbMeetTitle
 import ai.hey.designsystem.component.OnbPanelText
+import ai.hey.designsystem.component.OnbSpace
 import ai.hey.designsystem.component.OnbGap
 import ai.hey.designsystem.component.OnbNextButton
 import ai.hey.designsystem.component.OnbPrimaryButton
@@ -265,7 +266,7 @@ fun FirstLookScreen(
             modifier = if (compact) Modifier.carCharacterBand() else Modifier,
         ) {
             OnbPanelTitle(stringResource(R.string.onb_dress_title), compact = compact)
-            OnbGap(40.dp)
+            OnbGap(OnbSpace.S40)
             OnbDressGrid(
                 listOf(
                     OnbDressChoice(stringResource(R.string.onb_dress_aqua), OnbSwatch.Aqua, look.body(dark) == 0) { onLook(look.copy(bodyColor = 0)) },
@@ -275,7 +276,7 @@ fun FirstLookScreen(
                     OnbDressChoice(stringResource(R.string.step_look_scarf), OnbSwatch.Scarf, look.neck == 1) { onLook(look.copy(neck = if (look.neck == 1) 0 else 1)) },
                 ),
             )
-            OnbGap(32.dp)
+            OnbGap(OnbSpace.S32)
             OnbPrimaryButton(stringResource(R.string.onb_dress_done), onDone)
         }
         if (line.isNotBlank()) OnbCaption(line, Modifier.place(OnbAlign.BottomCenter), narrow = !compact, compact = compact)

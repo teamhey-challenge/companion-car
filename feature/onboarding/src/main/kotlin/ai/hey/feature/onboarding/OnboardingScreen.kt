@@ -1,6 +1,7 @@
 package ai.hey.feature.onboarding
 
 import ai.hey.designsystem.component.HeyText
+import ai.hey.designsystem.component.OnbSpace
 import ai.hey.designsystem.component.OnbBullet
 import ai.hey.designsystem.component.OnbCheckRow
 import ai.hey.designsystem.component.OnbGap
@@ -57,13 +58,13 @@ fun OnboardingScreen(
         OnbScene(OnbShot.Whale, Modifier.fillSize()) {
             OnbSidePanel(side = OnbSide.Start, compact = compact) {
                 OnbPanelTitle(stringResource(R.string.onboard_promise_title), compact = compact)
-                OnbGap(28.dp)
+                OnbGap(OnbSpace.S28)
                 OnbBullet(stringResource(R.string.onboard_point_voice))
-                OnbGap(8.dp)
+                OnbGap(OnbSpace.S8)
                 OnbBullet(stringResource(R.string.onboard_point_use))
-                OnbGap(8.dp)
+                OnbGap(OnbSpace.S8)
                 OnbBullet(stringResource(R.string.onboard_point_memory))
-                OnbGap(28.dp)
+                OnbGap(OnbSpace.S28)
                 OnbCheckRow(
                     label = stringResource(R.string.onboard_check_voice),
                     checked = ui.voice,
@@ -78,9 +79,9 @@ fun OnboardingScreen(
                     enabled = !ui.saving,
                     last = true,
                 )
-                OnbGap(24.dp)
+                OnbGap(OnbSpace.S24)
                 OnbLink(stringResource(R.string.onboard_policy), onPolicy)
-                OnbGap(18.dp)
+                OnbGap(OnbSpace.S18)
                 if (ui.saving) HeyText(stringResource(R.string.onboard_saving), tone = HeyTone.Muted)
                 if (ui.failed) HeyText(stringResource(R.string.onboard_error_network), tone = HeyTone.Danger)
                 OnbPrimaryButton(
