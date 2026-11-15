@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -600,7 +601,12 @@ class TalkRepository(
      * link): the caller tries again or goes on with the subtitle text only.
      */
     private suspend fun speakLine(wire: String, whale: Boolean): Boolean {
-        _state.first { it.turn == TurnState.Idle }
+        // A stale Onboarding turn (left by a cancelled step) must not block the line for good: reset it after a grace.
+        if (withTimeoutOrNull(ONBOARDING_IDLE_WAIT_MILLIS) { _state.first { it.turn == TurnState.Idle } } == null) {
+            HeyLog.w(TAG, "onboarding step=$wire: stale turn ${_state.value.turn} reset")
+            silence()
+            endTurn(null)
+        }
         val done = CompletableDeferred<Unit>().also { lineDone = it }
         _state.update { it.copy(source = TurnSource.Onboarding, heard = null, reply = "", error = null, onboarding = it.onboarding.copy(line = "", whale = whale)) }
         if (!link.send(ClientFrames.onboarding(wire))) return false
@@ -620,6 +626,23 @@ class TalkRepository(
      * is written to the device only when it is over, so a restart or a drive repeats at most the step that was running.
      */
     private suspend fun runSpokenStep(step: OnboardingStep) {
+        try {
+            runSpokenStepInner(step)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // The link dropped (or the gear/step changed) mid-question: a turn left on Listening would block the restarted step for good.
+            withContext(kotlinx.coroutines.NonCancellable) {
+                if (_state.value.source == TurnSource.Onboarding && _state.value.turn != TurnState.Idle) {
+                    HeyLog.w(TAG, "onboarding step=${step.name} cancelled mid-turn: turn reset")
+                    silence()
+                    endTurn(null)
+                    _state.update { it.copy(onboarding = it.onboarding.copy(micBlocked = false)) }
+                }
+            }
+            throw e
+        }
+    }
+
+    private suspend fun runSpokenStepInner(step: OnboardingStep) {
         val wire = step.wire ?: return
         // M5: a line that does not arrive is tried once more, then the step goes on with the screen's own fixed text; a question
         // whose line never came is passed without an answer. There is no endless re-request.
@@ -652,7 +675,8 @@ class TalkRepository(
     /** The listening of a question, ended by the answer, by the silence, or by "넘어갈래" (null). */
     private suspend fun listenOrSkip(): VoiceResult? = coroutineScope {
         skipSignal.tryReceive()
-        val heard = async<VoiceResult?> { voiceInput.listen() }
+        // Watchdog: an STT that closes or stalls without a result must never leave the step on "듣고 있어요" (counts as silence).
+        val heard = async<VoiceResult?> { withTimeoutOrNull(ONBOARDING_LISTEN_WATCHDOG_MILLIS) { voiceInput.listen() } ?: VoiceResult.NoSpeech }
         val skipped = async<VoiceResult?> { skipSignal.receive(); null }
         val result = select<VoiceResult?> {
             heard.onAwait { it }
@@ -675,14 +699,46 @@ class TalkRepository(
                     if (++silences >= ONBOARDING_MAX_SILENCES) return passQuestion(step)
                 }
                 VoiceResult.PermissionDenied -> {
-                    // L6: only the questions are given up; the press steps after them (long press, cards, dress-up, phone) still run.
-                    // C8 (microphone) shows the fault on the home screen afterwards.
-                    endTurn(TurnError.PermissionDenied)
-                    storage.setOnboardingStep(OnboardingStep.Found)
-                    return
+                    // Ask again (parked) before giving up; a refusal shows the message with "마이크 허용" / "넘어가기" instead of skipping silently.
+                    if (!onboardingMicRetry()) {
+                        // L6: only the questions are given up; the press steps after them (long press, cards, dress-up, phone) still run.
+                        // C8 (microphone) shows the fault on the home screen afterwards.
+                        endTurn(TurnError.PermissionDenied)
+                        storage.setOnboardingStep(OnboardingStep.Found)
+                        return
+                    }
                 }
             }
         }
+    }
+
+    private val micAnswer = Channel<Boolean>(Channel.CONFLATED)
+    private val micChoice = Channel<Boolean>(Channel.CONFLATED)
+    @Volatile private var onboardingMicAsking = false
+
+    /** True when the microphone is granted after asking again (the driver may press "마이크 허용" on the blocked screen as often as wanted). */
+    private suspend fun onboardingMicRetry(): Boolean {
+        while (true) {
+            micAnswer.tryReceive()
+            onboardingMicAsking = true
+            _state.update { it.copy(turn = TurnState.NeedsPermission, error = null, source = TurnSource.Onboarding) }
+            val granted = try {
+                micAnswer.receive() || voiceInput.hasPermission()
+            } finally {
+                onboardingMicAsking = false
+            }
+            if (granted) return true
+            _state.update { it.copy(turn = TurnState.Idle, onboarding = it.onboarding.copy(micBlocked = true)) }
+            micChoice.tryReceive()
+            val retry = micChoice.receive()
+            _state.update { it.copy(onboarding = it.onboarding.copy(micBlocked = false)) }
+            if (!retry) return false
+        }
+    }
+
+    /** The blocked screen's "마이크 허용" (true) or "넘어가기" (false). */
+    fun onboardingMicChoice(retry: Boolean) {
+        micChoice.trySend(retry)
     }
 
     /** An unanswered question: the whale says "괜찮아, 다음에 알려 줘"; that answer stays out of the memory cards and the greeting. */
@@ -874,6 +930,10 @@ class TalkRepository(
 
     override fun voicePermissionResult(granted: Boolean) {
         if (_state.value.turn != TurnState.NeedsPermission) return
+        if (onboardingMicAsking) {
+            micAnswer.trySend(granted)
+            return
+        }
         if (granted) listenOnce(TurnSource.Ptt) else _state.update { it.copy(turn = TurnState.Idle, error = TurnError.PermissionDenied) }
     }
 
@@ -881,7 +941,8 @@ class TalkRepository(
     override fun refreshVoicePermission() {
         if (!voiceInput.hasPermission()) return
         val s = _state.value
-        if (s.turn == TurnState.NeedsPermission) listenOnce(TurnSource.Ptt)
+        if (s.turn == TurnState.NeedsPermission && onboardingMicAsking) micAnswer.trySend(true)
+        else if (s.turn == TurnState.NeedsPermission) listenOnce(TurnSource.Ptt)
         else if (s.error == TurnError.PermissionDenied) {
             HeyLog.i(TAG, "microphone permission granted, fault cleared")
             _state.update { it.copy(error = null) }
@@ -920,6 +981,7 @@ private fun TurnSource.quiet(): Boolean = this == TurnSource.Friend || this == T
 private const val ONBOARDING_RETRY_MILLIS = 2_000L
 private const val ONBOARDING_LINE_TIMEOUT_MILLIS = 45_000L
 private const val ONBOARDING_ACK_TIMEOUT_MILLIS = 15_000L
+private const val ONBOARDING_IDLE_WAIT_MILLIS = 15_000L
 
 /** The whale's short answer (or "괜찮아, 다음에 알려 줘") after an answer: the server makes it in about 2.5 s. */
 private const val ONBOARDING_ANSWER_LINE_MILLIS = 12_000L
@@ -929,6 +991,9 @@ private const val ONBOARDING_LINE_TRIES = 2
 
 /** Two silent listenings in a row move a question on with the whale's "괜찮아, 다음에 알려 줘". */
 private const val ONBOARDING_MAX_SILENCES = 2
+
+/** A listening that returns nothing for this long (STT closed or stalled) counts as silence. */
+private const val ONBOARDING_LISTEN_WATCHDOG_MILLIS = 20_000L
 
 /** Without a server link a spoken step waits this long (the link may come back), then shows its text and goes on. */
 private const val ONBOARDING_OFFLINE_GRACE_MILLIS = 4_000L

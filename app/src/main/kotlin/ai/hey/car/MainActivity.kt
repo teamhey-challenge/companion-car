@@ -47,8 +47,17 @@ import androidx.navigation.compose.rememberNavController
 
 class MainActivity : ComponentActivity() {
     // One launcher for both runtime permissions; only an answer that contains the microphone goes back to the session.
+    private var micLaunchedAt = 0L
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-        voiceAnswer(result)?.let { (application as HeyApp).graph.repository.voicePermissionResult(it) }
+        val answer = voiceAnswer(result)
+        // No dialog could be shown (denied for good: the answer comes back at once and no rationale is offered): open the app's
+        // settings page so the driver can still allow the microphone ("마이크 허용").
+        if (answer == false && micLaunchedAt > 0 && android.os.SystemClock.elapsedRealtime() - micLaunchedAt < 500 &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
+        ) {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+        }
+        answer?.let { (application as HeyApp).graph.repository.voicePermissionResult(it) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,6 +89,7 @@ class MainActivity : ComponentActivity() {
             }
             LaunchedEffect(needsMic, state.isParked) {
                 if (needsMic && mayAskPermission(state.isParked)) {
+                    micLaunchedAt = android.os.SystemClock.elapsedRealtime()
                     permissions.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                 } else if (needsMic) {
                     repository.voicePermissionResult(false)

@@ -93,6 +93,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.Dp
 import ai.hey.designsystem.icon.HeyIcons
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.unit.Constraints
+import ai.hey.designsystem.theme.HeyFontFamily
+import ai.hey.designsystem.theme.cssLeading
 
 /*
  * D-48 onboarding scene parts (PLEOS-190), ported from the studio's stage.tsx / Onboarding.tsx / onboarding.css.
@@ -421,26 +428,55 @@ fun OnbCaption(
     narrow: Boolean = false,
     compact: Boolean = false,
 ) {
-    // The studio centres the subtitle in whatever width it has (the left half while a panel is open).
+    // The studio centres the subtitle in whatever width it has (the left half while a panel is open): 688 dp at 1600.
     val align = HeyAlign.Center
     val textAlign = HeyTextAlign.Center
-    Box(
+    val size = if (compact) 28.sp else 39.sp
+    val lineHeight = if (compact) 40.sp else 56.sp
+    BoxWithConstraints(
         modifier.fillMaxWidth().background(
             Brush.verticalGradient(listOf(Color.Transparent, SceneInk.copy(alpha = 0.36f), SceneInk.copy(alpha = 0.74f), SceneInk.copy(alpha = 0.92f))),
-        ).padding(start = if (compact) 32.dp else 56.dp, end = if (compact) 32.dp else 56.dp, top = 80.dp, bottom = if (compact) 32.dp else 46.dp),
+        ).padding(start = if (compact) 32.dp else if (narrow) 56.dp else 140.dp, end = if (compact) 32.dp else if (narrow) 56.dp else 140.dp, top = 80.dp, bottom = if (compact) 32.dp else 46.dp),
         contentAlignment = if (narrow) Alignment.BottomStart else Alignment.BottomCenter,
     ) {
-        VStack(HeyGap.G16, modifier = if (narrow) Modifier.fillMaxWidth(0.5f) else Modifier.fillMaxWidth(), align = align) {
+        val boxWidth = if (narrow) maxWidth / 2 - 56.dp else maxWidth
+        VStack(HeyGap.G16, modifier = Modifier.width(boxWidth), align = align) {
             if (!heard.isNullOrBlank()) {
                 InkText("“$heard”", HeyDarkColors.fgMuted, maxLines = 2, align = textAlign, variant = HeyTextVariant.Heading, weight = FontWeight.Normal)
             }
             if (listening) OnbListenPill(listeningLabel, skipLabel, onSkip)
             if (text.isNotBlank()) {
                 InkText(
-                    text, SceneText, Modifier.fillMaxWidth(), maxLines = 4, align = textAlign,
-                    weight = FontWeight.Normal, metrics = if (compact) HeyTextMetrics(28.sp, 40.sp) else HeyTextMetrics(39.sp, 56.sp),
+                    text, SceneText, Modifier.width(balancedWidth(text, boxWidth, size, lineHeight)), maxLines = 4, align = textAlign,
+                    weight = FontWeight.Normal, metrics = HeyTextMetrics(size, lineHeight),
                 )
             }
+        }
+    }
+}
+
+/** CSS `text-wrap: balance`: the narrowest width that keeps the line count the text has in [max] (a single line keeps [max]). */
+@Composable
+private fun balancedWidth(text: String, max: Dp, size: androidx.compose.ui.unit.TextUnit, lineHeight: androidx.compose.ui.unit.TextUnit): Dp {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    return remember(text, max, size, lineHeight, density.density) {
+        val style = TextStyle(
+            fontFamily = HeyFontFamily, fontSize = size, lineHeight = lineHeight, fontWeight = FontWeight.Normal, lineBreak = LineBreak.Paragraph,
+        ).cssLeading()
+        val kept = keepKoreanWords(text)
+        val maxPx = with(density) { max.roundToPx() }
+        val lines = measurer.measure(kept, style, constraints = Constraints(maxWidth = maxPx)).lineCount
+        if (lines <= 1) {
+            max
+        } else {
+            var lo = 1
+            var hi = maxPx
+            while (lo < hi) {
+                val mid = (lo + hi) / 2
+                if (measurer.measure(kept, style, constraints = Constraints(maxWidth = mid)).lineCount <= lines) hi = mid else lo = mid + 1
+            }
+            with(density) { lo.toDp() }
         }
     }
 }
@@ -623,7 +659,7 @@ fun OnbPolaroids(
             val enter = ((drop.value * 3f - i * 0.6f) / 1.2f).coerceIn(0f, 1f)
             Box(
                 Modifier.align(Alignment.Center)
-                    .offset(x = step * order + 600.dp * (away * (1f - 0.1f * i)), y = 220.dp * (-(1f - enter)) - 80.dp * away)
+                    .offset(x = step * order + 600.dp * (away * (1f - 0.1f * i)), y = 220.dp * (-(1f - enter)) - 80.dp * away - (card + 38.dp) * 0.04f)
                     .graphicsLayer {
                         rotationZ = order * 5f - 2f + (1f - enter) * -12f
                         alpha = enter * (1f - away)
@@ -642,7 +678,7 @@ fun OnbPolaroids(
                         Modifier.fillMaxWidth().size(card - 28.dp).clip(RoundedCornerShape(2.dp)), contentScale = ContentScale.Crop,
                     )
                     InkText(
-                        item.caption, Color(0xFF2A2A2A), Modifier.padding(bottom = 16.dp), maxLines = 2,
+                        item.caption, Color(0xFF2A2A2A), Modifier.padding(top = 4.dp, bottom = 16.dp), maxLines = 2,
                         align = HeyTextAlign.Center, metrics = if (card < 220.dp) HeyTextMetrics(20.sp, 24.sp) else HeyTextMetrics(26.sp, 24.sp), weight = FontWeight.Normal,
                     )
                 }
@@ -804,7 +840,7 @@ fun OnbPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Mod
 fun OnbGhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val shape = RoundedCornerShape(HeyTokens.Radius.full)
     Box(
-        modifier.heightIn(min = 104.dp).clip(shape).background(GlassFill, shape).border(HeyTokens.Border.strong, GlassRim, shape)
+        modifier.fillMaxWidth().heightIn(min = 104.dp).clip(shape).background(GlassFill, shape).border(HeyTokens.Border.strong, GlassRim, shape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

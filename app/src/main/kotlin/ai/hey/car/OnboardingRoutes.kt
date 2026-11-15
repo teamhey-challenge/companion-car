@@ -105,9 +105,10 @@ private fun ConsentStepRoute(
     // The server has recorded the consent: now (and only now) the runtime permissions.
     LaunchedEffect(started, talkState.needsOnboarding) {
         if (started && !talkState.needsOnboarding) {
+            // The microphone is asked again at the first question (the dialog is shown there too), so a refusal here goes on.
             when (flow.afterConsent()) {
                 OnboardingOutcome.Done -> onDone()
-                OnboardingOutcome.MicDenied -> onMicDenied()
+                OnboardingOutcome.MicDenied -> onDone()
             }
         }
     }
@@ -169,8 +170,9 @@ fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, on
         OnboardingStep.WhaleIntro, OnboardingStep.Lights, OnboardingStep.Q1, OnboardingStep.Q2, OnboardingStep.Q3,
         OnboardingStep.Found, OnboardingStep.Greeting, OnboardingStep.Farewell,
         -> SpokenStepScreen(
-            ui = SpokenStepUi(step = step, line = line, phase = phase, heard = talkState.heard, look = look),
+            ui = SpokenStepUi(step = step, line = line, phase = phase, heard = talkState.heard, look = look, micBlocked = talkState.onboarding.micBlocked),
             onSkip = talk::skipOnboardingQuestion,
+            onMic = talk::onboardingMicChoice,
         )
         OnboardingStep.Summon -> {
             var summoned by remember { mutableStateOf(false) }

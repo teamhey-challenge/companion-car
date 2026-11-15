@@ -77,7 +77,7 @@ fun QrStepScreen(
                 OnbGap(OnbSpace.S20)
                 OnbPanelText(stringResource(R.string.onb_qr_body), large = true)
                 OnbGap(OnbSpace.S40)
-                PhoneLinkPanel(ui, compact = compact)
+                PhoneLinkPanel(ui, compact = true)
                 OnbGap(OnbSpace.S40)
                 if (ui is PhoneLinkUi.Offline) {
                     OnbPrimaryButton(stringResource(R.string.pair_retry), onRetry)

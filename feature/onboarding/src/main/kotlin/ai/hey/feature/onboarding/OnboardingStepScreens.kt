@@ -1,5 +1,7 @@
 package ai.hey.feature.onboarding
 
+import ai.hey.designsystem.component.OnbGhostButton
+import ai.hey.designsystem.layout.fillHalf
 import ai.hey.designsystem.component.CharacterLook
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
@@ -69,6 +71,8 @@ data class SpokenStepUi(
     val heard: String? = null,
     /** How heyri looks (greeting and farewell show the character). */
     val look: CharacterLook = CharacterLook(),
+    /** The microphone was refused at a question: the screen asks to allow it again or to go on. */
+    val micBlocked: Boolean = false,
 )
 
 /** The fixed text of each spoken step: what shows until (or instead of) the server's line (D-54: never stuck on the network). */
@@ -147,7 +151,7 @@ private fun OnboardingStep.lights(): Int = when (this) {
  * voice goes on.
  */
 @Composable
-fun SpokenStepScreen(ui: SpokenStepUi, onSkip: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun SpokenStepScreen(ui: SpokenStepUi, onSkip: () -> Unit = {}, modifier: Modifier = Modifier, onMic: (Boolean) -> Unit = {}) {
     val step = ui.step
     val heyri = step == OnboardingStep.Greeting || step == OnboardingStep.Farewell
     OnbStage(step.shot(), modifier) { compact ->
@@ -181,6 +185,13 @@ fun SpokenStepScreen(ui: SpokenStepUi, onSkip: () -> Unit = {}, modifier: Modifi
             onSkip = if (step.isQuestion) onSkip else null,
             compact = compact,
         )
+        if (ui.micBlocked) {
+            VStack(HeyGap.G16, modifier = Modifier.place(OnbAlign.Center).fillHalf(), align = HeyAlign.Center) {
+                OnbPanelText(stringResource(R.string.onb_mic_blocked), large = true)
+                OnbPrimaryButton(stringResource(R.string.onb_mic_allow), { onMic(true) })
+                OnbGhostButton(stringResource(R.string.onb_mic_pass), { onMic(false) })
+            }
+        }
     }
 }
 
