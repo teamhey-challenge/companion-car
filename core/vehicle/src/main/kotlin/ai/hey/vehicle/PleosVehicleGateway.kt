@@ -252,7 +252,12 @@ class PleosVehicleGateway(
                     object : DoorPositionListener {
                         override fun onPositionUpdated(position: Int?) {
                             _doors.value = if ((position ?: 0) > 0) _doors.value + door else _doors.value - door
-                            signal { it.copy(doorOpen = _doors.value.isNotEmpty()) }
+                            signal {
+                                it.copy(
+                                    doorOpen = _doors.value.isNotEmpty(),
+                                    driverDoorOpen = VehicleDoor.DriverRow1 in _doors.value,
+                                )
+                            }
                         }
 
                         override fun onFailed(e: Exception) = HeyLog.d(TAG, "door listener failed: ${e.message}")

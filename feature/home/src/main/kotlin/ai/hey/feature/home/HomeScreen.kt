@@ -66,9 +66,16 @@ internal fun CarFault.toKind(): ErrorKind = when (this) {
 }
 
 
-/** The character on C3/C4: the live Rive rig, or the still image while it loads, fails, or motion is reduced. */
+/** The character on C3/C4/C5: the live Rive rig, or the still image while it loads, fails, or motion is reduced. */
 @Composable
-internal fun HomeCharacter(ui: HomeUi, reducedMotion: Boolean, size: CharacterSize, description: String, modifier: Modifier = Modifier) {
+internal fun HomeCharacter(
+    ui: HomeUi,
+    reducedMotion: Boolean,
+    size: CharacterSize,
+    description: String,
+    modifier: Modifier = Modifier,
+    whileDriving: Boolean = false,
+) {
     val dark = HeyTheme.dark
     var riveFailed by remember { mutableStateOf(false) }
     val live: (@Composable () -> Unit)? = if (reducedMotion || riveFailed) null else {
@@ -79,6 +86,7 @@ internal fun HomeCharacter(ui: HomeUi, reducedMotion: Boolean, size: CharacterSi
                 bodyColor = ui.look.body(dark),
                 hat = ui.look.hat,
                 neck = ui.look.neck,
+                whileDriving = whileDriving,
                 modifier = Modifier.fillSize(),
                 onFailure = { riveFailed = true },
             )
@@ -188,18 +196,15 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
             }
         }
     }
-    // ONE talk button at ONE place in the tree for every state but Speaking: a press-and-hold that starts a turn changes the phase,
-    // and a button that moved to another `when` branch would be disposed under the finger, ending the listen at once.
-    // While the character talks it is "그만 듣기" (D-24: stops the voice and listens); the hold is long over by then.
+    // D-48 4: one tap opens listening, the end of the speech sends by itself (a tap while listening sends at once), and after the
+    // answer the microphone stays open a few seconds. While the character talks the button is "그만 듣기" (D-24).
     if (faultShown) return
     if (ui.phase == HomePhase.Speaking) {
         StopListeningButton(onClick = onTalk)
     } else {
         TalkButton(
             phase = ui.phase.toTalk(),
-            onClick = onTalk,
-            onHoldStart = onTalk,
-            onHoldEnd = onEndListening,
+            onClick = if (ui.phase == HomePhase.Listening) onEndListening else onTalk,
             enabled = talking || ui.inTalk || ui.online,
         )
     }

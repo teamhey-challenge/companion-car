@@ -52,6 +52,7 @@ object ClientFrames {
                 s.speedKmh?.let { put("speedKmh", it) }
                 s.wiper?.let { put("wiper", it) }
                 s.doorOpen?.let { put("doorOpen", it) }
+                s.driverDoorOpen?.let { put("driverDoorOpen", it) }
                 s.rangeKm?.let { put("rangeKm", it) }
                 s.fuelType?.let { put("fuelType", it) }
                 s.headlight?.let { put("headlight", it) }

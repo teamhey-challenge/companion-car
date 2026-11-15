@@ -146,7 +146,9 @@ class TalkRepositoryTest {
         val gate = CompletableDeferred<Unit>()
         val voice = object : VoiceInput {
             override fun hasPermission() = true
+            private var calls = 0
             override suspend fun listen(): VoiceResult {
+                if (++calls > 1) kotlinx.coroutines.awaitCancellation() // the automatic listening after the reply hears nothing
                 gate.await()
                 return VoiceResult.Text("달리는 중이야")
             }
@@ -248,7 +250,7 @@ class TalkRepositoryTest {
     @Test fun `audio focus loss stops the voice and a late reply end does not resume it`() = runTest {
         val cs = rigScope(testScheduler)
         val audio = FakeReplyAudio()
-        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"), audio = audio)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕", silentAfterReply = true), audio = audio)
         rig.repo.startTalk()
         val l = rig.transport.listener
         l.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.Pcm(24_000, 1)))
@@ -284,7 +286,7 @@ class TalkRepositoryTest {
     @Test fun `server audio plays to the end then the turn is over, and the Pleos voice stays silent`() = runTest {
         val cs = rigScope(testScheduler)
         val audio = FakeReplyAudio()
-        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"), audio = audio)
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕", silentAfterReply = true), audio = audio)
         rig.repo.startTalk()
         val l = rig.transport.listener
         l.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.Pcm(24_000, 1)))
@@ -369,7 +371,7 @@ class TalkRepositoryTest {
 
     @Test fun `a reply end in time cancels the watchdog`() = runTest {
         val cs = rigScope(testScheduler)
-        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
+        val rig = Rig(cs, ScriptedVoiceInput(text = "안녕", silentAfterReply = true))
         rig.repo.startTalk()
         rig.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.None))
         rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", "반가워요", 100, 900))
@@ -411,9 +413,11 @@ class TalkRepositoryTest {
         return voice to { calls }
     }
 
-    private fun replyWith(rig: Rig, text: String) {
-        rig.transport.listener.onFrame(ServerFrame.ReplyStart("t1", AudioSpec.None))
-        rig.transport.listener.onFrame(ServerFrame.ReplyEnd("t1", text, 100, 900))
+    private fun replyWith(rig: Rig, text: String) = replyWith(rig, "t1", text)
+
+    private fun replyWith(rig: Rig, id: String, text: String) {
+        rig.transport.listener.onFrame(ServerFrame.ReplyStart(id, AudioSpec.None))
+        rig.transport.listener.onFrame(ServerFrame.ReplyEnd(id, text, 100, 900))
     }
 
     @Test fun `a reply ending with a question opens the microphone for 5 s and ends quietly when nothing is said`() = runTest {
@@ -435,22 +439,48 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
-    @Test fun `a statement does not open the microphone and an answer in the window is sent as listen_after_proactive`() = runTest {
+    @Test fun `D-48 4 a statement also keeps the microphone open and the answer in the window is sent as listen_after_proactive`() = runTest {
         val cs = rigScope(testScheduler)
         val voice = ScriptedVoiceInput(text = "안녕")
         val rig = Rig(cs, voice)
-        rig.repo.startTalk()
-        replyWith(rig, "반가워요.")
-        testScheduler.runCurrent()
-        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
-        assertEquals(1, voice.listens)
-        // question: the auto listen hears something and sends it with the follow-up trigger
-        rig.transport.sent.clear()
-        rig.repo.startTalk()
-        replyWith(rig, "뭐 할래?")
+        rig.repo.startTalk() // one tap: the end of the speech sends by itself
         testScheduler.runCurrent()
         assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        assertTrue(rig.transport.sent.last { it.contains("turn.start") }.contains("\"ptt\""))
+        rig.transport.sent.clear()
+        replyWith(rig, "반가워요.")
+        testScheduler.runCurrent()
+        assertEquals(TurnSource.AutoListen, rig.repo.state.value.source)
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        assertEquals(2, voice.listens)
         assertTrue(rig.transport.sent.last { it.contains("turn.start") }.contains("listen_after_proactive"))
+        cs.cancel()
+    }
+
+    @Test fun `D-48 4 a proactive line is followed by listening without a tap and the answer is sent`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "응 괜찮아")
+        val rig = Rig(cs, voice)
+        rig.transport.listener.onFrame(ServerFrame.Proactive("p1", "wiper"))
+        replyWith(rig, "p1", "비 오네, 와이퍼 켰어.")
+        testScheduler.runCurrent()
+        assertEquals(1, voice.listens)
+        assertEquals(TurnState.Thinking, rig.repo.state.value.turn)
+        assertTrue(rig.transport.sent.last { it.contains("turn.start") }.contains("listen_after_proactive"))
+        cs.cancel()
+    }
+
+    @Test fun `D-48 4 the automatic listening ends quietly after 5 s without speech`() = runTest {
+        val cs = rigScope(testScheduler)
+        val (voice, calls) = askThenHang()
+        val rig = Rig(cs, voice)
+        rig.repo.startTalk()
+        replyWith(rig, "응, 알겠어.")
+        testScheduler.runCurrent()
+        assertEquals(TurnState.Listening, rig.repo.state.value.turn)
+        testScheduler.advanceTimeBy(5_100)
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        assertEquals(2, calls())
         cs.cancel()
     }
 

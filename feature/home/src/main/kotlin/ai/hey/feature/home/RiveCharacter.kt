@@ -1,5 +1,6 @@
 package ai.hey.feature.home
 
+import ai.hey.model.HeyLog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +37,9 @@ fun riveStateFor(ui: HomeUi): Int = when {
     }
 }
 
+/** Frames per second Rive draws at most (D-31): every second vsync of a 60 Hz display. */
+internal const val RIVE_FPS_CAP = 30
+
 /**
  * Rive draws at most 30 frames per second (D-31): every second vsync is skipped. The base view re-arms the Choreographer
  * itself (scheduleFrame), so a skipped frame costs one callback and no drawing.
@@ -44,9 +48,19 @@ private class CompanionRiveView(context: Context) : RiveAnimationView(context, n
     override fun createRenderer(): Renderer =
         object : RiveArtboardRenderer(false, Rive.defaultRendererType, controller) {
             private var n = 0
+            private var drawn = 0
+            private var windowStart = 0L
             override fun doFrame(frameTimeNanos: Long) {
                 if (n++ % 2 == 1) { scheduleFrame(); return }
                 super.doFrame(frameTimeNanos)
+                // Debug aid for the CPU measurement (D-48 8): drawn frames per 5 s window, expected ~RIVE_FPS_CAP per second.
+                if (windowStart == 0L) windowStart = frameTimeNanos
+                drawn++
+                if (frameTimeNanos - windowStart >= 5_000_000_000L) {
+                    HeyLog.d("Rive", "drawn fps=${drawn * 1_000_000_000L / (frameTimeNanos - windowStart)} (cap $RIVE_FPS_CAP)")
+                    drawn = 0
+                    windowStart = frameTimeNanos
+                }
             }
         }
 }
@@ -56,9 +70,12 @@ private class Binding(val view: CompanionRiveView, val instance: ViewModelInstan
 /**
  * The live character: artboard Companion / state machine Companion of `hey_companion.riv`, driven only through the
  * `state`, `mouth`, `driving` and `bodyColor` properties of the Companion view model. [onFailure] is called once when
- * the file cannot be loaded or bound; the caller then shows the still image (rive-rig.md; C3/C4 never go blank).
+ * the file cannot be loaded or bound; the caller then shows the still image (rive-rig.md; C3/C4/C5 never go blank).
  *
- * Only composed on parked screens (C3/C4). C5, reduced motion and failure use the still image instead.
+ * Composed on C3/C4 and, since D-48 8 (cancels D-45), on C5 too: the rig's `driving` property stays false so the idle
+ * animation keeps running while the car moves. [whileDriving] only labels the debug log line of the fps cap
+ * ([RIVE_FPS_CAP] = 30, every second vsync skipped), so the emulator CPU measurement can tell the two screens apart.
+ * Reduced motion and failure use the still image instead.
  */
 @Composable
 fun RiveCharacter(
@@ -69,6 +86,7 @@ fun RiveCharacter(
     neck: Int,
     modifier: Modifier = Modifier,
     onFailure: () -> Unit,
+    whileDriving: Boolean = false,
 ) {
     var binding by remember { mutableStateOf<Binding?>(null) }
     AndroidView(
@@ -76,6 +94,7 @@ fun RiveCharacter(
         factory = { ctx ->
             runCatching {
                 Rive.init(ctx, Rive.defaultRendererType)
+                HeyLog.d("Rive", "character live screen=${if (whileDriving) "C5-driving" else "parked"} fpsCap=$RIVE_FPS_CAP (every 2nd vsync drawn)")
                 val view = CompanionRiveView(ctx)
                 view.setRiveResource(R.raw.hey_companion, stateMachineName = "Companion", autoplay = true)
                 val file = checkNotNull(view.file) { "hey_companion.riv did not load" }

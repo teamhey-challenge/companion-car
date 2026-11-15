@@ -27,13 +27,20 @@ import kotlinx.coroutines.delay
 const val DRIVE_WAIT_MILLIS = 2_000L
 
 /**
- * C5 while the car moves (or its motion is unknown): ONE still character image, one status line and one big button.
- * Nothing here moves (no Rive, no animation: D-31, PRD 3.5), there are no subtitles (D-25) and no way to another screen.
+ * C5 while the car moves (or its motion is unknown): the same animated Rive character as C3 (D-48 8, cancels D-45: idle motion,
+ * mouth from the voice level, talk states; still image while Rive loads, fails or motion is reduced), one status line and one
+ * big button. Rive is capped at 30 fps (see [RiveCharacter]). There are no subtitles (D-25) and no way to another screen.
  * The one button is the D-24 button: idle starts listening; listening ends it and sends; while the character talks it is
  * "그만 듣기" and stops the voice and listens. Errors never change this screen (voice only, see FaultAnnouncer).
  */
 @Composable
-fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, onEndListening: () -> Unit, modifier: Modifier = Modifier) {
+fun DriveScreen(
+    ui: HomeUi,
+    onTalk: () -> Unit,
+    onEndListening: () -> Unit,
+    modifier: Modifier = Modifier,
+    reducedMotion: Boolean = true,
+) {
     // "잠깐만요" shows when the driver has spoken (thinking) and nothing has answered for 2 s.
     var waiting by remember { mutableStateOf(false) }
     LaunchedEffect(ui.phase) {
@@ -49,7 +56,7 @@ fun DriveScreen(ui: HomeUi, onTalk: () -> Unit, onEndListening: () -> Unit, modi
             modifier = Modifier.fillSize().driveTop(),
             align = HeyAlign.Center,
         ) {
-            CharacterSlot(size = CharacterSize.Driving, look = ui.look, live = null, contentDescription = stringResource(R.string.home_character))
+            HomeCharacter(ui = ui, reducedMotion = reducedMotion, size = CharacterSize.Driving, description = stringResource(R.string.home_character), whileDriving = true)
             // The status line has a fixed slot so the button never moves between phases (mockup C5).
             VStack(HeyGap.G4, modifier = Modifier.driveStatusSlot(), align = HeyAlign.Center) {
                 when {

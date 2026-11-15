@@ -6,10 +6,10 @@
     <string name="hey_stepper_decrease">줄이기</string>
     <string name="hey_stepper_increase">늘리기</string>
 
-    <string name="hey_talk_idle">누르고 말하기</string>
+    <string name="hey_talk_idle">말하기</string>
     <string name="hey_talk_idle_driving">말하기</string>
-    <string name="hey_talk_listening">손을 떼면 보내요</string>
-    <string name="hey_talk_listening_driving">말하기 끝내기</string>
+    <string name="hey_talk_listening">다 말했어요</string>
+    <string name="hey_talk_listening_driving">다 말했어요</string>
     <string name="hey_talk_thinking">잠시 기다려 주세요</string>
     <string name="hey_talk_speaking">말하는 중</string>
     <string name="hey_stop_listening">그만 듣기</string>

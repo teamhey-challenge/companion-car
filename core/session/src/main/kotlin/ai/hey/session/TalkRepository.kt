@@ -300,12 +300,16 @@ class TalkRepository(
         }
     }
 
-    /** The reply was read to the end. A question opens the microphone for 5 s (F4-F6), unless navigation is guiding. */
+    /**
+     * The reply was read to the end. D-48 4: the microphone stays open for [autoListenMillis] after every answer to a
+     * driver turn (follow-ups need no second tap), and right away after a line the character started by itself
+     * ([TurnSource.Proactive]); the end of the speech sends the turn by itself. Never after a friend line, never while
+     * navigation guides, and never twice in a row (the answer to an automatic listening ends the chain).
+     */
     private fun afterReply() {
         endSpeaking()
         val s = _state.value
-        val question = replyText.toString().trimEnd().let { it.endsWith("?") || it.endsWith("？") }
-        if (!question || s.turn != TurnState.Idle || s.source == TurnSource.Friend) return
+        if (s.turn != TurnState.Idle || s.source == TurnSource.Friend) return
         if (s.source == TurnSource.AutoListen) {
             // PLEOS-79: at most one automatic listening per driver-started turn, or a repeating voice loops forever.
             HeyLog.i(TAG, "talk ignored: auto-listen skipped, the turn was itself an auto-listen")
