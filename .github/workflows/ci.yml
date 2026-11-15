@@ -49,7 +49,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       # main always runs the full gate. PRs add the configuration cache; the Gradle build cache (restored from main,
       # org.gradle.caching=true) already skips compile/test/snapshot-verify of every module the diff did not touch.
-      # Release version (PLEOS-164), same scheme as ops/devbot/release.ts in pleos-challenge: next after the latest car-vX.Y.Z tag
+      # Release version, next after the latest car-vX.Y.Z tag
       # (the deploy job tags what it ships). MINOR when a commit since then is titled feat / new screen, else PATCH; 0.1.0 without a tag.
       - name: Release version
         if: github.event_name != 'pull_request'
