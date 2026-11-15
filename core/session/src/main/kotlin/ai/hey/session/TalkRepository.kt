@@ -92,6 +92,7 @@ class TalkRepository(
     /** Id of the Pleos reading of the reply that is on now (its [VehicleEvent.SpeechDone] ends the turn on screen). */
     @Volatile private var speakingId: String? = null
     private var watchdog: Job? = null
+    private var noteJob: Job? = null
 
     @OptIn(FlowPreview::class)
     fun start() {
@@ -123,7 +124,13 @@ class TalkRepository(
         // Moving does NOT touch the turn: it only decides whether hands-on commands exist.
         scope.launch {
             vehicle.drivingState.collect { d ->
-                _state.update { it.copy(driving = d, panel = if (d == DrivingStatus.Parked) it.panel else Panel.None) }
+                _state.update {
+                    it.copy(
+                        driving = d,
+                        panel = if (d == DrivingStatus.Parked) it.panel else Panel.None,
+                        friendNote = if (d == DrivingStatus.Parked) it.friendNote else null,
+                    )
+                }
             }
         }
         scope.launch {
@@ -194,7 +201,8 @@ class TalkRepository(
                 is ServerFrame.ReplyDelta -> if (frame.turnId == turnId) {
                     armWatchdog(frame.turnId, REPLY_END_TIMEOUT_MILLIS)
                     replyText.append(frame.text)
-                    _state.update { it.copy(reply = replyText.toString()) }
+                    // A friend line is shown only as [CarUiState.friendNote] (parked), never as the reply subtitle.
+                    _state.update { if (it.source == TurnSource.Friend) it else it.copy(reply = replyText.toString()) }
                 }
                 is ServerFrame.ReplyEnd -> if (frame.turnId == turnId) onReplyEnd(frame)
                 is ServerFrame.Error -> {
@@ -211,6 +219,8 @@ class TalkRepository(
                     }
                 }
                 is ServerFrame.Proactive -> onProactive(frame)
+                is ServerFrame.FriendMessage -> onFriend(frame.id, frame.fromName, frame.text, showText = true)
+                is ServerFrame.FriendArrived -> onFriend(frame.id, frame.fromName, frame.place.orEmpty(), showText = false)
                 is ServerFrame.Settings -> companion?.onServerSettings(frame.settings)
                 is ServerFrame.Pairing -> companion?.onServerPairing(frame.phase)
             }
@@ -228,7 +238,7 @@ class TalkRepository(
         replyText.append(frame.text)
         val id = turnId
         turnId = null
-        _state.update { it.copy(reply = frame.text) }
+        _state.update { if (it.source == TurnSource.Friend) it else it.copy(reply = frame.text) }
         val spec = replyAudio
         if (spec is AudioSpec.Pcm && audio != null) {
             audio.finish() // the turn ends on screen when the playback does
@@ -295,7 +305,7 @@ class TalkRepository(
         endSpeaking()
         val s = _state.value
         val question = replyText.toString().trimEnd().let { it.endsWith("?") || it.endsWith("？") }
-        if (!question || s.turn != TurnState.Idle) return
+        if (!question || s.turn != TurnState.Idle || s.source == TurnSource.Friend) return
         if (s.source == TurnSource.AutoListen) {
             // PLEOS-79: at most one automatic listening per driver-started turn, or a repeating voice loops forever.
             HeyLog.i(TAG, "talk ignored: auto-listen skipped, the turn was itself an auto-listen")
@@ -340,6 +350,43 @@ class TalkRepository(
         turnEndSentAt = clock()
         _state.update { it.copy(turn = TurnState.Replying, source = TurnSource.Proactive, heard = null, reply = "", error = null, audioFailed = false) }
         armWatchdog(frame.id, REPLY_START_TIMEOUT_MILLIS)
+    }
+
+    /**
+     * `friend_message` / `friend_arrived`: the spoken line follows as `reply.*` + PCM with turn id [id], like a proactive
+     * line, but it is played in any driving state, navigation guiding or not. Another app's audio focus (navigation
+     * voice, phone call) still wins through the normal playback path. The text goes on screen only while parked, and
+     * only for a message ([showText]); an arrival is spoken only. The microphone never opens after it.
+     */
+    private fun onFriend(id: String, fromName: String, text: String, showText: Boolean) {
+        val s = _state.value
+        val why = when {
+            s.needsOnboarding -> "consent not recorded"
+            s.turn != TurnState.Idle -> "busy (${s.turn})"
+            else -> null
+        }
+        if (why != null) {
+            HeyLog.i(TAG, "talk ignored: friend line blocked, $why")
+            link.send(ClientFrames.turnCancel(id))
+            return
+        }
+        HeyLog.i(TAG, "friend line ${if (showText) "message" else "arrival"}")
+        replyText.setLength(0)
+        replyAudio = AudioSpec.None
+        turnId = id
+        turnEndSentAt = clock()
+        val note = if (showText && s.isParked) FriendNote(fromName, text) else null
+        _state.update {
+            it.copy(turn = TurnState.Replying, source = TurnSource.Friend, heard = null, reply = "", friendNote = note, error = null, audioFailed = false)
+        }
+        if (note != null) {
+            noteJob?.cancel()
+            noteJob = scope.launch {
+                delay(FRIEND_NOTE_MILLIS)
+                _state.update { if (it.friendNote == note) it.copy(friendNote = null) else it }
+            }
+        }
+        armWatchdog(id, REPLY_START_TIMEOUT_MILLIS)
     }
 
     private fun sendCtx(signals: VehicleSignals) {
@@ -533,6 +580,9 @@ class TalkRepository(
 
 const val AUTO_LISTEN_MILLIS = 5_000L
 const val CTX_DEBOUNCE_MILLIS = 1_000L
+
+/** How long a friend's message text stays on C3 after it arrived. */
+const val FRIEND_NOTE_MILLIS = 8_000L
 
 /** A sent turn with no `reply.start` for this long ends with the server fault (PLEOS-134). */
 const val REPLY_START_TIMEOUT_MILLIS = 12_000L

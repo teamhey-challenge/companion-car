@@ -1,6 +1,8 @@
 package ai.hey.session
 
 import ai.hey.model.CompanionSettings
+import ai.hey.model.Friend
+import ai.hey.model.FriendInvite
 import ai.hey.model.ConsentRecord
 import ai.hey.model.ConsentType
 import ai.hey.model.HeyJson
@@ -56,6 +58,15 @@ interface CompanionApi {
 
     /** POST /v1/vehicle-events; the server drops coordinate keys, the car never has any. */
     suspend fun vehicleEvent(atEpochMs: Long, signals: VehicleSignals)
+
+    /** POST /v1/friends/invites */
+    suspend fun createFriendInvite(): FriendInvite
+
+    /** GET /v1/friends (a plain JSON array). */
+    suspend fun friends(): List<Friend>
+
+    /** PATCH /v1/friends/{id} {shareArrival} */
+    suspend fun setShareArrival(id: String, share: Boolean)
 }
 
 /** Every companion REST call is the driver waiting at C6/C7: the whole call (connect + read) ends within this (PLEOS-148). */
@@ -170,6 +181,31 @@ class HttpCompanionApi(
 
     override suspend fun patchSettings(from: CompanionSettings, to: CompanionSettings): CompanionSettings =
         decodeBody { settingsOf(call("PATCH", "v1/settings", settingsPatch(from, to))) }
+
+    override suspend fun createFriendInvite(): FriendInvite = decodeBody {
+        val o = parse(call("POST", "v1/friends/invites")).jsonObject
+        FriendInvite(
+            o.getValue("code").jsonPrimitive.content,
+            o.getValue("url").jsonPrimitive.content,
+            o["expiresAt"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+        )
+    }
+
+    override suspend fun friends(): List<Friend> = decodeBody {
+        parse(call("GET", "v1/friends")).jsonArray.mapNotNull {
+            val f = it.jsonObject
+            Friend(
+                id = f["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
+                name = f["name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                since = f["since"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                shareArrival = f["shareArrival"]?.jsonPrimitive?.contentOrNull == "true",
+            )
+        }
+    }
+
+    override suspend fun setShareArrival(id: String, share: Boolean) {
+        call("PATCH", "v1/friends/$id", buildJsonObject { put("shareArrival", share) })
+    }
 
     override suspend fun vehicleEvent(atEpochMs: Long, signals: VehicleSignals) {
         val ctx = HeyJson.parseToJsonElement(ai.hey.model.ClientFrames.ctx(signals)).jsonObject.getValue("ctx").jsonObject

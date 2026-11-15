@@ -36,6 +36,11 @@ import ai.hey.designsystem.theme.HeyGap
 import ai.hey.designsystem.theme.HeyTextVariant
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.designsystem.theme.HeyTone
+import ai.hey.designsystem.layout.HeyWindow
+import ai.hey.designsystem.layout.carMarginCompact
+import ai.hey.designsystem.layout.fillWidth
+import ai.hey.designsystem.layout.isCompactWindow
+import ai.hey.designsystem.layout.isNarrowWindow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +64,7 @@ internal fun CarFault.toKind(): ErrorKind = when (this) {
     CarFault.Recognition -> ErrorKind.Recognition
     CarFault.Audio -> ErrorKind.Audio
 }
+
 
 /** The character on C3/C4: the live Rive rig, or the still image while it loads, fails, or motion is reduced. */
 @Composable
@@ -98,27 +104,50 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     OceanBackground(modifier = modifier.fillSize(), animated = !reducedMotion) {
-        VStack(HeyGap.G24, modifier = Modifier.fillSize().carMargin()) {
-            HeaderBar(
-                title = stringResource(R.string.home_title),
-                stateLabel = stringResource(R.string.home_parked),
-                trailing = {
-                    HeyButton(stringResource(R.string.home_memory), onMemory, variant = HeyButtonVariant.Soft, size = HeyButtonSize.Header, icon = HeyIcons.Book)
-                    HeyButton(stringResource(R.string.home_settings), onSettings, variant = HeyButtonVariant.Soft, size = HeyButtonSize.Header, icon = HeyIcons.Gear)
-                },
-            )
-            // Mockup grid: the body starts 48 under the header row gap; left column 713 wide, right column 679, 48 between.
-            HStack(HeyGap.G32, modifier = Modifier.fillSize().carBodyTop()) {
-                VStack(HeyGap.G24, modifier = Modifier.grow().fillSize().carGutter(), arrange = HeyArrange.SpaceBetween) {
-                    HomeLeft(ui, onTalk, onEndListening, onFaultAction)
-                }
-                VStack(HeyGap.G8, modifier = Modifier.carSideColumn().fillHeight(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
-                    HomeCharacter(
-                        ui = ui,
-                        reducedMotion = reducedMotion,
-                        size = CharacterSize.Stage,
-                        description = stringResource(if (ui.inTalk) R.string.home_character else R.string.home_character_idle),
-                    )
+        // Multi-window (Pleos 1/2 and 1/3 width next to navigation): below ~1000 dp the two columns stack, and below ~700 dp the
+        // header drops its state label and uses the regular button size. The full-width layout (1600 dp mockup grid) is unchanged.
+        HeyWindow(Modifier.fillSize()) { maxWidth, maxHeight ->
+            val compact = isCompactWindow(maxWidth, maxHeight)
+            val narrow = isNarrowWindow(maxWidth)
+            VStack(HeyGap.G24, modifier = Modifier.fillSize().then(if (compact) Modifier.carMarginCompact() else Modifier.carMargin())) {
+                HeaderBar(
+                    title = stringResource(R.string.home_title),
+                    stateLabel = if (narrow) null else stringResource(R.string.home_parked),
+                    trailing = {
+                        val size = if (compact) HeyButtonSize.Regular else HeyButtonSize.Header
+                        HeyButton(stringResource(R.string.home_memory), onMemory, variant = HeyButtonVariant.Soft, size = size, icon = HeyIcons.Book)
+                        HeyButton(stringResource(R.string.home_settings), onSettings, variant = HeyButtonVariant.Soft, size = size, icon = HeyIcons.Gear)
+                    },
+                )
+                if (compact) {
+                    VStack(HeyGap.G24, modifier = Modifier.fillSize(), align = HeyAlign.Center) {
+                        VStack(HeyGap.G8, modifier = Modifier.grow().fillWidth(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
+                            HomeCharacter(
+                                ui = ui,
+                                reducedMotion = reducedMotion,
+                                size = CharacterSize.Compact,
+                                description = stringResource(if (ui.inTalk) R.string.home_character else R.string.home_character_idle),
+                            )
+                        }
+                        VStack(HeyGap.G24, modifier = Modifier.fillWidth(), arrange = HeyArrange.SpaceBetween) {
+                            HomeLeft(ui, onTalk, onEndListening, onFaultAction)
+                        }
+                    }
+                } else {
+                    // Mockup grid: the body starts 48 under the header row gap; left column 713 wide, right column 679, 48 between.
+                    HStack(HeyGap.G32, modifier = Modifier.fillSize().carBodyTop()) {
+                        VStack(HeyGap.G24, modifier = Modifier.grow().fillSize().carGutter(), arrange = HeyArrange.SpaceBetween) {
+                            HomeLeft(ui, onTalk, onEndListening, onFaultAction)
+                        }
+                        VStack(HeyGap.G8, modifier = Modifier.carSideColumn().fillHeight(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
+                            HomeCharacter(
+                                ui = ui,
+                                reducedMotion = reducedMotion,
+                                size = CharacterSize.Stage,
+                                description = stringResource(if (ui.inTalk) R.string.home_character else R.string.home_character_idle),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -147,12 +176,14 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
                 VStack(HeyGap.G16, modifier = Modifier.carCaptionTop()) {
                     if (ui.phase == HomePhase.Thinking) ui.heard?.let { Subtitle(text = "“$it”") }
                     if (ui.reply.isNotEmpty()) Subtitle(text = ui.reply)
+                    ui.friendNote?.let { Subtitle(text = it) }
                 }
             }
         }
         else -> {
             VStack(HeyGap.G8) {
                 PageHeading(title = stringResource(R.string.home_hint), hero = true, modifier = Modifier.heroWidth())
+                ui.friendNote?.let { Subtitle(text = it) }
                 if (!ui.online) StatusBadge(phase = TalkPhase.Idle, connection = HeyConnection.Reconnecting)
             }
         }

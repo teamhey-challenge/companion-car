@@ -1,4 +1,4 @@
-# 헤이파리 차량 부품 목록 (v0.5, 2026-11-14)
+# 헤이리 차량 부품 목록 (v0.5, 2026-11-14)
 
 화면 목록과 동작은 기획 저장소 `proposal/companion/PRD.md` §3·§4가 소유한다. 이 문서는 차량 부품(`:core:designsystem`, Compose)만 소유한다. `:feature:*`와 `:app`은 이 모듈의 공개 함수만 쓰고, 화면에서 색·글꼴·dp를 직접 쓰지 않는다. 부품은 `modifier: Modifier = Modifier`를 받고 바깥 여백을 더하지 않는다. 문구는 `String`으로 받으며 기본 문구가 있는 부품은 `strings.xml`(`hey_*`)에서 가져온다. 차량 터치 최소 76dp, 주 조작 96dp(확인 창 버튼 104dp, C5 큰 말하기 112dp). 글꼴은 `HeyTheme`의 Chiron GoRound TC, 색은 생성 토큰(`HeyColors`)만 쓴다. 라이트=바다, 다크=심해.
 

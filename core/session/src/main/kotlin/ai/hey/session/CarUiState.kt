@@ -49,7 +49,13 @@ enum class TurnSource {
 
     /** The microphone opened by itself for 5 s after a line that ended with a question mark (F4-F6). */
     AutoListen,
+
+    /** A friend's message or arrival (`friend_message` / `friend_arrived`): spoken at once, never opens the microphone, text only when parked. */
+    Friend,
 }
+
+/** A friend's message as shown on C3 while parked (subtitle); never set while driving. */
+data class FriendNote(val fromName: String, val text: String)
 
 /** A persistent problem C8 shows (null = nothing wrong). The screen words it; while driving only a spoken notice is made. */
 enum class CarFault { Offline, Connecting, Microphone, Server, Recognition, Audio }
@@ -80,6 +86,8 @@ data class CarUiState(
     val heard: String? = null,
     /** The reply text of this turn, growing while it streams. */
     val reply: String = "",
+    /** The friend message on screen (parked only, cleared a few seconds after it was read or when the car moves). */
+    val friendNote: FriendNote? = null,
     val error: TurnError? = null,
     /** Mouth openness 0..3 of the character while a voice plays (D-13). */
     val mouth: Int = 0,

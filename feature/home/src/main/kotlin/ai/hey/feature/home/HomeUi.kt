@@ -25,6 +25,8 @@ data class HomeUi(
     val source: TurnSource = TurnSource.Ptt,
     /** What the character wears (D-41); C3/C4 pass it to Rive, C5/C8/fallback draw the matching still. */
     val look: CharacterLook = CharacterLook(),
+    /** A friend's message shown as a subtitle: set only while parked (the session never fills it while driving). */
+    val friendNote: String? = null,
 ) {
     /** C4 is C3 with a turn on it. */
     val inTalk: Boolean get() = phase != HomePhase.Idle || reply.isNotEmpty() || heard != null
@@ -46,5 +48,6 @@ fun homeUi(s: CarUiState): HomeUi {
         mouth = if (phase == HomePhase.Speaking) s.mouth else 0,
         source = s.source,
         look = CharacterLook(s.companion.settings.bodyColor, s.companion.settings.hat, s.companion.settings.neck),
+        friendNote = s.friendNote?.takeIf { s.isParked }?.let { "${it.fromName}: ${it.text}" },
     )
 }

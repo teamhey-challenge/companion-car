@@ -1,10 +1,10 @@
 <resources>
-    <string name="home_title">헤이파리</string>
+    <string name="home_title">헤이리</string>
     <string name="home_parked">정차 중</string>
     <string name="home_memory">기억</string>
     <string name="home_settings">설정</string>
-    <string name="home_character_idle">헤이파리 대기 중</string>
-    <string name="home_character">헤이파리</string>
+    <string name="home_character_idle">헤이리 대기 중</string>
+    <string name="home_character">헤이리</string>
     <string name="home_hint">오늘은 어떤 하루였어요?</string>
     <string name="drive_wait">잠깐만요</string>
 </resources>

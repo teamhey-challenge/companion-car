@@ -39,6 +39,11 @@ import androidx.navigation.compose.rememberNavController
 
 /** Width in dp of the 1600x900 design canvas every car mockup (hey-companion-ui) is drawn on. */
 private const val DESIGN_WIDTH_DP = 1600f
+private const val DESIGN_HEIGHT_DP = 900f
+
+/** Pixels per design dp relative to the system dp: full width for 16:9 and wider windows, full 900 dp height for narrower ones. */
+internal fun designScale(widthDp: Int, heightDp: Int): Float =
+    if (widthDp * DESIGN_HEIGHT_DP >= heightDp * DESIGN_WIDTH_DP) widthDp / DESIGN_WIDTH_DP else heightDp / DESIGN_HEIGHT_DP
 
 class MainActivity : ComponentActivity() {
     // One launcher for both runtime permissions; only an answer that contains the microphone goes back to the session.
@@ -103,10 +108,13 @@ class MainActivity : ComponentActivity() {
 
             // Design reference (hey-companion-ui, ui-spec): every car screen is laid out at 1600x900 dp. A 2560x1440 or 1280x720
             // window is scaled to that so type, buttons and the character keep the mockup proportions (DesignParity #1).
+            // Multi-window (Pleos 1/2 and 1/3 width next to navigation) is narrower than 16:9: those windows keep the 900 dp design
+            // HEIGHT instead, so a 1280x1440 half is 800x900 dp and a 853x1440 third is 533x900 dp (type stays readable, the screens
+            // switch to their stacked layout below 1000 dp).
             val density = LocalDensity.current
             val config = LocalConfiguration.current
-            val designDensity = remember(config.screenWidthDp, density.density) {
-                Density(density = config.screenWidthDp * density.density / DESIGN_WIDTH_DP, fontScale = 1f)
+            val designDensity = remember(config.screenWidthDp, config.screenHeightDp, density.density) {
+                Density(density = designScale(config.screenWidthDp, config.screenHeightDp) * density.density, fontScale = 1f)
             }
             // D-26: the car follows the system day/night setting (the mockup default is the light sea theme).
             val dark = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES

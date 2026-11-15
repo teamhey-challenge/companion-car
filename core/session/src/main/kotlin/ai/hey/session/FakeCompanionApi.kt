@@ -1,6 +1,8 @@
 package ai.hey.session
 
 import ai.hey.model.CompanionSettings
+import ai.hey.model.Friend
+import ai.hey.model.FriendInvite
 import ai.hey.model.ConsentRecord
 import ai.hey.model.ConsentType
 import ai.hey.model.MemoryItem
@@ -37,6 +39,8 @@ class FakeCompanionApi(
     var pairingPolls = 0
     var unpaired = 0
     val vehicleEvents = ArrayList<VehicleSignals>()
+    val friendList = mutableListOf(Friend("f1", "민수", "2026-11-14", false), Friend("f2", "지은", "2026-11-15", true))
+    var invitesCreated = 0
 
     private fun check() {
         if (failing) throw IOException("fake network down")
@@ -119,5 +123,22 @@ class FakeCompanionApi(
     override suspend fun vehicleEvent(atEpochMs: Long, signals: VehicleSignals) {
         check()
         vehicleEvents += signals
+    }
+
+    override suspend fun createFriendInvite(): FriendInvite {
+        check()
+        invitesCreated++
+        return FriendInvite("K7M2QX", "https://hey.lastmile.ltd/f/K7M2QX", "2026-11-16T00:00:00Z")
+    }
+
+    override suspend fun friends(): List<Friend> {
+        check()
+        return friendList.toList()
+    }
+
+    override suspend fun setShareArrival(id: String, share: Boolean) {
+        check()
+        val i = friendList.indexOfFirst { it.id == id }
+        if (i >= 0) friendList[i] = friendList[i].copy(shareArrival = share)
     }
 }

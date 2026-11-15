@@ -153,6 +153,9 @@ enum class CharacterSize(val width: Dp, val height: Dp) {
     /** C5 centre. */
     Driving(280.dp, 300.dp),
 
+    /** C3/C4 in a 1/2 or 1/3 width multi-window (stacked layout). */
+    Compact(320.dp, 340.dp),
+
     /** Small stage (phone-style cards). */
     Small(150.dp, 160.dp),
 }
@@ -177,7 +180,7 @@ private val Stills: Array<IntArray> = arrayOf(
 /**
  * The still for [look]: one prepared WebP per combination (2 bodies x 3 hats x 2 necks), frames taken from the Rive file itself
  * in its parked pose, so C5 stays a plain image (D-11) and matches what C3 shows. Default look: aqua in the sea theme, peach in
- * the deep-sea theme (design "헤이파리 테마별 기본 색상").
+ * the deep-sea theme (design "헤이리 테마별 기본 색상").
  */
 @Composable
 fun characterStill(look: CharacterLook = CharacterLook()): Painter {

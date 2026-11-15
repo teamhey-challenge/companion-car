@@ -513,6 +513,71 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
+    @Test fun `a friend_message while driving plays the server audio at once and renders no text`() = runTest {
+        val cs = rigScope(testScheduler)
+        val audio = FakeReplyAudio()
+        val rig = Rig(cs, ScriptedVoiceInput(), audio = audio)
+        rig.vehicle.setDriving(true)
+        rig.vehicle.setSignals { it.copy(naviGuiding = true) } // guidance running: a friend line is still spoken (the audio focus decides)
+        val l = rig.transport.listener
+        l.onFrame(ServerFrame.FriendMessage("fm1", "민수", "저녁에 보자"))
+        assertEquals(TurnState.Replying, rig.repo.state.value.turn)
+        l.onFrame(ServerFrame.ReplyStart("fm1", AudioSpec.Pcm(24_000, 1)))
+        l.onAudio(ByteArray(960))
+        l.onFrame(ServerFrame.ReplyEnd("fm1", "민수가 그러는데, 저녁에 보자", 100, 900))
+        assertEquals(1, audio.begins)
+        assertEquals(1, audio.writes)
+        assertEquals(1, audio.finishes)
+        assertNull(rig.repo.state.value.friendNote)
+        assertEquals("", rig.repo.state.value.reply)
+        assertEquals(TurnSource.Friend, rig.repo.state.value.source)
+        cs.cancel()
+    }
+
+    @Test fun `a friend_message while parked plays the audio and renders the text for a few seconds`() = runTest {
+        val cs = rigScope(testScheduler)
+        val audio = FakeReplyAudio()
+        val rig = Rig(cs, ScriptedVoiceInput(), audio = audio)
+        rig.vehicle.setDriving(false)
+        val l = rig.transport.listener
+        l.onFrame(ServerFrame.FriendMessage("fm1", "민수", "저녁에 보자"))
+        l.onFrame(ServerFrame.ReplyStart("fm1", AudioSpec.Pcm(24_000, 1)))
+        l.onFrame(ServerFrame.ReplyEnd("fm1", "민수가 그러는데, 저녁에 보자", 100, 900))
+        assertEquals(1, audio.begins)
+        assertEquals(FriendNote("민수", "저녁에 보자"), rig.repo.state.value.friendNote)
+        testScheduler.advanceTimeBy(FRIEND_NOTE_MILLIS + 1)
+        assertNull(rig.repo.state.value.friendNote)
+        cs.cancel()
+    }
+
+    @Test fun `the text of a friend_message goes away when the car starts moving`() = runTest {
+        val cs = rigScope(testScheduler)
+        val rig = Rig(cs, ScriptedVoiceInput(), audio = FakeReplyAudio())
+        rig.vehicle.setDriving(false)
+        rig.transport.listener.onFrame(ServerFrame.FriendMessage("fm1", "민수", "저녁에 보자"))
+        assertEquals(FriendNote("민수", "저녁에 보자"), rig.repo.state.value.friendNote)
+        rig.vehicle.setDriving(true)
+        assertNull(rig.repo.state.value.friendNote)
+        cs.cancel()
+    }
+
+    @Test fun `friend_arrived is spoken only and never opens the microphone`() = runTest {
+        val cs = rigScope(testScheduler)
+        val voice = ScriptedVoiceInput(text = "안녕")
+        val rig = Rig(cs, voice)
+        rig.vehicle.setDriving(false)
+        val l = rig.transport.listener
+        l.onFrame(ServerFrame.FriendArrived("fa1", "지은", "집"))
+        l.onFrame(ServerFrame.ReplyStart("fa1", AudioSpec.None))
+        l.onFrame(ServerFrame.ReplyEnd("fa1", "지은이 집에 도착했대?", 100, 900))
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("지은이 집에 도착했대?"), rig.vehicle.spoken)
+        assertNull(rig.repo.state.value.friendNote)
+        assertEquals(0, voice.listens) // the line ends with a question mark, yet the microphone stays closed
+        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
+        cs.cancel()
+    }
+
     @Test fun `a proactive frame while navigation guides is refused and cancelled`() = runTest {
         val cs = rigScope(testScheduler)
         val rig = Rig(cs, ScriptedVoiceInput())

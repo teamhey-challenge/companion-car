@@ -1,6 +1,7 @@
 package ai.hey.session
 
 import ai.hey.model.CompanionSettings
+import ai.hey.model.Friend
 import ai.hey.model.ConsentType
 import ai.hey.model.HeyLog
 import ai.hey.model.MemoryItem
@@ -81,6 +82,23 @@ data class MemoryState(
     val loaded: Boolean = false,
 )
 
+/** C7 "내 친구 코드": the invite the car shows (QR + 6-character code), 24 h valid. */
+sealed interface InviteUi {
+    data object None : InviteUi
+    data object Creating : InviteUi
+    data class Shown(val code: String, val url: String, val expiresAt: String) : InviteUi
+    data object Failed : InviteUi
+}
+
+/** C7 friend section: read-only list plus the per-friend 도착 알리기 switch. [saving] = ids whose PATCH is in flight. */
+data class FriendsState(
+    val items: List<Friend> = emptyList(),
+    val loaded: Boolean = false,
+    val failed: Boolean = false,
+    val saving: Set<String> = emptySet(),
+    val invite: InviteUi = InviteUi.None,
+)
+
 /** Everything C1/C2/C6/C7 read, besides [CarUiState]. [paired] = the phone claimed the code. */
 data class CompanionState(
     val onboarding: OnboardingUi = OnboardingUi(),
@@ -91,6 +109,7 @@ data class CompanionState(
     /** The last "녹음 동의 철회" / "폰 연결 해제" request failed; cleared when the next one starts or succeeds. */
     val accountFailure: AccountFailure = AccountFailure.None,
     val settingsAction: SettingsAction = SettingsAction.None,
+    val friends: FriendsState = FriendsState(),
 ) {
     val paired: Boolean get() = pairing == PairingUi.Claimed
 }
@@ -119,6 +138,16 @@ interface CompanionCommands {
     fun deleteAllMemory()
 
     fun updateSettings(transform: (CompanionSettings) -> CompanionSettings)
+
+    /** C7 opened: reads the friend list. */
+    fun loadFriends()
+
+    /** C7 "내 친구 코드": asks the server for a new invite (parked screen only). */
+    fun createInvite()
+    fun closeInvite()
+
+    /** C7 per-friend "도착 알리기". */
+    fun setShareArrival(id: String, share: Boolean)
 }
 
 /**
@@ -178,6 +207,52 @@ class CompanionRepository(
                 runCatching { api.currentPairing() }.onSuccess { p ->
                     _state.update { it.copy(pairing = if (p.phase == PairingPhase.Claimed) PairingUi.Claimed else if (it.pairing == PairingUi.Claimed) PairingUi.None else it.pairing) }
                 }.onFailure { log("pairing", it) }
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- friends
+
+    override fun loadFriends() {
+        scope.launch {
+            try {
+                val list = api.friends()
+                _state.update { it.copy(friends = it.friends.copy(items = list, loaded = true, failed = false)) }
+            } catch (e: IOException) {
+                log("friends", e)
+                _state.update { it.copy(friends = it.friends.copy(failed = true)) }
+            }
+        }
+    }
+
+    override fun createInvite() {
+        if (_state.value.friends.invite == InviteUi.Creating) return
+        _state.update { it.copy(friends = it.friends.copy(invite = InviteUi.Creating)) }
+        scope.launch {
+            try {
+                val i = api.createFriendInvite()
+                _state.update { it.copy(friends = it.friends.copy(invite = InviteUi.Shown(i.code, i.url, i.expiresAt))) }
+            } catch (e: IOException) {
+                log("invite", e)
+                _state.update { it.copy(friends = it.friends.copy(invite = InviteUi.Failed)) }
+            }
+        }
+    }
+
+    override fun closeInvite() = _state.update { it.copy(friends = it.friends.copy(invite = InviteUi.None)) }
+
+    override fun setShareArrival(id: String, share: Boolean) {
+        if (id in _state.value.friends.saving) return
+        _state.update { it.copy(friends = it.friends.copy(saving = it.friends.saving + id)) }
+        scope.launch {
+            try {
+                api.setShareArrival(id, share)
+                _state.update { s ->
+                    s.copy(friends = s.friends.copy(items = s.friends.items.map { f -> if (f.id == id) f.copy(shareArrival = share) else f }, saving = s.friends.saving - id))
+                }
+            } catch (e: IOException) {
+                log("share arrival", e)
+                _state.update { it.copy(friends = it.friends.copy(saving = it.friends.saving - id, failed = true)) }
             }
         }
     }

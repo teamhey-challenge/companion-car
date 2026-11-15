@@ -92,6 +92,12 @@ data class PairingStatus(
 
 data class PairingInfo(val pairCode: String, val expiresAt: String)
 
+/** GET /v1/friends item. [shareArrival] = tell this friend when the car arrives (default off). */
+data class Friend(val id: String, val name: String, val since: String, val shareArrival: Boolean)
+
+/** POST /v1/friends/invites: a 6-character code (24 h) and the link the QR carries. */
+data class FriendInvite(val code: String, val url: String, val expiresAt: String)
+
 /**
  * What the car reads from itself and tells the server in `ctx` frames (contract.md). Null = signal not available.
  * Coordinates are never part of it.
@@ -107,4 +113,10 @@ data class VehicleSignals(
     val naviGuiding: Boolean = false,
     /** Remaining distance to the navigation destination in whole km; null without a destination. Never a name or coordinates. */
     val destKm: Int? = null,
+    /** EV charge switch state; null when the car has no such signal. */
+    val charging: Boolean? = null,
+    /** The navigation destination's name the user set (never coordinates); null without a destination. */
+    val destinationName: String? = null,
+    /** True once navigation reported the destination reached (until the next route starts). */
+    val arrived: Boolean = false,
 )
