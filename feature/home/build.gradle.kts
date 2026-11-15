@@ -22,6 +22,9 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 // Snapshot samples are test-only; Paparazzi renders the debug variant only.
 androidComponents { beforeVariants(selector().withBuildType("release")) { it.enableUnitTest = false } }
 
+// PLEOS-199: the design-diff dump tests run only when asked for (`-Pdesign-diff`), so record/verify never see them.
+tasks.withType<Test>().configureEach { providers.gradleProperty("design-diff").orNull?.let { systemProperty("design-diff", it) } }
+
 // Structure, not convention: no material3 / foundation here, so raw Text/Button/Column cannot be imported.
 // The one exception is the Rive view (a classic Android View), the character renderer in RiveCharacter.kt.
 dependencies {
