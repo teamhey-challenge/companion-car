@@ -100,7 +100,9 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.activity.compose)
     implementation(libs.navigation.compose)
+    implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 // `:app:assembleRelease` also copies the signed APK to dist/apk/<teamName>_HEY_release.apk (git-ignored).
