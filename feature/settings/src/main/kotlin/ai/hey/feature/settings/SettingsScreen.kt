@@ -171,6 +171,7 @@ fun SettingsScreen(
                         )
                     }
                 }
+                LookSection(settings.look, onLook, enabled = SettingField.Look !in settings.saving)
                 val proactiveSaving = SettingField.Proactive in settings.saving
                 ToggleRow(
                     label = stringResource(R.string.settings_proactive),
@@ -216,7 +217,6 @@ fun SettingsScreen(
                     enabled = SettingField.Speech !in settings.saving,
                     modifier = Modifier.fillWidth(),
                 )
-                LookSection(settings.look, onLook, enabled = SettingField.Look !in settings.saving)
                 HStack(HeyGap.G16, align = HeyAlign.Center) {
                     HeyButton(
                         stringResource(R.string.settings_open_memory),
