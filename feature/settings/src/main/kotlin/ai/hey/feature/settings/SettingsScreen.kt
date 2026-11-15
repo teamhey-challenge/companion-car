@@ -58,17 +58,6 @@ enum class SettingsPending { None, Withdraw }
 /** The settings fields that can have a save in flight (each saves on its own, PRD 4.7.5 Partial = n/a). */
 enum class SettingField { Proactive, Memory, Speech, Look }
 
-/** One friend on C7: read-only except the 도착 알리기 switch. */
-data class FriendRowUi(val id: String, val name: String, val shareArrival: Boolean, val saving: Boolean = false)
-
-/** "내 친구 코드" panel: the QR carries [Shown.url], the text is the 6-character [Shown.code]. */
-sealed interface FriendCodeUi {
-    data object None : FriendCodeUi
-    data object Creating : FriendCodeUi
-    data class Shown(val code: String, val url: String) : FriendCodeUi
-    data object Failed : FriendCodeUi
-}
-
 data class SettingsUi(
     val proactive: ProactiveUi = ProactiveUi.Normal,
     val memoryEnabled: Boolean = true,
@@ -82,9 +71,6 @@ data class SettingsUi(
     val pending: SettingsPending = SettingsPending.None,
     /** What the character wears (D-41); the 꾸미기 section previews and edits it. */
     val look: CharacterLook = CharacterLook(),
-    val friends: List<FriendRowUi> = emptyList(),
-    val friendsFailed: Boolean = false,
-    val friendCode: FriendCodeUi = FriendCodeUi.None,
 )
 
 /** The debug-only server address field; null in release builds, which never show it. */
@@ -112,9 +98,6 @@ fun SettingsScreen(
     onWithdraw: () -> Unit,
     modifier: Modifier = Modifier,
     notice: String? = null,
-    onFriendCode: () -> Unit = {},
-    onCloseFriendCode: () -> Unit = {},
-    onShareArrival: (id: String, share: Boolean) -> Unit = { _, _ -> },
     server: ServerAddress? = null,
 ) {
     var confirm by remember { mutableStateOf(Confirm.None) }
@@ -175,7 +158,6 @@ fun SettingsScreen(
                     }
                 }
                 LookSection(settings.look, onLook, enabled = SettingField.Look !in settings.saving)
-                FriendsSection(settings, onFriendCode, onCloseFriendCode, onShareArrival)
                 val proactiveSaving = SettingField.Proactive in settings.saving
                 ToggleRow(
                     label = stringResource(R.string.settings_proactive),
@@ -244,59 +226,6 @@ fun SettingsScreen(
                     icon = HeyIcons.Trash,
                 )
             }
-        }
-    }
-}
-
-/** 친구 (parked only like all of C7): own invite code with QR, read-only list, per-friend 도착 알리기. */
-@Composable
-internal fun FriendsSection(
-    settings: SettingsUi,
-    onFriendCode: () -> Unit,
-    onCloseFriendCode: () -> Unit,
-    onShareArrival: (String, Boolean) -> Unit,
-) {
-    VStack(HeyGap.G16, modifier = Modifier.fillWidth()) {
-        HeyText(stringResource(R.string.settings_friends), variant = HeyTextVariant.Heading)
-        when (val code = settings.friendCode) {
-            FriendCodeUi.None -> HeyButton(
-                stringResource(R.string.settings_friend_code),
-                onFriendCode,
-                variant = HeyButtonVariant.Soft,
-                icon = HeyIcons.Qr,
-            )
-            FriendCodeUi.Creating -> HeyText(stringResource(R.string.settings_friend_code_creating), tone = HeyTone.Muted)
-            FriendCodeUi.Failed -> {
-                HeyNotice(stringResource(R.string.settings_friend_code_failed), HeyStatusTone.Danger, persistent = true)
-                HStack(HeyGap.G16, align = HeyAlign.Center) {
-                    HeyButton(stringResource(R.string.settings_retry), onFriendCode, variant = HeyButtonVariant.Secondary, icon = HeyIcons.Refresh)
-                    HeyButton(stringResource(R.string.settings_friend_code_close), onCloseFriendCode, variant = HeyButtonVariant.Soft)
-                }
-            }
-            is FriendCodeUi.Shown -> {
-                QrPanel(
-                    content = code.url,
-                    code = code.code,
-                    status = stringResource(R.string.settings_friend_code_status),
-                    modifier = Modifier.fillWidth(),
-                )
-                HeyButton(stringResource(R.string.settings_friend_code_close), onCloseFriendCode, variant = HeyButtonVariant.Soft)
-            }
-        }
-        if (settings.friendsFailed) HeyNotice(stringResource(R.string.settings_friends_failed), HeyStatusTone.Danger, persistent = true)
-        if (settings.friends.isEmpty() && !settings.friendsFailed) {
-            HeyText(stringResource(R.string.settings_friend_none), tone = HeyTone.Muted)
-        }
-        settings.friends.forEach { f ->
-            ToggleRow(
-                label = f.name,
-                description = stringResource(R.string.settings_friend_arrival_desc, f.name),
-                checked = f.shareArrival,
-                onCheckedChange = { onShareArrival(f.id, it) },
-                saving = f.saving,
-                surface = ToggleSurface.Secondary,
-                modifier = Modifier.fillWidth(),
-            )
         }
     }
 }

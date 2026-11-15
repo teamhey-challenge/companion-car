@@ -93,8 +93,11 @@ data class PairingStatus(
 
 data class PairingInfo(val pairCode: String, val expiresAt: String)
 
-/** GET /v1/friends item. [shareArrival] = tell this friend when the car arrives (default off). */
+/** GET /v1/friends item. Read-only on the car: [shareArrival] (도착 알리기) is shown, set only on the phone (D-47). */
 data class Friend(val id: String, val name: String, val since: String, val shareArrival: Boolean)
+
+/** A message a friend sent me (GET /v1/messages, direction "in"; the server leaves reported ones out). D-53: at most 120 characters. [friendId] is my friend row. */
+data class ReceivedMessage(val id: String, val friendId: String, val friendName: String, val text: String, val at: String)
 
 /** POST /v1/friends/invites: a 6-character code (24 h) and the link the QR carries. */
 data class FriendInvite(val code: String, val url: String, val expiresAt: String)

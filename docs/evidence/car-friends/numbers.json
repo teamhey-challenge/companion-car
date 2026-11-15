@@ -1,0 +1,418 @@
+{
+ "screen": "car/friends",
+ "pass": false,
+ "shas": {
+  "app": "639b705317f83de9dab88e238cd2399d247b343f",
+  "appDirty": false,
+  "studio": "919aee7",
+  "sharedTag": "v0.5.1"
+ },
+ "viewport": [
+  1600,
+  900
+ ],
+ "tolerances": {
+  "position": 4,
+  "size": 4,
+  "fontSize": 0,
+  "fontWeight": 0,
+  "letterSpacingEm": 0.01,
+  "lineHeight": 1,
+  "baseline": 2,
+  "color": "exact"
+ },
+ "pixel": {
+  "badPixels": 13846,
+  "total": 831744
+ },
+ "failingValues": 40,
+ "rows": [
+  {
+   "text": "정차 중",
+   "checks": [
+    {
+     "name": "x",
+     "design": "247",
+     "app": "378",
+     "delta": "131",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "54.21",
+     "app": "87",
+     "delta": "32.79",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "66",
+     "app": "99",
+     "delta": "33",
+     "ok": false
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "78",
+     "app": "119",
+     "delta": "41",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "22",
+     "app": "33",
+     "delta": "11",
+     "ok": false
+    },
+    {
+     "name": "font-weight",
+     "design": "400",
+     "app": "400",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "24",
+     "app": "50",
+     "delta": "26",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#456070",
+     "app": "#456070",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "친구",
+   "checks": [
+    {
+     "name": "x",
+     "design": "80",
+     "app": "80",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "148.63",
+     "app": "204",
+     "delta": "55.37",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "55.45",
+     "app": "77.58",
+     "delta": "22.13",
+     "ok": false
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "188",
+     "app": "247",
+     "delta": "59",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "32",
+     "app": "44",
+     "delta": "12",
+     "ok": false
+    },
+    {
+     "name": "font-weight",
+     "design": "600",
+     "app": "400",
+     "delta": "-200",
+     "ok": false
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "-0.04",
+     "app": "-0.05",
+     "delta": "-0.01",
+     "ok": false
+    },
+    {
+     "name": "line-height",
+     "design": "41.6",
+     "app": "56",
+     "delta": "14.4",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "내 친구 코드",
+   "checks": [
+    {
+     "name": "x",
+     "design": "148",
+     "app": "136",
+     "delta": "-12",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "255.3",
+     "app": "366",
+     "delta": "110.7",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "144",
+     "app": "124",
+     "delta": "-20",
+     "ok": false
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "271.59",
+     "app": "389",
+     "delta": "117.41",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "28",
+     "app": "24",
+     "delta": "-4",
+     "ok": false
+    },
+    {
+     "name": "font-weight",
+     "design": "400",
+     "app": "700",
+     "delta": "300",
+     "ok": false
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "24",
+     "app": "32",
+     "delta": "8",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "받은 말",
+   "checks": [
+    {
+     "name": "x",
+     "design": "874",
+     "app": "356",
+     "delta": "-518",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "255.3",
+     "app": "366",
+     "delta": "110.7",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "85",
+     "app": "73",
+     "delta": "-12",
+     "ok": false
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "271.59",
+     "app": "389",
+     "delta": "117.41",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "28",
+     "app": "24",
+     "delta": "-4",
+     "ok": false
+    },
+    {
+     "name": "font-weight",
+     "design": "400",
+     "app": "700",
+     "delta": "300",
+     "ok": false
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "24",
+     "app": "32",
+     "delta": "8",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "민수",
+   "checks": [
+    {
+     "name": "x",
+     "design": "184",
+     "app": "196",
+     "delta": "12",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "375.71",
+     "app": "473",
+     "delta": "97.29",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "58",
+     "app": "58",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "417.19",
+     "app": "504",
+     "delta": "86.81",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "32",
+     "app": "32",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "600",
+     "app": "700",
+     "delta": "100",
+     "ok": false
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "44.8",
+     "app": "48",
+     "delta": "3.2",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  }
+ ],
+ "onlyDesign": [
+  "\"Hey\" @156,54.21 75×31.58 42px/700",
+  "\"유진\" @924,375.71 58×58.95 32px/600"
+ ],
+ "onlyApp": [
+  "헤이리",
+  "친구 추가, 끊기, 도착 알리기는 폰에서 해요",
+  "오늘 발표 잘할 거야. 응원할게!",
+  "지은",
+  "저녁에 보자",
+  "도착 알림 켜짐"
+ ]
+}

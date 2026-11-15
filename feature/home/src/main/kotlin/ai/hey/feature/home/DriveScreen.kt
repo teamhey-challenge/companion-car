@@ -1,4 +1,5 @@
 package ai.hey.feature.home
+import ai.hey.session.TurnSource
 
 import ai.hey.designsystem.component.CharacterSize
 import ai.hey.designsystem.component.CharacterSlot
@@ -65,10 +66,13 @@ fun DriveScreen(
                     ui.fault != null -> DriveFaultIcon(ui.fault)
                 }
             }
+            // A friend's line being read: the one button stops the reading (PLEOS-196); nothing else of it is on screen.
+            val friendLine = ui.source == TurnSource.Friend && ui.phase != HomePhase.Idle
             TalkButton(
                 phase = ui.phase.toTalk(),
                 onClick = if (ui.phase == HomePhase.Idle) onTalk else onEndConversation,
                 driving = true,
+                label = if (friendLine) stringResource(R.string.drive_friend_stop) else null,
             )
         }
     }

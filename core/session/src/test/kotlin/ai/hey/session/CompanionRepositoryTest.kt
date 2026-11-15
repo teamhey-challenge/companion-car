@@ -332,6 +332,35 @@ class CompanionRepositoryTest {
         assertFalse(ConsentType.Memory in rig.storage.consents.value.granted)
         cs.cancel()
     }
+
+    @Test fun `received messages load and a report removes the message only after the server said ok`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.repo.loadMessages()
+        assertEquals(listOf("m1", "m2"), rig.repo.state.value.messages.items.map { it.id })
+        assertTrue(rig.repo.state.value.messages.loaded)
+        rig.api.failing = true
+        rig.repo.reportMessage("m1")
+        assertEquals(listOf("m1", "m2"), rig.repo.state.value.messages.items.map { it.id })
+        assertTrue(rig.repo.state.value.messages.reportFailed)
+        assertFalse(rig.repo.state.value.messages.reporting)
+        rig.api.failing = false
+        rig.repo.reportMessage("m1")
+        assertEquals(listOf("m2"), rig.repo.state.value.messages.items.map { it.id })
+        assertEquals(listOf("m1"), rig.api.reported)
+        assertFalse(rig.repo.state.value.messages.reportFailed)
+        cs.cancel()
+    }
+
+    @Test fun `a failed message list read is a failure of that area only`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.api.failing = true
+        rig.repo.loadMessages()
+        assertTrue(rig.repo.state.value.messages.failed)
+        assertFalse(rig.repo.state.value.friends.failed)
+        cs.cancel()
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

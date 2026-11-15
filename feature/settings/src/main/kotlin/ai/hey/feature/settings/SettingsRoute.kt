@@ -7,8 +7,6 @@ import ai.hey.session.CompanionCommands
 import ai.hey.session.SettingsAction
 import ai.hey.session.AccountFailure
 import ai.hey.session.CompanionState
-import ai.hey.session.InviteUi
-import androidx.compose.runtime.DisposableEffect
 import ai.hey.session.SettingsSave
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,14 +36,6 @@ internal fun ProactiveUi.level() = when (this) {
  * time, so that is the field whose save is running.
  */
 fun settingsUi(state: CompanionState, lastField: SettingField?): SettingsUi = SettingsUi(
-    friends = state.friends.items.map { FriendRowUi(it.id, it.name, it.shareArrival, saving = it.id in state.friends.saving) },
-    friendsFailed = state.friends.failed,
-    friendCode = when (val i = state.friends.invite) {
-        InviteUi.None -> FriendCodeUi.None
-        InviteUi.Creating -> FriendCodeUi.Creating
-        InviteUi.Failed -> FriendCodeUi.Failed
-        is InviteUi.Shown -> FriendCodeUi.Shown(i.code, i.url)
-    },
     proactive = state.settings.proactive.ui(),
     memoryEnabled = state.settings.memoryEnabled,
     speech = if (state.settings.speech == SpeechStyle.Jondaetmal) SpeechUi.Jondaetmal else SpeechUi.Banmal,
@@ -71,9 +61,7 @@ fun SettingsRoute(
     /** Debug builds only; release passes null and the field does not exist. */
     server: ServerAddress? = null,
 ) {
-    LaunchedEffect(Unit) { commands.refresh(); commands.loadFriends() }
-    // The code is a parked-only panel: leaving C7 (or the gear leaving P, which ends the route) hides it again.
-    DisposableEffect(Unit) { onDispose { commands.closeInvite() } }
+    LaunchedEffect(Unit) { commands.refresh() }
     var last by remember { mutableStateOf<SettingField?>(null) }
     SettingsScreen(
         settings = settingsUi(state, last),
@@ -89,9 +77,6 @@ fun SettingsRoute(
             commands.updateSettings { it.copy(bodyColor = look.bodyColor, hat = look.hat, neck = look.neck) }
         },
         onOpenMemory = onOpenMemory,
-        onFriendCode = commands::createInvite,
-        onCloseFriendCode = commands::closeInvite,
-        onShareArrival = commands::setShareArrival,
         onOpenPair = onOpenPair,
         onWithdraw = commands::withdrawRecordConsent,
         modifier = modifier,

@@ -3,6 +3,7 @@ package ai.hey.session
 import ai.hey.model.CompanionSettings
 import ai.hey.model.Friend
 import ai.hey.model.FriendInvite
+import ai.hey.model.ReceivedMessage
 import ai.hey.model.ConsentRecord
 import ai.hey.model.ConsentType
 import ai.hey.model.MemoryItem
@@ -137,9 +138,20 @@ class FakeCompanionApi(
         return friendList.toList()
     }
 
-    override suspend fun setShareArrival(id: String, share: Boolean) {
+    val messageList = mutableListOf(
+        ReceivedMessage("m1", "f1", "민수", "오늘 발표 잘할 거야. 끝나고 맛있는 거 먹자. 응원할게!", "2026-11-15T08:40:00Z"),
+        ReceivedMessage("m2", "f2", "지은", "저녁에 보자", "2026-11-15T07:10:00Z"),
+    )
+    val reported = ArrayList<String>()
+
+    override suspend fun messages(): List<ReceivedMessage> {
         check()
-        val i = friendList.indexOfFirst { it.id == id }
-        if (i >= 0) friendList[i] = friendList[i].copy(shareArrival = share)
+        return messageList.toList()
+    }
+
+    override suspend fun reportMessage(id: String) {
+        check()
+        reported += id
+        messageList.removeAll { it.id == id }
     }
 }

@@ -29,7 +29,7 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
         dump.write()
     }
     dump("car-home") {
-        HomeScreen(HomeUi(online = true), reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
+        HomeScreen(HomeUi(online = true), reducedMotion = true, onTalk = {}, onEndConversation = {}, onMemory = {}, onFriends = {}, onSettings = {}, onFaultAction = {})
     }
     dump("car-home-trip-end") {
         HomeScreen(

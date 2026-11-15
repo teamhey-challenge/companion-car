@@ -2,6 +2,7 @@ package ai.hey.session
 
 import ai.hey.model.CompanionSettings
 import ai.hey.model.Friend
+import ai.hey.model.ReceivedMessage
 import ai.hey.model.ConsentType
 import ai.hey.model.OnboardingStep
 import ai.hey.model.HeyLog
@@ -96,13 +97,21 @@ sealed interface InviteUi {
     data object Failed : InviteUi
 }
 
-/** C7 friend section: read-only list plus the per-friend 도착 알리기 switch. [saving] = ids whose PATCH is in flight. */
+/** Friend section of settings: read-only list of the friends (adding, removing and 도착 알리기 are phone-only, D-47). */
 data class FriendsState(
     val items: List<Friend> = emptyList(),
     val loaded: Boolean = false,
     val failed: Boolean = false,
-    val saving: Set<String> = emptySet(),
     val invite: InviteUi = InviteUi.None,
+)
+
+/** The received-messages view: [reporting] = the report request is in flight, [reportFailed] = the last one did not go through. */
+data class MessagesState(
+    val items: List<ReceivedMessage> = emptyList(),
+    val loaded: Boolean = false,
+    val failed: Boolean = false,
+    val reporting: Boolean = false,
+    val reportFailed: Boolean = false,
 )
 
 /** Everything C1/C2/C6/C7 read, besides [CarUiState]. [paired] = the phone claimed the code. */
@@ -118,6 +127,7 @@ data class CompanionState(
     val accountFailure: AccountFailure = AccountFailure.None,
     val settingsAction: SettingsAction = SettingsAction.None,
     val friends: FriendsState = FriendsState(),
+    val messages: MessagesState = MessagesState(),
 ) {
     val paired: Boolean get() = pairing is PairingUi.Claimed
 }
@@ -150,15 +160,19 @@ interface CompanionCommands {
 
     fun updateSettings(transform: (CompanionSettings) -> CompanionSettings)
 
-    /** C7 opened: reads the friend list. */
+    /** Settings opened: reads the friend list (read-only on the car, D-47). */
     fun loadFriends()
 
-    /** C7 "내 친구 코드": asks the server for a new invite (parked screen only). */
+    /** Settings "내 친구 코드": asks the server for a new invite (parked screen only). */
     fun createInvite()
     fun closeInvite()
 
-    /** C7 per-friend "도착 알리기". */
-    fun setShareArrival(id: String, share: Boolean)
+    /** Received messages opened: reads what friends sent me. */
+    fun loadMessages()
+
+    /** "이 말 신고하기": the server hides the message (D-53); on success it leaves [MessagesState.items]. */
+    fun reportMessage(id: String)
+    fun clearReportFailure()
 }
 
 /**
@@ -259,21 +273,36 @@ class CompanionRepository(
 
     override fun closeInvite() = _state.update { it.copy(friends = it.friends.copy(invite = InviteUi.None)) }
 
-    override fun setShareArrival(id: String, share: Boolean) {
-        if (id in _state.value.friends.saving) return
-        _state.update { it.copy(friends = it.friends.copy(saving = it.friends.saving + id)) }
+    // ---------------------------------------------------------------- received messages
+
+    override fun loadMessages() {
         scope.launch {
             try {
-                api.setShareArrival(id, share)
-                _state.update { s ->
-                    s.copy(friends = s.friends.copy(items = s.friends.items.map { f -> if (f.id == id) f.copy(shareArrival = share) else f }, saving = s.friends.saving - id))
-                }
+                val list = api.messages()
+                _state.update { it.copy(messages = it.messages.copy(items = list, loaded = true, failed = false)) }
             } catch (e: IOException) {
-                log("share arrival", e)
-                _state.update { it.copy(friends = it.friends.copy(saving = it.friends.saving - id, failed = true)) }
+                log("messages", e)
+                _state.update { it.copy(messages = it.messages.copy(failed = true)) }
             }
         }
     }
+
+    override fun reportMessage(id: String) {
+        if (_state.value.messages.reporting) return
+        _state.update { it.copy(messages = it.messages.copy(reporting = true, reportFailed = false)) }
+        scope.launch {
+            try {
+                api.reportMessage(id)
+                // The server hides a reported message from the list for good (D-53): the car drops it the same way.
+                _state.update { s -> s.copy(messages = s.messages.copy(items = s.messages.items.filter { it.id != id }, reporting = false)) }
+            } catch (e: IOException) {
+                log("report", e)
+                _state.update { it.copy(messages = it.messages.copy(reporting = false, reportFailed = true)) }
+            }
+        }
+    }
+
+    override fun clearReportFailure() = _state.update { it.copy(messages = it.messages.copy(reportFailed = false)) }
 
     // ---------------------------------------------------------------- consent
 
