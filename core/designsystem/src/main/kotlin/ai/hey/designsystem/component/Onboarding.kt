@@ -92,6 +92,11 @@ import kotlinx.coroutines.launch
  * outer margin); the screens in :feature:onboarding only fill the slots.
  */
 
+/**
+ * True where animations must show their settled picture (snapshots and previews): fades and drops start finished.
+ * The one flag every onboarding screen reads, so a screen snapshot shows polaroids dropped and heyri faded in.
+ */
+val LocalHeyStill = androidx.compose.runtime.staticCompositionLocalOf { false }
 private val SceneInk = HeyDarkColors.bgPage
 private val SceneText = HeyDarkColors.fgDefault
 private val Halo = Color(0xFFFFDE96)
@@ -447,11 +452,11 @@ fun OnbTitle(title: String, tagline: String, modifier: Modifier = Modifier, comp
 
 /** O5: "너의 단짝 / 헤이리" (the studio's INTRODUCING Roman): a small eyebrow over a large name. */
 @Composable
-fun OnbMeetTitle(eyebrow: String, name: String, modifier: Modifier = Modifier, compact: Boolean = false) {
-    VStack(HeyGap.G4, modifier = modifier, align = HeyAlign.Center) {
-        InkText(eyebrow, SceneText, maxLines = 1, size = 17.sp, weight = FontWeight.Bold, trackingEm = 0.3f)
-        InkText(name, SceneText, maxLines = 1, size = if (compact) 56.sp else 84.sp, lineHeight = if (compact) 72.sp else 109.sp, weight = FontWeight.Medium, trackingEm = -0.02f)
-    }
+fun OnbMeetTitle(name: String, modifier: Modifier = Modifier, compact: Boolean = false) {
+    InkText(
+        name, SceneText, modifier, maxLines = 1, align = HeyTextAlign.Center,
+        size = if (compact) 56.sp else 84.sp, lineHeight = if (compact) 72.sp else 109.sp, weight = FontWeight.Medium, trackingEm = -0.02f,
+    )
 }
 
 /** "누르는 건 정차하면 이어서 할게": the one line shown while a press step waits for the car to stop. */
@@ -549,7 +554,8 @@ fun OnbPolaroids(
     /** Snapshots: draw the cards already dropped. */
     settled: Boolean = false,
 ) {
-    val drop = remember { Animatable(if (settled) 1f else 0f) }
+    val still = settled || LocalHeyStill.current || LocalInspectionMode.current
+    val drop = remember { Animatable(if (still) 1f else 0f) }
     LaunchedEffect(Unit) { if (drop.value < 1f) drop.animateTo(1f, tween(1200)) }
     val away by animateFloatAsState(if (stored) 1f else 0f, tween(900), label = "stored")
     BoxWithConstraints(modifier.fillMaxSize().background(SceneInk.copy(alpha = 0.5f * (1f - away)))) {

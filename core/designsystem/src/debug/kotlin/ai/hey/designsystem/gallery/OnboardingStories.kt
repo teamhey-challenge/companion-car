@@ -77,7 +77,7 @@ internal fun onboardingParts(): List<Story> = buildList {
         OnbHoldRing("길게 눌러 헤이리 만나기", 1800, {}, Modifier.place(OnbAlign.Center).width(420.dp).height(420.dp), previewProgress = 0.7f)
     })
     add(scenePart("onb-meet-title", OnbShot.Sea) {
-        OnbMeetTitle("너의 단짝", "헤이리", Modifier.place(OnbAlign.TopCenter).padding(top = 24.dp))
+        OnbMeetTitle("헤이리", Modifier.place(OnbAlign.TopCenter).padding(top = 24.dp))
     })
     add(scenePart("onb-polaroids", OnbShot.Sea) {
         OnbPolaroids(

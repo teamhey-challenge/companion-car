@@ -15,6 +15,7 @@ import ai.hey.feature.onboarding.OnboardingFlow
 import ai.hey.feature.onboarding.OnboardingOutcome
 import ai.hey.feature.onboarding.OnboardingScreen
 import ai.hey.feature.onboarding.PairScreen
+import ai.hey.feature.onboarding.QrStepScreen
 import ai.hey.feature.onboarding.PairUi
 import ai.hey.session.CompanionRepository
 import ai.hey.session.PairingUi
@@ -151,6 +152,7 @@ fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, on
         else -> TalkPhase.Idle
     }
     val line = talkState.onboarding.line
+    val look = companionState.settings.let { CharacterLook(it.bodyColor, it.hat, it.neck) }
     when (step) {
         OnboardingStep.Title -> TitleScreen(onNext = { talk.finishOnboardingStep(OnboardingStep.Title) })
         OnboardingStep.Consent -> OnboardingRoute(
@@ -166,7 +168,7 @@ fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, on
         OnboardingStep.WhaleIntro, OnboardingStep.Lights, OnboardingStep.Q1, OnboardingStep.Q2, OnboardingStep.Q3,
         OnboardingStep.Found, OnboardingStep.Greeting, OnboardingStep.Farewell,
         -> SpokenStepScreen(
-            ui = SpokenStepUi(step = step, line = line, phase = phase, heard = talkState.heard),
+            ui = SpokenStepUi(step = step, line = line, phase = phase, heard = talkState.heard, look = look),
             onSkip = talk::skipOnboardingQuestion,
         )
         OnboardingStep.Summon -> {
@@ -182,28 +184,29 @@ fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, on
         OnboardingStep.Memory -> KnownCardsScreen(
             answers = talkState.onboarding.answers,
             memoryEnabled = companionState.settings.memoryEnabled,
+            line = line,
+            look = look,
         )
-        OnboardingStep.Dress -> {
-            val s = companionState.settings
-            FirstLookScreen(
-                look = CharacterLook(s.bodyColor, s.hat, s.neck),
-                onLook = { look -> companion.updateSettings { it.copy(bodyColor = look.bodyColor, hat = look.hat, neck = look.neck) } },
-                onDone = { talk.finishOnboardingStep(OnboardingStep.Dress) },
-            )
-        }
+        OnboardingStep.Dress -> FirstLookScreen(
+            look = look,
+            onLook = { l -> companion.updateSettings { it.copy(bodyColor = l.bodyColor, hat = l.hat, neck = l.neck) } },
+            onDone = { talk.finishOnboardingStep(OnboardingStep.Dress) },
+            line = line,
+        )
         OnboardingStep.Qr -> PairRoute(
             companion = companion,
             talk = talk,
             onDone = { talk.finishOnboardingStep(OnboardingStep.Qr) },
             onBack = { talk.finishOnboardingStep(OnboardingStep.Qr) },
             onDriving = {},
+            inFlow = true,
         )
         OnboardingStep.Done -> Unit
     }
 }
 
-/** How long heyri's fade-in is shown after the long press before the flow goes on. */
-private const val SUMMON_HOLD_MS = 2_000L
+/** How long the dive through the ring plays (dive.mp4, about 5 s) before the flow goes on to heyri's greeting. */
+private const val SUMMON_HOLD_MS = 5_000L
 
 
 /** C2 route: asks for a code while open, leaves for /home on "나중에" and (after a short hold) when the phone claimed it. */
@@ -214,6 +217,8 @@ fun PairRoute(
     onDone: () -> Unit,
     onBack: () -> Unit,
     onDriving: () -> Unit,
+    /** O8 of the first-run flow: drawn on the onboarding scene instead of the plain C2 page. */
+    inFlow: Boolean = false,
 ) {
     val state by companion.state.collectAsState()
     val talkState by talk.state.collectAsState()
@@ -236,16 +241,17 @@ fun PairRoute(
     }
 
     BackHandler(onBack = onBack)
-    PairScreen(
-        ui = when (pairing) {
-            PairingUi.None, PairingUi.Creating -> PairUi.Loading
-            is PairingUi.Pending -> PairUi.Pending(pairing.pairCode)
-            PairingUi.Claimed -> PairUi.Claimed
-            PairingUi.Expired -> PairUi.Expired(lastCode)
-            PairingUi.Failed -> PairUi.Failed
-        },
-        onBack = onBack,
-        onLater = onDone,
-        onRetry = companion::openPairing,
-    )
+    val ui = when (pairing) {
+        PairingUi.None, PairingUi.Creating -> PairUi.Loading
+        is PairingUi.Pending -> PairUi.Pending(pairing.pairCode)
+        PairingUi.Claimed -> PairUi.Claimed
+        PairingUi.Expired -> PairUi.Expired(lastCode)
+        PairingUi.Failed -> PairUi.Failed
+    }
+    if (inFlow) {
+        val s = state.settings
+        QrStepScreen(ui = ui, onLater = onDone, onRetry = companion::openPairing, look = CharacterLook(s.bodyColor, s.hat, s.neck))
+    } else {
+        PairScreen(ui = ui, onBack = onBack, onLater = onDone, onRetry = companion::openPairing)
+    }
 }

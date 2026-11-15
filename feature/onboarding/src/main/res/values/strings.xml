@@ -78,10 +78,15 @@
     <string name="step_look_beanie">비니</string>
     <string name="step_look_bucket">버킷</string>
     <string name="step_look_scarf">스카프</string>
-    <string name="asset_whale">고래 (whale_loop · whale_still)</string>
-    <string name="asset_whale_description">고래</string>
-    <string name="asset_summon">금빛 고리와 헤이리 실루엣 (eclipse)</string>
-    <string name="asset_summon_description">헤이리가 나타날 자리</string>
-    <string name="asset_title_coast">타이틀 해안 도로 (title_coast)</string>
-    <string name="asset_title_coast_description">타이틀 그림 자리</string>
+    <string name="onb_meet_name">헤이리</string>
+    <string name="onb_listening">듣고 있어요</string>
+    <string name="onb_dress_title">헤이리 꾸미기</string>
+    <string name="onb_dress_done">이렇게 할래</string>
+    <string name="onb_dress_aqua">라이트 아쿠아</string>
+    <string name="onb_dress_peach">살구 오렌지</string>
+    <string name="onb_parked_wait">누르는 건 정차하면 이어서 할게</string>
+    <string name="onb_qr_title">폰에서도 함께</string>
+    <string name="onb_qr_body">찍으면 기억을 폰에서 보고 지울 수 있어요</string>
+    <string name="onb_qr_connected">연결했어</string>
+    <string name="onb_qr_later">나중에 할게</string>
 </resources>
