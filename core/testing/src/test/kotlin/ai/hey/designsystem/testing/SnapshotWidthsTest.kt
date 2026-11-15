@@ -15,10 +15,11 @@ class SnapshotWidthsTest {
     private val featureDir = File("../../feature").canonicalFile
     private val classRegex = Regex("""\bclass\s+([A-Za-z0-9]+?)(\d+)SnapshotTest\b""")
 
+    private fun snapshotSources(module: File): List<File> =
+        File(module, "src/test").walkTopDown().filter { it.isFile && it.name.endsWith("SnapshotTest.kt") }.toList()
+
     private fun testSources(): List<File> =
-        featureDir.listFiles { f -> f.isDirectory }.orEmpty().flatMap { module ->
-            File(module, "src/test").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        }
+        featureDir.listFiles { f -> f.isDirectory }.orEmpty().flatMap { snapshotSources(it) }
 
     @Test fun featureModulesAreFound() {
         assertTrue("feature dir not found: $featureDir", featureDir.isDirectory)
@@ -28,7 +29,7 @@ class SnapshotWidthsTest {
     @Test fun everyFullWidthSnapshotHasCarHalfAndThird() {
         val missing = mutableListOf<String>()
         featureDir.listFiles { f -> f.isDirectory }.orEmpty().forEach { module ->
-            val widths = File(module, "src/test").walkTopDown().filter { it.isFile && it.extension == "kt" }
+            val widths = snapshotSources(module)
                 .flatMap { classRegex.findAll(it.readText()).map { m -> m.groupValues[1] to m.groupValues[2] } }
                 .groupBy({ it.first }, { it.second })
             widths.forEach { (name, sizes) ->

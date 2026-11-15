@@ -2,22 +2,11 @@ package ai.hey.feature.home
 
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.session.CarFault
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
-import com.android.ide.common.rendering.api.SessionParams.RenderingMode
-import com.android.resources.Density
-import com.android.resources.ScreenOrientation
+import ai.hey.designsystem.testing.CarPaparazzi
+import ai.hey.designsystem.testing.CarWindow
 import org.junit.Rule
 import org.junit.Test
 
-private fun device(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
-    screenWidth = width,
-    screenHeight = height,
-    xdpi = 160,
-    ydpi = 160,
-    density = Density.MEDIUM,
-    orientation = ScreenOrientation.LANDSCAPE,
-)
 
 private const val LONG_REPLY =
     "그랬구나, 오늘은 정말 긴 하루였겠다. 비도 오고 길도 막혔는데 여기까지 잘 와 줘서 고마워. 잠깐 숨 돌리고 가도 좋아, 나는 여기서 기다리고 있을게."
@@ -59,7 +48,7 @@ private val driveMotionShots: List<Pair<String, HomeUi>> = listOf(
     "c5-proactive" to online.copy(phase = HomePhase.Listening, source = ai.hey.session.TurnSource.AutoListen, reply = "비 오네, 와이퍼 켰어. 오늘 발표 날이죠?"),
 )
 
-private fun Paparazzi.recordAll() {
+private fun CarPaparazzi.recordAll() {
     listOf(true, false).forEach { dark ->
         val theme = if (dark) "dark" else "light"
         homeShots.forEach { (name, ui) ->
@@ -83,7 +72,7 @@ private fun Paparazzi.recordAll() {
 }
 
 class Home1600SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Full1600)
 
     @Test fun screens() = paparazzi.recordAll()
 }
@@ -97,7 +86,7 @@ private val multiShots: List<Pair<String, HomeUi>> = listOf(
     "c8-offline" to HomeUi(online = false, fault = CarFault.Offline),
 )
 
-private fun Paparazzi.recordMulti() {
+private fun CarPaparazzi.recordMulti() {
     listOf(true, false).forEach { dark ->
         val theme = if (dark) "dark" else "light"
         multiShots.forEach { (name, ui) ->
@@ -115,23 +104,30 @@ private fun Paparazzi.recordMulti() {
     }
 }
 
-/** The 1/2 width window next to navigation (2560 px Connect-S half). */
+/** The 1/2 width window next to navigation (840 x 1212 dp, the Connect-S half). */
 class Home840SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(840, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Half840)
 
     @Test fun screens() = paparazzi.recordMulti()
 }
 
-/** The 1/3 width window (Connect-W). */
+/** The 1/3 width window (560 x 1212 dp, Connect-W). */
 class Home560SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(560, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Third560)
+
+    @Test fun screens() = paparazzi.recordMulti()
+}
+
+/** The real Pleos app window (1682 x 1210 px = 1251 x 900 design dp). */
+class Home1251SnapshotTest {
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Car1251)
 
     @Test fun screens() = paparazzi.recordMulti()
 }
 
 /** A friend's message is a parked subtitle on C3 at the full width too. */
 class HomeFriendNoteSnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Full1600)
 
     @Test fun screens() {
         listOf(true, false).forEach { dark ->
