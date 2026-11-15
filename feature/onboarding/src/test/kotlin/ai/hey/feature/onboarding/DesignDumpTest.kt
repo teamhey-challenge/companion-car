@@ -31,7 +31,7 @@ private val answers = OnboardingAnswers(name = "지우", trips = "출퇴근길",
 private fun Paparazzi.dumpScreens(w: Int, h: Int) {
     fun dump(name: String, content: @androidx.compose.runtime.Composable () -> Unit) {
         val dump = DesignDump("$name@${w}x$h", w, h, dark = false)
-        snapshot("$name@${w}x$h") { HeyTheme(false) { dump.capture(content) } }
+        snapshot("$name@${w}x$h") { HeyTheme(false) { androidx.compose.runtime.CompositionLocalProvider(ai.hey.designsystem.component.LocalHeyStill provides true) { dump.capture(content) } } }
         dump.write()
     }
     dump("car-onboarding-1") { TitleScreen(onNext = {}) }
