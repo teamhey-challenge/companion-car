@@ -1,0 +1,558 @@
+{
+ "screen": "car/home",
+ "pass": false,
+ "shas": {
+  "app": "e2fbccd5c50090dd659ef8acae2edabec2d4fa63",
+  "appDirty": false,
+  "studio": "4dc8ad3",
+  "sharedTag": "v0.5.2"
+ },
+ "viewport": [
+  1251,
+  900
+ ],
+ "tolerances": {
+  "position": 4,
+  "size": 4,
+  "fontSize": 0,
+  "fontWeight": 0,
+  "letterSpacingEm": 0.01,
+  "lineHeight": 1,
+  "baseline": 2,
+  "color": "exact"
+ },
+ "pixel": {
+  "badPixels": 27052,
+  "total": 1125900
+ },
+ "failingValues": 5,
+ "rows": [
+  {
+   "text": "Hey",
+   "checks": [
+    {
+     "name": "x",
+     "design": "80",
+     "app": "80",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "74",
+     "app": "75",
+     "delta": "1",
+     "ok": true
+    },
+    {
+     "name": "width (ink)",
+     "design": "78",
+     "app": "78",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "121.5",
+     "app": "122",
+     "delta": "0.5",
+     "ok": true
+    },
+    {
+     "name": "font-size",
+     "design": "42",
+     "app": "42",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "600",
+     "app": "600",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "63",
+     "app": "63",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "정차 중",
+   "checks": [
+    {
+     "name": "x",
+     "design": "231",
+     "app": "231",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "81",
+     "app": "82",
+     "delta": "1",
+     "ok": true
+    },
+    {
+     "name": "width (ink)",
+     "design": "99",
+     "app": "99",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "118.25",
+     "app": "119",
+     "delta": "0.75",
+     "ok": true
+    },
+    {
+     "name": "font-size",
+     "design": "33",
+     "app": "33",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "400",
+     "app": "400",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "49.5",
+     "app": "50",
+     "delta": "0.5",
+     "ok": true
+    },
+    {
+     "name": "color",
+     "design": "#456070",
+     "app": "#456070",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "기억",
+   "checks": [
+    {
+     "name": "x",
+     "design": "716",
+     "app": "725",
+     "delta": "9",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "83.5",
+     "app": "84",
+     "delta": "0.5",
+     "ok": true
+    },
+    {
+     "name": "width (ink)",
+     "design": "56",
+     "app": "56",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "117.5",
+     "app": "118",
+     "delta": "0.5",
+     "ok": true
+    },
+    {
+     "name": "font-size",
+     "design": "30",
+     "app": "30",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "500",
+     "app": "500",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "45",
+     "app": "45",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "친구",
+   "checks": [
+    {
+     "name": "x",
+     "design": "900",
+     "app": "905",
+     "delta": "5",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "83.5",
+     "app": "84",
+     "delta": "0.5",
+     "ok": true
+    },
+    {
+     "name": "width (ink)",
+     "design": "56",
+     "app": "56",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "117.5",
+     "app": "118",
+     "delta": "0.5",
+     "ok": true
+    },
+    {
+     "name": "font-size",
+     "design": "30",
+     "app": "30",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "500",
+     "app": "500",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "45",
+     "app": "45",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "설정",
+   "checks": [
+    {
+     "name": "x",
+     "design": "1084",
+     "app": "1085",
+     "delta": "1",
+     "ok": true
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "83.5",
+     "app": "84",
+     "delta": "0.5",
+     "ok": true
+    },
+    {
+     "name": "width (ink)",
+     "design": "56",
+     "app": "56",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "117.5",
+     "app": "118",
+     "delta": "0.5",
+     "ok": true
+    },
+    {
+     "name": "font-size",
+     "design": "30",
+     "app": "30",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "500",
+     "app": "500",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "45",
+     "app": "45",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "오늘은 어떤 하루였어요?",
+   "checks": [
+    {
+     "name": "x",
+     "design": "80",
+     "app": "80",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "222.95",
+     "app": "226",
+     "delta": "3.05",
+     "ok": true
+    },
+    {
+     "name": "width (ink)",
+     "design": "339.25",
+     "app": "342.2",
+     "delta": "2.95",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "2",
+     "app": "2",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "296",
+     "app": "302",
+     "delta": "6",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "72",
+     "app": "72",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "450",
+     "app": "400",
+     "delta": "-50",
+     "ok": false
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "-0.05",
+     "app": "-0.05",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "97.2",
+     "app": "97",
+     "delta": "-0.2",
+     "ok": true
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "말하기",
+   "checks": [
+    {
+     "name": "x",
+     "design": "227",
+     "app": "227",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "766.5",
+     "app": "768",
+     "delta": "1.5",
+     "ok": true
+    },
+    {
+     "name": "width (ink)",
+     "design": "78",
+     "app": "78",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "798",
+     "app": "798",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-size",
+     "design": "28",
+     "app": "28",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "600",
+     "app": "600",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "42",
+     "app": "40",
+     "delta": "-2",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#203E50",
+     "app": "#203E50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  }
+ ],
+ "onlyDesign": [],
+ "onlyApp": []
+}

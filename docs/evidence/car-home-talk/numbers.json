@@ -1,0 +1,416 @@
+{
+ "screen": "car/home#talk",
+ "pass": false,
+ "shas": {
+  "app": "e2fbccd5c50090dd659ef8acae2edabec2d4fa63",
+  "appDirty": false,
+  "studio": "4dc8ad3",
+  "sharedTag": "v0.5.2"
+ },
+ "viewport": [
+  1600,
+  900
+ ],
+ "tolerances": {
+  "position": 4,
+  "size": 4,
+  "fontSize": 0,
+  "fontWeight": 0,
+  "letterSpacingEm": 0.01,
+  "lineHeight": 1,
+  "baseline": 2,
+  "color": "exact"
+ },
+ "pixel": {
+  "badPixels": 85518,
+  "total": 1440000
+ },
+ "failingValues": 33,
+ "rows": [
+  {
+   "text": "Hey",
+   "checks": [
+    {
+     "name": "x",
+     "design": "56",
+     "app": "80",
+     "delta": "24",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "36",
+     "app": "75",
+     "delta": "39",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "78",
+     "app": "78",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "83.5",
+     "app": "122",
+     "delta": "38.5",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "42",
+     "app": "42",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "font-weight",
+     "design": "600",
+     "app": "600",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "63",
+     "app": "63",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "정차 중",
+   "checks": [
+    {
+     "name": "x",
+     "design": "156",
+     "app": "231",
+     "delta": "75",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "51",
+     "app": "82",
+     "delta": "31",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "66",
+     "app": "99",
+     "delta": "33",
+     "ok": false
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "75.5",
+     "app": "119",
+     "delta": "43.5",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "22",
+     "app": "33",
+     "delta": "11",
+     "ok": false
+    },
+    {
+     "name": "font-weight",
+     "design": "400",
+     "app": "400",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "33",
+     "app": "50",
+     "delta": "17",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#456070",
+     "app": "#456070",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "기억",
+   "checks": [
+    {
+     "name": "x",
+     "design": "1164",
+     "app": "1074",
+     "delta": "-90",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "50.4",
+     "app": "84",
+     "delta": "33.6",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "44",
+     "app": "56",
+     "delta": "12",
+     "ok": false
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "68",
+     "app": "118",
+     "delta": "50",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "24",
+     "app": "30",
+     "delta": "6",
+     "ok": false
+    },
+    {
+     "name": "font-weight",
+     "design": "500",
+     "app": "500",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "33.6",
+     "app": "45",
+     "delta": "11.4",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "친구",
+   "checks": [
+    {
+     "name": "x",
+     "design": "1318",
+     "app": "1254",
+     "delta": "-64",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "50.4",
+     "app": "84",
+     "delta": "33.6",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "44",
+     "app": "56",
+     "delta": "12",
+     "ok": false
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "68",
+     "app": "118",
+     "delta": "50",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "24",
+     "app": "30",
+     "delta": "6",
+     "ok": false
+    },
+    {
+     "name": "font-weight",
+     "design": "500",
+     "app": "500",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "33.6",
+     "app": "45",
+     "delta": "11.4",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "text": "설정",
+   "checks": [
+    {
+     "name": "x",
+     "design": "1472",
+     "app": "1434",
+     "delta": "-38",
+     "ok": false
+    },
+    {
+     "name": "y (line-box top)",
+     "design": "50.4",
+     "app": "84",
+     "delta": "33.6",
+     "ok": false
+    },
+    {
+     "name": "width (ink)",
+     "design": "44",
+     "app": "56",
+     "delta": "12",
+     "ok": false
+    },
+    {
+     "name": "lines",
+     "design": "1",
+     "app": "1",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "baseline y",
+     "design": "68",
+     "app": "118",
+     "delta": "50",
+     "ok": false
+    },
+    {
+     "name": "font-size",
+     "design": "24",
+     "app": "30",
+     "delta": "6",
+     "ok": false
+    },
+    {
+     "name": "font-weight",
+     "design": "500",
+     "app": "500",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "letter-spacing em",
+     "design": "0",
+     "app": "0",
+     "delta": "0",
+     "ok": true
+    },
+    {
+     "name": "line-height",
+     "design": "33.6",
+     "app": "45",
+     "delta": "11.4",
+     "ok": false
+    },
+    {
+     "name": "color",
+     "design": "#243F50",
+     "app": "#243F50",
+     "delta": "0",
+     "ok": true
+    }
+   ]
+  }
+ ],
+ "onlyDesign": [
+  "\"많이 긴장됐겠다.\" @64,339.31 422.97×83.2 64px/600",
+  "\"끝까지 해낸 네가 멋져.\n돌아가는 길엔 조금 쉬어 가자.\" @64,454.84 375×108 30px/400",
+  "\"말하기\" @132,615 66×33.6 24px/500"
+ ],
+ "onlyApp": [
+  "말하는 중",
+  "어제 준비하던 발표는 잘 마쳤어요?",
+  "대화 마치기"
+ ]
+}
