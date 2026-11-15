@@ -1,6 +1,7 @@
 package ai.hey.feature.onboarding
 
 import ai.hey.designsystem.component.LocalHeyStill
+import ai.hey.designsystem.component.PhoneLinkUi
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.designsystem.component.CharacterLook
 import ai.hey.designsystem.component.TalkPhase
@@ -22,21 +23,14 @@ private fun device(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
     orientation = ScreenOrientation.LANDSCAPE,
 )
 
-private val c1: List<Pair<String, ConsentFormUi>> = listOf(
-    "c1-default" to ConsentFormUi(),
-    "c1-required-missing" to ConsentFormUi(voiceRequiredShown = true),
-    "c1-saving" to ConsentFormUi(voice = true, memory = true, saving = true),
-    "c1-error" to ConsentFormUi(voice = true, failed = true),
+private val consent: List<Pair<String, ConsentFormUi>> = listOf(
+    "o2-default" to ConsentFormUi(),
+    "o2-required-missing" to ConsentFormUi(voiceRequiredShown = true),
+    "o2-saving" to ConsentFormUi(voice = true, memory = true, saving = true),
+    "o2-error" to ConsentFormUi(voice = true, failed = true),
+    "o2-ticked" to ConsentFormUi(voice = true, memory = true),
 )
 
-private val c2: List<Pair<String, PairUi>> = listOf(
-    "c2-loading" to PairUi.Loading,
-    "c2-pending" to PairUi.Pending("K7M2QX9P"),
-    "c2-partial" to PairUi.Pending("K7M2QX9P", phoneEntered = true),
-    "c2-claimed" to PairUi.Claimed,
-    "c2-expired" to PairUi.Expired("K7M2QX9P"),
-    "c2-failed" to PairUi.Failed,
-)
 private val answers = ai.hey.model.OnboardingAnswers(name = "민수", trips = "출퇴근길", topics = "음악")
 
 /** Every shot draws the settled picture: polaroids dropped, heyri faded in (the studio's screens are judged at rest). */
@@ -58,16 +52,17 @@ private fun Paparazzi.recordSteps(theme: String, dark: Boolean) {
     shot("step-cards-one-$theme", dark) { KnownCardsScreen(answers = ai.hey.model.OnboardingAnswers(name = "민수")) }
     shot("step-cards-memory-off-$theme", dark) { KnownCardsScreen(answers = answers, memoryEnabled = false) }
     shot("step-look-$theme", dark) { FirstLookScreen(look = CharacterLook(), onLook = {}, onDone = {}) }
-    shot("step-qr-$theme", dark) { QrStepScreen(PairUi.Pending("K7M2QX9P"), onLater = {}, onRetry = {}) }
-    shot("step-qr-expired-$theme", dark) { QrStepScreen(PairUi.Expired("K7M2QX9P"), onLater = {}, onRetry = {}) }
+    shot("step-qr-$theme", dark) { QrStepScreen(PhoneLinkUi.Code("K7M2QX9P"), onLater = {}, onDone = {}, onRetry = {}) }
+    shot("step-qr-loading-$theme", dark) { QrStepScreen(PhoneLinkUi.Loading, onLater = {}, onDone = {}, onRetry = {}) }
+    shot("step-qr-linked-$theme", dark) { QrStepScreen(PhoneLinkUi.Flash("민수"), onLater = {}, onDone = {}, onRetry = {}) }
+    shot("step-qr-offline-$theme", dark) { QrStepScreen(PhoneLinkUi.Offline, onLater = {}, onDone = {}, onRetry = {}) }
 }
 
 private fun Paparazzi.recordAll() {
     listOf(true, false).forEach { dark ->
         val theme = if (dark) "dark" else "light"
         recordSteps(theme, dark)
-        c1.forEach { (name, ui) -> shot("$name-$theme", dark) { OnboardingScreen(ui, {}, {}, {}, {}, {}, {}) } }
-        c2.forEach { (name, ui) -> shot("$name-$theme", dark) { PairScreen(ui, {}, {}, {}) } }
+        consent.forEach { (name, ui) -> shot("$name-$theme", dark) { OnboardingScreen(ui, {}, {}, {}, {}, {}, {}) } }
     }
 }
 

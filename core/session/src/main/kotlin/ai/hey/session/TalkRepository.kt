@@ -2,6 +2,7 @@ package ai.hey.session
 
 import ai.hey.model.AudioSpec
 import ai.hey.model.VehicleSignals
+import ai.hey.model.ConsentType
 import ai.hey.model.OnboardingStep
 import ai.hey.model.CarSettings
 import ai.hey.model.ClientFrames
@@ -153,7 +154,12 @@ class TalkRepository(
             }
         }
         scope.launch {
-            storage.consents.collect { c -> _state.update { it.copy(needsOnboarding = !c.recordDone) } }
+            // D-58: there is no separate consent screen. A car without the record consent (first run, withdrawn in settings, or
+            // refused by the server) is always at the consent sheet O2: the flow comes back at its Consent step.
+            storage.consents.collect { c ->
+                _state.update { it.copy(needsOnboarding = !c.recordDone) }
+                if (!c.recordDone && storage.onboardingStep.value == OnboardingStep.Done) storage.setOnboardingStep(OnboardingStep.Consent)
+            }
         }
         scope.launch { storage.onboardingStep.collect { st -> _state.update { it.copy(onboardingStep = st) }; if (st == OnboardingStep.Done) drainFriends() } }
         scope.launch { storage.phoneHintPending.collect { h -> _state.update { it.copy(phoneHint = h) } } }
@@ -242,10 +248,11 @@ class TalkRepository(
                     HeyLog.w(TAG, "server error: ${frame.code}")
                     if (frame.turnId == null || frame.turnId == turnId) {
                         silence()
-                        // AC-4.9-05: the server holds no record/external_ai consent for this car; C1 asks again instead of a server fault.
+                        // AC-4.9-05: the server holds no record/external_ai consent for this car: the local mirror is wrong, so it is
+                        // cleared and the consent sheet (O2) asks again instead of a server fault.
                         if (frame.code == CONSENT_REQUIRED) {
                             endTurn(null)
-                            _state.update { it.copy(onboardingRequests = it.onboardingRequests + 1) }
+                            scope.launch { storage.setConsent(ConsentType.Record, false) }
                         } else {
                             endTurn(TurnError.Server)
                         }
@@ -727,8 +734,7 @@ class TalkRepository(
             return
         }
         if (s.needsOnboarding) {
-            HeyLog.i(TAG, "talk ignored: consent not recorded, showing onboarding")
-            _state.update { it.copy(onboardingRequests = it.onboardingRequests + 1) }
+            HeyLog.i(TAG, "talk ignored: consent not recorded, the consent sheet (O2) is the screen")
             return
         }
         when (s.turn) {

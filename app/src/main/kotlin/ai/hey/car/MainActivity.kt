@@ -95,16 +95,11 @@ class MainActivity : ComponentActivity() {
             val route = current?.destination?.route
 
             // The driving gate (PRD 3.5): the route follows the car, never the other way round. Unknown motion is "driving".
-            val flowActive = state.onboardingStep != OnboardingStep.Done
-            LaunchedEffect(route, parked, state.needsOnboarding, flowActive) {
-                gateRoute(route, parked, needsOnboarding = state.needsOnboarding, flowActive = flowActive)?.let { target ->
+            // D-58: a car without the record consent is in the flow too (it lands on the O2 consent sheet), there is no other screen.
+            val flowActive = state.onboardingStep != OnboardingStep.Done || state.needsOnboarding
+            LaunchedEffect(route, parked, flowActive) {
+                gateRoute(route, parked, flowActive = flowActive)?.let { target ->
                     nav.navigate(target) { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
-                }
-            }
-            // A press of 말하기 without consent is never swallowed: parked, it lands on C1 (driving keeps the gate's C5).
-            LaunchedEffect(state.onboardingRequests) {
-                if (state.onboardingRequests > 0 && parked && route != Routes.Onboarding) {
-                    nav.navigate(Routes.Onboarding) { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
                 }
             }
             // Errors while driving are voice only, once per cause (PRD 4.8): no banner, the screen stays C5.
@@ -147,19 +142,6 @@ class MainActivity : ComponentActivity() {
                             companion = graph.companion,
                             talk = repository,
                             onMicDenied = repository::microphoneDeniedAtOnboarding,
-                            onExit = { finish() },
-                        )
-                    }
-                    composable(Routes.Onboarding) {
-                        // Only a car that withdrew the consent lands here; a first run asks for it inside the flow.
-                        OnboardingRoute(
-                            companion = graph.companion,
-                            talk = repository,
-                            onMicDenied = {
-                                repository.microphoneDeniedAtOnboarding()
-                                nav.navigate(Routes.Home) { popUpTo(nav.graph.id) { inclusive = true } }
-                            },
-                            onDone = { nav.navigate(Routes.Home) { popUpTo(nav.graph.id) { inclusive = true } } },
                             onExit = { finish() },
                         )
                     }

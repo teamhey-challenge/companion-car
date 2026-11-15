@@ -112,14 +112,16 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
-    @Test fun `PLEOS-135 consent_required from the server ends the turn and asks for onboarding, not a server fault`() = runTest {
+    @Test fun `PLEOS-135 consent_required from the server ends the turn and brings back the consent sheet, not a server fault`() = runTest {
         val cs = rigScope(testScheduler)
         val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
         rig.repo.startTalk()
         rig.transport.listener.onFrame(ServerFrame.Error("consent_required", "t1", null))
+        testScheduler.advanceUntilIdle()
         assertEquals(TurnState.Idle, rig.repo.state.value.turn)
         assertNull(rig.repo.state.value.error)
-        assertEquals(1, rig.repo.state.value.onboardingRequests)
+        assertTrue(rig.repo.state.value.needsOnboarding)
+        assertEquals(OnboardingStep.Consent, rig.repo.state.value.onboardingStep)
         cs.cancel()
     }
 
@@ -184,16 +186,16 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
-    @Test fun `pressing talk without consent is never silent and asks for onboarding`() = runTest {
+    @Test fun `pressing talk without consent starts nothing, the consent sheet is the screen`() = runTest {
         val cs = rigScope(testScheduler)
         val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"), consented = false)
-        assertEquals(0, rig.repo.state.value.onboardingRequests)
         rig.repo.startTalk()
-        assertEquals(1, rig.repo.state.value.onboardingRequests)
         rig.repo.startTalk()
-        assertEquals(2, rig.repo.state.value.onboardingRequests)
         assertEquals(TurnState.Idle, rig.repo.state.value.turn)
         assertTrue(rig.transport.sent.none { it.contains("turn.start") })
+        // D-58: a car without the record consent is at the O2 consent sheet, there is no other screen for it
+        testScheduler.advanceUntilIdle()
+        assertEquals(OnboardingStep.Consent, rig.repo.state.value.onboardingStep)
         cs.cancel()
     }
 

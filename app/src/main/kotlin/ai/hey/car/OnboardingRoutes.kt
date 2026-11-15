@@ -14,9 +14,8 @@ import ai.hey.feature.onboarding.ConsentFormUi
 import ai.hey.feature.onboarding.OnboardingFlow
 import ai.hey.feature.onboarding.OnboardingOutcome
 import ai.hey.feature.onboarding.OnboardingScreen
-import ai.hey.feature.onboarding.PairScreen
+import ai.hey.designsystem.component.PhoneLinkUi
 import ai.hey.feature.onboarding.QrStepScreen
-import ai.hey.feature.onboarding.PairUi
 import ai.hey.session.CompanionRepository
 import ai.hey.session.PairingUi
 import ai.hey.session.TalkRepository
@@ -47,15 +46,17 @@ import kotlinx.coroutines.flow.first
 private const val PRIVACY_URL = "https://hey.lastmile.ltd/privacy"
 private const val CAR_SPEED = "android.car.permission.CAR_SPEED"
 
-/** How long "연결됐어요!" stays before C2 leaves for /home (PRD 4.2.5). */
+/** How long "연결됐어요!" stays before the phone-link step finishes (PRD 4.2.5). */
 private const val CLAIMED_HOLD_MS = 1500L
 
 /**
- * C1 route. Consent goes to the server first; only after the server said yes (needsOnboarding turns false) are the
- * runtime permissions asked. Back leaves the app without recording anything (AC-4.1-03).
+ * O2 of the first-run flow (D-48, D-58): the consent sheet. It is the only consent screen: a first run, a car that withdrew the
+ * consent and a server that refused for a missing consent all come here (the gate puts the flow back at this step). Consent goes
+ * to the server first; only after the server said yes (needsOnboarding turns false) are the runtime permissions asked. Back
+ * leaves the app without recording anything (AC-4.1-03).
  */
 @Composable
-fun OnboardingRoute(
+private fun ConsentStepRoute(
     companion: CompanionRepository,
     talk: TalkRepository,
     onMicDenied: () -> Unit,
@@ -135,10 +136,10 @@ fun OnboardingRoute(
 }
 
 /**
- * The first-run flow (D-48, D-52): one screen per stored step, in the planner's order. The spoken steps are driven by the talk
- * repository (they run while driving too, then C5 is on screen); this route draws them and handles the press steps: title, the
- * consent sheet, the long press, dress-up and the phone link. A drive in the middle leaves this route (the gate) and the stored
- * step is picked up again when parked.
+ * The first-run flow (D-48, D-52, D-58): one screen per stored step, in the planner's order. The spoken steps are driven by the
+ * talk repository (they run while driving too, then the driving screen is on); this route draws them and handles the press steps:
+ * title, the consent sheet, the long press, dress-up and the phone link. Nothing else shows the consent or the phone link on first
+ * run: a drive in the middle leaves this route (the gate) and the stored step is picked up again when parked.
  */
 @Composable
 fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, onMicDenied: () -> Unit, onExit: () -> Unit) {
@@ -155,7 +156,7 @@ fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, on
     val look = companionState.settings.let { CharacterLook(it.bodyColor, it.hat, it.neck) }
     when (step) {
         OnboardingStep.Title -> TitleScreen(onNext = { talk.finishOnboardingStep(OnboardingStep.Title) })
-        OnboardingStep.Consent -> OnboardingRoute(
+        OnboardingStep.Consent -> ConsentStepRoute(
             companion = companion,
             talk = talk,
             onMicDenied = {
@@ -199,7 +200,7 @@ fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, on
                 if (!companion.state.value.paired) talk.skippedPhoneLink()
                 talk.finishOnboardingStep(OnboardingStep.Qr)
             }
-            PairRoute(companion = companion, talk = talk, onDone = end, onBack = end, onDriving = {}, inFlow = true)
+            PhoneLinkStepRoute(companion = companion, onDone = end)
         }
         OnboardingStep.Done -> Unit
     }
@@ -209,26 +210,16 @@ fun OnboardingFlowRoute(companion: CompanionRepository, talk: TalkRepository, on
 private const val SUMMON_HOLD_MS = 5_000L
 
 
-/** C2 route: asks for a code while open, leaves for /home on "나중에" and (after a short hold) when the phone claimed it. */
+/** O8 route: asks for a code while open; "나중에 할게" or (after a short hold on "연결됐어요!") a linked phone finishes the step. */
 @Composable
-fun PairRoute(
-    companion: CompanionRepository,
-    talk: TalkRepository,
-    onDone: () -> Unit,
-    onBack: () -> Unit,
-    onDriving: () -> Unit,
-    /** O8 of the first-run flow: drawn on the onboarding scene instead of the plain C2 page. */
-    inFlow: Boolean = false,
-) {
+private fun PhoneLinkStepRoute(companion: CompanionRepository, onDone: () -> Unit) {
     val state by companion.state.collectAsState()
-    val talkState by talk.state.collectAsState()
 
     DisposableEffect(Unit) {
         companion.openPairing()
         onDispose { companion.closePairing() }
     }
-    // A QR login while moving is forbidden (review-rules): the car leaves the screen as soon as it is not parked.
-    LaunchedEffect(talkState.driving) { if (talkState.driving != DrivingStatus.Parked) onDriving() }
+    // A QR login while moving is forbidden (review-rules): O8 is a press step, so the flow only shows it while parked (the gate).
 
     val pairing = state.pairing
     LaunchedEffect(pairing is PairingUi.Claimed) {
@@ -238,17 +229,13 @@ fun PairRoute(
         }
     }
 
-    BackHandler(onBack = onBack)
+    BackHandler(onBack = onDone)
     val ui = when (pairing) {
-        PairingUi.None, PairingUi.Creating -> PairUi.Loading
-        is PairingUi.Pending -> PairUi.Pending(pairing.pairCode)
-        is PairingUi.Claimed -> PairUi.Claimed
-        PairingUi.Failed -> PairUi.Failed
+        PairingUi.None, PairingUi.Creating -> PhoneLinkUi.Loading
+        is PairingUi.Pending -> PhoneLinkUi.Code(pairing.pairCode)
+        is PairingUi.Claimed -> if (pairing.fresh) PhoneLinkUi.Flash(pairing.googleName) else PhoneLinkUi.Linked(pairing.googleName)
+        PairingUi.Failed -> PhoneLinkUi.Offline
     }
-    if (inFlow) {
-        val s = state.settings
-        QrStepScreen(ui = ui, onLater = onDone, onRetry = companion::openPairing, look = CharacterLook(s.bodyColor, s.hat, s.neck))
-    } else {
-        PairScreen(ui = ui, onBack = onBack, onLater = onDone, onRetry = companion::openPairing)
-    }
+    val s = state.settings
+    QrStepScreen(ui = ui, onLater = onDone, onDone = onDone, onRetry = companion::openPairing, look = CharacterLook(s.bodyColor, s.hat, s.neck))
 }
