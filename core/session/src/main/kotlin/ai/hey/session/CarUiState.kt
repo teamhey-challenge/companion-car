@@ -112,6 +112,8 @@ data class CarUiState(
     val onboardingStep: ai.hey.model.OnboardingStep = ai.hey.model.OnboardingStep.Done,
     /** What the first-run screens draw besides the step (D-48): the spoken line, whose voice, the answers. */
     val onboarding: OnboardingView = OnboardingView(),
+    /** §6.1: the first-run phone link was skipped; home shows "폰 연결하면 일기를 볼 수 있어" once ([TalkRepository.phoneHintShown]). */
+    val phoneHint: Boolean = false,
     val error: TurnError? = null,
     /** Mouth openness 0..3 of the character while a voice plays (D-13). */
     val mouth: Int = 0,

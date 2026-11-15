@@ -49,11 +49,11 @@ enum class ProactiveUi { Off, Low, Normal, High }
 
 enum class SpeechUi { Banmal, Jondaetmal }
 
-/** A privacy action (withdraw / unpair) whose request failed: the screen says so and offers the same action again. */
-enum class AccountFailureUi { None, Withdraw, Unpair }
+/** A privacy action (withdraw) whose request failed: the screen says so and offers the same action again. */
+enum class AccountFailureUi { None, Withdraw }
 
 /** The C7 account request that is in flight. */
-enum class SettingsPending { None, Unpair, Withdraw }
+enum class SettingsPending { None, Withdraw }
 
 /** The settings fields that can have a save in flight (each saves on its own, PRD 4.7.5 Partial = n/a). */
 enum class SettingField { Proactive, Memory, Speech, Look }
@@ -73,7 +73,7 @@ data class SettingsUi(
     val proactive: ProactiveUi = ProactiveUi.Normal,
     val memoryEnabled: Boolean = true,
     val speech: SpeechUi = SpeechUi.Banmal,
-    /** The phone is linked: only then "폰 연결 해제" exists (AC-4.7-09). */
+    /** A phone is linked: the 폰 연결 row says so (the unlink itself lives on the phone-connection screen). */
     val phonePaired: Boolean = false,
     /** Fields whose save request has been running; the toggle shows work after 2 s, the screen blocks that field. */
     val saving: Set<SettingField> = emptySet(),
@@ -91,7 +91,7 @@ data class SettingsUi(
 class ServerAddress(val saved: String, val onApply: (String) -> Unit)
 
 /** The confirmation that is open; the screen owns it, the caller learns only the final answer. */
-private enum class Confirm { None, Unpair, Withdraw }
+private enum class Confirm { None, Withdraw }
 
 /**
  * C7 (PRD 4.7). Every change goes to [onChange] at once; a failed save is reported by the caller as [notice] and as the
@@ -107,9 +107,8 @@ fun SettingsScreen(
     onSpeech: (SpeechUi) -> Unit,
     onLook: (CharacterLook) -> Unit,
     onOpenMemory: () -> Unit,
-    /** C7 is the only way to C2 (D-33): shown while no phone is linked. */
+    /** 폰 연결 opens the phone-connection screen (D-33), linked or not. */
     onOpenPair: () -> Unit,
-    onUnpair: () -> Unit,
     onWithdraw: () -> Unit,
     modifier: Modifier = Modifier,
     notice: String? = null,
@@ -129,21 +128,10 @@ fun SettingsScreen(
             confirm = Confirm.None
         }
     }
-    if (confirm == Confirm.Unpair && !settings.phonePaired && settings.pending == SettingsPending.None) confirm = Confirm.None
     HeyLayered(
         modifier = modifier.fillSize(),
         overlay = {
             when (confirm) {
-                Confirm.Unpair -> ConfirmDialog(
-                    title = stringResource(R.string.settings_unpair_title),
-                    message = stringResource(R.string.settings_unpair_message),
-                    confirmText = stringResource(R.string.settings_unpair_confirm),
-                    dismissText = stringResource(R.string.settings_cancel),
-                    onConfirm = { submitted = true; onUnpair() },
-                    busy = settings.pending == SettingsPending.Unpair,
-                    onDismiss = { confirm = Confirm.None },
-                    modifier = Modifier.fillSize(),
-                )
                 Confirm.Withdraw -> ConfirmDialog(
                     title = stringResource(R.string.settings_withdraw_title),
                     message = stringResource(R.string.settings_withdraw_message),
@@ -175,16 +163,11 @@ fun SettingsScreen(
                 // The save-failure line sits in the page flow: the header and the back button stay visible.
                 if (notice != null) HeyNotice(notice, HeyStatusTone.Danger, persistent = true)
                 if (settings.accountFailure != AccountFailureUi.None) {
-                    val withdraw = settings.accountFailure == AccountFailureUi.Withdraw
                     HStack(HeyGap.G16, align = HeyAlign.Center) {
-                        HeyNotice(
-                            stringResource(if (withdraw) R.string.settings_withdraw_failed else R.string.settings_unpair_failed),
-                            HeyStatusTone.Danger,
-                            persistent = true,
-                        )
+                        HeyNotice(stringResource(R.string.settings_withdraw_failed), HeyStatusTone.Danger, persistent = true)
                         HeyButton(
                             stringResource(R.string.settings_retry),
-                            { if (withdraw) onWithdraw() else onUnpair() },
+                            onWithdraw,
                             variant = HeyButtonVariant.Secondary,
                             icon = HeyIcons.Refresh,
                             enabled = settings.pending == SettingsPending.None,
@@ -238,6 +221,7 @@ fun SettingsScreen(
                     enabled = SettingField.Speech !in settings.saving,
                     modifier = Modifier.fillWidth(),
                 )
+                // 폰 연결 is the last settings item (§2): the row opens `car/settings/phone` (QR, or the linked account).
                 HStack(HeyGap.G16, align = HeyAlign.Center) {
                     HeyButton(
                         stringResource(R.string.settings_open_memory),
@@ -245,21 +229,12 @@ fun SettingsScreen(
                         variant = HeyButtonVariant.Soft,
                         icon = HeyIcons.Book,
                     )
-                    if (settings.phonePaired) {
-                        HeyButton(
-                            stringResource(R.string.settings_unpair),
-                            { confirm = Confirm.Unpair },
-                            variant = HeyButtonVariant.Soft,
-                            icon = HeyIcons.Link,
-                        )
-                    } else {
-                        HeyButton(
-                            stringResource(R.string.settings_pair),
-                            onOpenPair,
-                            variant = HeyButtonVariant.Soft,
-                            icon = HeyIcons.Qr,
-                        )
-                    }
+                    HeyButton(
+                        stringResource(if (settings.phonePaired) R.string.settings_phone_linked else R.string.settings_pair),
+                        onOpenPair,
+                        variant = HeyButtonVariant.Soft,
+                        icon = if (settings.phonePaired) HeyIcons.Link else HeyIcons.Qr,
+                    )
                 }
                 if (server != null) ServerSetting(server.saved, server.onApply)
                 HeyButton(

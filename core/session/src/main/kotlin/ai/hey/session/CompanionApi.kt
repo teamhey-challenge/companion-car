@@ -145,7 +145,7 @@ class HttpCompanionApi(
             "expired" -> PairingPhase.Expired
             else -> PairingPhase.None
         }
-        return PairingStatus(phase, s("pairCode"), s("expiresAt"), s("pairedAt"))
+        return PairingStatus(phase, s("pairCode"), s("expiresAt"), s("pairedAt"), s("googleName"))
     }
 
     override suspend fun deletePairing() {

@@ -37,4 +37,12 @@
     <string name="hey_error_audio_action">다시 시도</string>
 
     <string name="hey_saving">저장 중</string>
+
+    <string name="phone_link_loading">QR을 만드는 중이에요</string>
+    <string name="phone_link_scan">폰에서 QR을 찍거나 코드를 넣어 주세요</string>
+    <string name="phone_link_flash">연결됐어요!</string>
+    <string name="phone_link_account">%1$s 님의 Google 계정으로 연결돼 있어요</string>
+    <string name="phone_link_account_unknown">Google 계정으로 연결돼 있어요</string>
+    <string name="phone_link_offline">연결이 끊겼어요</string>
+    <string name="phone_link_offline_hint">인터넷에 다시 연결되면 QR을 보여 드려요</string>
 </resources>

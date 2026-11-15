@@ -33,7 +33,6 @@ private val shots: List<Pair<String, Shot>> = listOf(
     "c7-saving" to Shot(SettingsUi(phonePaired = true, saving = setOf(SettingField.Memory))),
     "c7-save-failed" to Shot(SettingsUi(phonePaired = true), notice = "저장하지 못했어요"),
     "c7-withdraw-failed" to Shot(SettingsUi(phonePaired = true, accountFailure = AccountFailureUi.Withdraw)),
-    "c7-unpair-failed" to Shot(SettingsUi(phonePaired = true, accountFailure = AccountFailureUi.Unpair)),
     "c7-debug-server" to Shot(SettingsUi(), server = ServerAddress("https://hey.lastmile.ltd/api") {}),
     "c7-friends" to Shot(
         SettingsUi(
@@ -81,7 +80,6 @@ private fun Screen(shot: Shot) {
         onLook = {},
         onOpenMemory = {},
         onOpenPair = {},
-        onUnpair = {},
         onWithdraw = {},
         notice = shot.notice,
         server = shot.server,

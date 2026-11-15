@@ -85,7 +85,16 @@ class PrefsCarStorage(context: Context, private val defaultServerUrl: String = C
         withContext(Dispatchers.IO) { prefs.edit().putString(KEY_STEP, step.name).commit() }
     }
 
+    private val _hint = MutableStateFlow(prefs.getBoolean(KEY_HINT, false))
+    override val phoneHintPending: StateFlow<Boolean> = _hint.asStateFlow()
+
+    override suspend fun setPhoneHintPending(pending: Boolean) {
+        _hint.value = pending
+        withContext(Dispatchers.IO) { prefs.edit().putBoolean(KEY_HINT, pending).commit() }
+    }
+
     private companion object {
+        const val KEY_HINT = "phone_hint_pending"
         const val KEY_STEP = "onboarding_step"
         const val KEY_GAP = "speech_gap"
         const val KEY_DARK = "dark"

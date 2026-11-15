@@ -27,6 +27,8 @@ data class HomeUi(
     val look: CharacterLook = CharacterLook(),
     /** A friend's message shown as a subtitle: set only while parked (the session never fills it while driving). */
     val friendNote: String? = null,
+    /** §6.1: O8 was skipped; the home says once "폰 연결하면 일기를 볼 수 있어" (parked only). */
+    val phoneHint: Boolean = false,
 ) {
     /** C4 is C3 with a turn on it. */
     val inTalk: Boolean get() = phase != HomePhase.Idle || reply.isNotEmpty() || heard != null
@@ -55,5 +57,6 @@ fun homeUi(s: CarUiState): HomeUi {
         source = s.source,
         look = CharacterLook(s.companion.settings.bodyColor, s.companion.settings.hat, s.companion.settings.neck),
         friendNote = s.friendNote?.takeIf { s.isParked }?.let { "${it.fromName}: ${it.text}" },
+        phoneHint = s.phoneHint && s.isParked && !s.companion.paired,
     )
 }

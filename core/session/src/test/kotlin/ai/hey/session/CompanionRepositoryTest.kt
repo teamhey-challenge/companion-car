@@ -27,17 +27,16 @@ class CompanionRepositoryTest {
         val repo = CompanionRepository(scope, api, storage)
     }
 
-    @Test fun `pairing polls every 2 s and ends on claimed`() = runTest {
+    @Test fun `pairing polls every 2 s and ends on claimed with the Google name and the flash`() = runTest {
         val cs = scope(testScheduler)
         val rig = Rig(cs)
         rig.repo.openPairing()
         assertEquals(PairingUi.Pending("ABCD2345", "2026-11-15T00:05:00Z"), rig.repo.state.value.pairing)
         advanceTimeBy(6_100)
-        assertEquals(3, rig.api.pairingPolls)
         assertTrue(rig.repo.state.value.pairing is PairingUi.Pending)
-        rig.api.pairing = PairingStatus(PairingPhase.Claimed, pairedAt = "x")
+        rig.api.pairing = PairingStatus(PairingPhase.Claimed, pairedAt = "x", googleName = "민수")
         advanceTimeBy(2_100)
-        assertEquals(PairingUi.Claimed, rig.repo.state.value.pairing)
+        assertEquals(PairingUi.Claimed("민수", fresh = true), rig.repo.state.value.pairing)
         assertTrue(rig.repo.state.value.paired)
         val polls = rig.api.pairingPolls
         advanceTimeBy(10_000)
@@ -45,39 +44,80 @@ class CompanionRepositoryTest {
         cs.cancel()
     }
 
-    @Test fun `pairing frame none turns a connected car to not connected at once and claimed turns it on`() = runTest {
+    @Test fun `the linked frame while the screen is open flashes once, the next reading is plain`() = runTest {
         val cs = scope(testScheduler)
         val rig = Rig(cs)
         rig.repo.openPairing()
-        rig.api.pairing = PairingStatus(PairingPhase.Claimed, pairedAt = "x")
-        advanceTimeBy(2_100)
-        assertTrue(rig.repo.state.value.paired)
-        rig.repo.onServerPairing(PairingPhase.None) // the phone unpaired itself
-        assertEquals(PairingUi.None, rig.repo.state.value.pairing)
-        assertFalse(rig.repo.state.value.paired)
-        rig.repo.onServerPairing(PairingPhase.None) // repeated frame changes nothing
-        assertEquals(PairingUi.None, rig.repo.state.value.pairing)
-        rig.repo.onServerPairing(PairingPhase.Claimed)
-        assertTrue(rig.repo.state.value.paired)
+        rig.repo.onServerPairing(PairingPhase.Claimed, "지은")
+        assertEquals(PairingUi.Claimed("지은", fresh = true), rig.repo.state.value.pairing)
+        advanceTimeBy(20_000)
+        assertEquals(PairingUi.Claimed("지은", fresh = true), rig.repo.state.value.pairing) // polling stopped: nothing re-asks
+        rig.repo.closePairing()
+        assertEquals(PairingUi.Claimed("지은", fresh = false), rig.repo.state.value.pairing) // reopening shows the name without the flash
         cs.cancel()
     }
 
-    @Test fun `pairing frame wire parse accepts the four statuses and rejects others`() {
+    @Test fun `a linked car opens on the account name, not on a code`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.api.pairing = PairingStatus(PairingPhase.Claimed, pairedAt = "x", googleName = "민수")
+        rig.repo.openPairing()
+        assertEquals(PairingUi.Claimed("민수"), rig.repo.state.value.pairing)
+        assertEquals(0, rig.api.pairingsCreated)
+        cs.cancel()
+    }
+
+    @Test fun `pairing frame none turns a connected car to not connected at once and claimed turns it on`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.repo.onServerPairing(PairingPhase.Claimed, null) // linked while no screen is open: no flash
+        assertEquals(PairingUi.Claimed(null, fresh = false), rig.repo.state.value.pairing)
+        assertTrue(rig.repo.state.value.paired)
+        rig.repo.onServerPairing(PairingPhase.None, null) // the phone unpaired itself
+        assertEquals(PairingUi.None, rig.repo.state.value.pairing)
+        assertFalse(rig.repo.state.value.paired)
+        rig.repo.onServerPairing(PairingPhase.None, null) // repeated frame changes nothing
+        assertEquals(PairingUi.None, rig.repo.state.value.pairing)
+        cs.cancel()
+    }
+
+    @Test fun `an unlink frame while the screen is open brings a fresh code`() = runTest {
+        val cs = scope(testScheduler)
+        val rig = Rig(cs)
+        rig.api.pairing = PairingStatus(PairingPhase.Claimed, googleName = "민수")
+        rig.repo.openPairing()
+        rig.api.pairing = PairingStatus(PairingPhase.None)
+        rig.repo.onServerPairing(PairingPhase.None, null)
+        assertTrue(rig.repo.state.value.pairing is PairingUi.Pending)
+        assertEquals(1, rig.api.pairingsCreated)
+        cs.cancel()
+    }
+
+    @Test fun `pairing frame wire parse keeps the Google name and rejects unknown statuses`() {
         assertEquals(ai.hey.model.ServerFrame.Pairing(PairingPhase.None), ai.hey.model.parseServerFrame("""{"type":"pairing","status":"none"}"""))
-        assertEquals(ai.hey.model.ServerFrame.Pairing(PairingPhase.Claimed), ai.hey.model.parseServerFrame("""{"type":"pairing","status":"claimed"}"""))
+        assertEquals(
+            ai.hey.model.ServerFrame.Pairing(PairingPhase.Claimed, "민수"),
+            ai.hey.model.parseServerFrame("""{"type":"pairing","status":"claimed","state":"linked","googleName":"민수"}"""),
+        )
+        assertEquals(ai.hey.model.ServerFrame.Pairing(PairingPhase.Claimed, null), ai.hey.model.parseServerFrame("""{"type":"pairing","status":"claimed","state":"linked","googleName":null}"""))
         assertEquals(null, ai.hey.model.parseServerFrame("""{"type":"pairing","status":"gone"}"""))
         assertEquals(null, ai.hey.model.parseServerFrame("""{"type":"pairing"}"""))
     }
 
-    @Test fun `pairing code that expires shows expired and closing C2 stops polling`() = runTest {
+    @Test fun `the code is replaced every 5 minutes and an ended code at once`() = runTest {
         val cs = scope(testScheduler)
         val rig = Rig(cs)
         rig.repo.openPairing()
-        rig.api.pairing = PairingStatus(PairingPhase.Expired)
-        advanceTimeBy(2_100)
-        assertEquals(PairingUi.Expired, rig.repo.state.value.pairing)
-        rig.repo.openPairing() // retry makes a new code
+        assertEquals(1, rig.api.pairingsCreated)
+        val first = (rig.repo.state.value.pairing as PairingUi.Pending).pairCode
+        advanceTimeBy(298_000)
+        assertEquals(1, rig.api.pairingsCreated)
+        advanceTimeBy(3_000) // 5 minutes are over
         assertEquals(2, rig.api.pairingsCreated)
+        assertTrue((rig.repo.state.value.pairing as PairingUi.Pending).pairCode != first)
+        rig.api.pairing = PairingStatus(PairingPhase.Expired) // the server ended the code early
+        advanceTimeBy(4_100)
+        assertEquals(3, rig.api.pairingsCreated)
         rig.repo.closePairing()
         val polls = rig.api.pairingPolls
         advanceTimeBy(10_000)
@@ -86,15 +126,18 @@ class CompanionRepositoryTest {
         cs.cancel()
     }
 
-    @Test fun `a failed code request shows Failed and a retry works`() = runTest {
+    @Test fun `a failed code request shows Failed and the screen recovers by itself when the server is back`() = runTest {
         val cs = scope(testScheduler)
         val rig = Rig(cs)
         rig.api.failing = true
         rig.repo.openPairing()
         assertEquals(PairingUi.Failed, rig.repo.state.value.pairing)
         rig.api.failing = false
-        rig.repo.openPairing()
+        advanceTimeBy(2_100)
         assertTrue(rig.repo.state.value.pairing is PairingUi.Pending)
+        rig.api.failing = true // the server drops while a code is shown: no QR for a code nobody can check
+        advanceTimeBy(2_100)
+        assertEquals(PairingUi.Failed, rig.repo.state.value.pairing)
         cs.cancel()
     }
 

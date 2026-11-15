@@ -75,8 +75,9 @@ class FakeCompanionApi(
     override suspend fun createPairing(): PairingInfo {
         check()
         pairingsCreated++
-        pairing = PairingStatus(PairingPhase.Pending, "ABCD2345", "2026-11-15T00:05:00Z")
-        return PairingInfo("ABCD2345", "2026-11-15T00:05:00Z")
+        val code = if (pairingsCreated == 1) "ABCD2345" else "ABCD23" + (40 + pairingsCreated % 60) // every new code replaces the old one
+        pairing = PairingStatus(PairingPhase.Pending, code, "2026-11-15T00:05:00Z")
+        return PairingInfo(code, "2026-11-15T00:05:00Z")
     }
 
     override suspend fun currentPairing(): PairingStatus {

@@ -40,16 +40,21 @@ private suspend fun <T> withRetry(block: suspend () -> T): T {
 
 private const val TAG = "Companion"
 
-/** C2 phone connection. [Failed] = the code could not be made (AC-4.2-05) or the status could not be read. */
+/**
+ * Phone connection (car settings > 폰 연결, onboarding O8). A code lives 5 minutes and is replaced by a new one before it ends;
+ * [Failed] = the server cannot be reached (no code can be made: "연결이 끊겼어요").
+ */
 sealed interface PairingUi {
-    /** C2 is not open or nothing is connected. */
+    /** The screen is not open or nothing is connected. */
     data object None : PairingUi
     data object Creating : PairingUi
     data class Pending(val pairCode: String, val expiresAt: String) : PairingUi
 
-    /** The phone claimed the code (C2 shows "연결됐어요!"; C7 shows the unpair row). */
-    data object Claimed : PairingUi
-    data object Expired : PairingUi
+    /**
+     * A phone is linked to this car under the Google account [googleName] (the given name; null when the server has none).
+     * [fresh] is true only while the screen was open when the phone linked: it shows "연결됐어요!" once.
+     */
+    data class Claimed(val googleName: String? = null, val fresh: Boolean = false) : PairingUi
     data object Failed : PairingUi
 }
 
@@ -104,6 +109,8 @@ data class FriendsState(
 data class CompanionState(
     val onboarding: OnboardingUi = OnboardingUi(),
     val pairing: PairingUi = PairingUi.None,
+    /** The server has answered "is a phone linked?" at least once since start-up (so "not linked" can be believed). */
+    val pairingChecked: Boolean = false,
     val memory: MemoryState = MemoryState(),
     val settings: CompanionSettings = CompanionSettings(),
     val settingsSave: SettingsSave = SettingsSave.Idle,
@@ -112,7 +119,7 @@ data class CompanionState(
     val settingsAction: SettingsAction = SettingsAction.None,
     val friends: FriendsState = FriendsState(),
 ) {
-    val paired: Boolean get() = pairing == PairingUi.Claimed
+    val paired: Boolean get() = pairing is PairingUi.Claimed
 }
 
 /** The screens' view model-facing API for consents, pairing, memory and server settings. Safe in any driving phase except where the screen gates it. */
@@ -123,7 +130,10 @@ interface CompanionCommands {
     /** C7 "녹음 동의 철회": withdraws `record` (server deletes memory); local mirror and memory list are cleared. */
     fun withdrawRecordConsent()
 
-    /** C2 opened: creates a code and polls every 2 s until claimed/expired/closed. */
+    /**
+     * The phone-connection screen opened: reads whether a phone is linked; if not, creates a code, polls every 2 s and
+     * replaces the code every [CompanionRepository.CODE_REFRESH_MILLIS] until linked or closed.
+     */
     fun openPairing()
     fun closePairing()
 
@@ -160,12 +170,14 @@ class CompanionRepository(
     private val api: CompanionApi,
     private val storage: CarStorage,
     private val pollMillis: Long = POLL_MILLIS,
+    private val codeRefreshMillis: Long = CODE_REFRESH_MILLIS,
     private val pageSize: Int = PAGE_SIZE,
 ) : CompanionCommands {
     private val _state = MutableStateFlow(CompanionState())
     val state: StateFlow<CompanionState> = _state.asStateFlow()
 
     private var poll: Job? = null
+    private var pairingOpen = false
     private var nextCursor: String? = null
 
     /** Called by the talk repository when the socket is up or a `settings` frame came: adopt the server's value. */
@@ -174,16 +186,21 @@ class CompanionRepository(
     }
 
     /**
-     * A `pairing` frame came on the socket: C7 and C2 follow at once instead of waiting for the next poll/refresh.
-     * Claimed -> shown as connected; anything else while connected -> not connected. A pending code that C2 is showing
-     * is left to its own poll (the frame cannot tell the code just created from the one that was removed).
+     * A `pairing` frame came on the socket: the phone-connection screen and settings follow at once instead of waiting for
+     * the next poll/refresh. Claimed = a phone linked ([googleName] is its Google given name); the screen, if open, shows
+     * "연결됐어요!" once. None while linked = the link ended: an open screen gets a fresh code at once.
      */
-    fun onServerPairing(phase: PairingPhase) {
-        _state.update {
-            when {
-                phase == PairingPhase.Claimed -> it.copy(pairing = PairingUi.Claimed)
-                it.pairing == PairingUi.Claimed -> it.copy(pairing = PairingUi.None)
-                else -> it
+    fun onServerPairing(phase: PairingPhase, googleName: String?) {
+        val now = _state.value.pairing
+        when {
+            phase == PairingPhase.Claimed -> {
+                val shown = pairingOpen && now !is PairingUi.Claimed
+                if (shown) poll?.cancel()
+                _state.update { it.copy(pairing = PairingUi.Claimed(googleName, fresh = shown), pairingChecked = true) }
+            }
+            now is PairingUi.Claimed -> {
+                _state.update { it.copy(pairing = PairingUi.None) }
+                if (pairingOpen) openPairing()
             }
         }
     }
@@ -206,7 +223,7 @@ class CompanionRepository(
             runCatching { api.settings() }.onSuccess { s -> _state.update { it.copy(settings = s) } }.onFailure { log("settings", it) }
             if (poll?.isActive != true) {
                 runCatching { api.currentPairing() }.onSuccess { p ->
-                    _state.update { it.copy(pairing = if (p.phase == PairingPhase.Claimed) PairingUi.Claimed else if (it.pairing == PairingUi.Claimed) PairingUi.None else it.pairing) }
+                    _state.update { it.copy(pairing = if (p.phase == PairingPhase.Claimed) PairingUi.Claimed(p.googleName) else if (it.pairing is PairingUi.Claimed) PairingUi.None else it.pairing, pairingChecked = true) }
                 }.onFailure { log("pairing", it) }
             }
         }
@@ -305,37 +322,59 @@ class CompanionRepository(
 
     override fun openPairing() {
         poll?.cancel()
+        pairingOpen = true
         _state.update { it.copy(pairing = PairingUi.Creating) }
         poll = scope.launch {
-            val info = try {
-                api.createPairing()
+            // A car that already has a phone shows the linked account instead of a code (unlink first to link another).
+            val first = try {
+                api.currentPairing()
             } catch (e: IOException) {
-                log("createPairing", e)
-                _state.update { it.copy(pairing = PairingUi.Failed) }
+                log("pairing first read", e)
+                null
+            }
+            if (first?.phase == PairingPhase.Claimed) {
+                _state.update { it.copy(pairing = PairingUi.Claimed(first.googleName), pairingChecked = true) }
                 return@launch
             }
-            _state.update { it.copy(pairing = PairingUi.Pending(info.pairCode, info.expiresAt)) }
+            if (first != null) _state.update { it.copy(pairingChecked = true) }
+            var shownMillis = codeRefreshMillis // forces the first code at once
             while (isActive) {
+                val failed = _state.value.pairing == PairingUi.Failed
+                if (failed || shownMillis >= codeRefreshMillis) {
+                    // A new code at the start, every 5 minutes, after the old one ran out, and when the server is back after an outage.
+                    try {
+                        val info = api.createPairing()
+                        _state.update { it.copy(pairing = PairingUi.Pending(info.pairCode, info.expiresAt)) }
+                        shownMillis = 0
+                    } catch (e: IOException) {
+                        log("createPairing", e)
+                        _state.update { it.copy(pairing = PairingUi.Failed) }
+                    }
+                } else {
+                    val status = try {
+                        api.currentPairing()
+                    } catch (e: IOException) {
+                        log("pairing poll", e)
+                        _state.update { it.copy(pairing = PairingUi.Failed) } // no code can be shown while the server is out of reach
+                        null
+                    }
+                    when (status?.phase) {
+                        PairingPhase.Claimed -> return@launch _state.update { it.copy(pairing = PairingUi.Claimed(status.googleName, fresh = true)) }
+                        PairingPhase.Expired, PairingPhase.None -> shownMillis = codeRefreshMillis
+                        PairingPhase.Pending, null -> Unit
+                    }
+                }
                 delay(pollMillis)
-                val status = try {
-                    api.currentPairing()
-                } catch (e: IOException) {
-                    log("pairing poll", e) // keep showing the code; the next tick retries
-                    continue
-                }
-                when (status.phase) {
-                    PairingPhase.Claimed -> return@launch _state.update { it.copy(pairing = PairingUi.Claimed) }
-                    PairingPhase.Expired, PairingPhase.None -> return@launch _state.update { it.copy(pairing = PairingUi.Expired) }
-                    PairingPhase.Pending -> Unit
-                }
+                shownMillis += pollMillis
             }
         }
     }
 
     override fun closePairing() {
+        pairingOpen = false
         poll?.cancel()
         poll = null
-        _state.update { if (it.pairing is PairingUi.Claimed) it else it.copy(pairing = PairingUi.None) }
+        _state.update { s -> val p = s.pairing; if (p is PairingUi.Claimed) s.copy(pairing = p.copy(fresh = false)) else s.copy(pairing = PairingUi.None) }
     }
 
     override fun unpair() {
@@ -346,6 +385,7 @@ class CompanionRepository(
             try {
                 api.deletePairing()
                 _state.update { it.copy(pairing = PairingUi.None, settingsAction = SettingsAction.None) }
+                if (pairingOpen) openPairing() // the phone-connection screen goes on with a fresh code
             } catch (e: IOException) {
                 log("unpair", e)
                 _state.update { it.copy(accountFailure = AccountFailure.Unpair, settingsAction = SettingsAction.None) }
@@ -446,6 +486,9 @@ class CompanionRepository(
 
     companion object {
         const val POLL_MILLIS = 2_000L
+
+        /** A pairing code lives 5 minutes on the server (§4.6); the screen asks for a new one at the same pace. */
+        const val CODE_REFRESH_MILLIS = 300_000L
         const val PAGE_SIZE = 20
     }
 }

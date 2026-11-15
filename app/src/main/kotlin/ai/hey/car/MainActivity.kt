@@ -9,6 +9,7 @@ import ai.hey.feature.home.Routes
 import ai.hey.feature.home.gateRoute
 import ai.hey.feature.home.homeUi
 import ai.hey.feature.memory.MemoryRoute
+import ai.hey.feature.settings.PhoneLinkRoute
 import ai.hey.feature.settings.ServerAddress
 import ai.hey.feature.settings.SettingsRoute
 import ai.hey.model.OnboardingStep
@@ -30,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -161,16 +163,14 @@ class MainActivity : ComponentActivity() {
                             onExit = { finish() },
                         )
                     }
-                    composable(Routes.Pair) {
-                        PairRoute(
-                            companion = graph.companion,
-                            talk = repository,
-                            onDone = { nav.popBackStack() },
-                            onBack = { nav.popBackStack() },
-                            onDriving = { nav.navigate(Routes.Drive) { popUpTo(nav.graph.id) { inclusive = true } } },
-                        )
-                    }
                     composable(Routes.Home) {
+                        // §6.1: after a skipped O8 the home says once that a linked phone shows the diary; it stays 8 s, or until the phone is linked.
+                        LaunchedEffect(ui.phoneHint) {
+                            if (ui.phoneHint) {
+                                delay(8_000)
+                                repository.phoneHintShown()
+                            }
+                        }
                         HomeScreen(
                             ui = ui,
                             reducedMotion = reducedMotion(),
@@ -182,19 +182,27 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Routes.Settings) {
-                        // "해제" (PRD 4.7, D-33): the screen stays; C7 shows the unpaired state. C2 is opened only by "폰 연결" here.
                         SettingsRoute(
                             state = state.companion,
                             commands = graph.companion,
                             onBack = { nav.popBackStack() },
                             onOpenMemory = { nav.navigate(Routes.Memory) },
-                            onOpenPair = { nav.navigate(Routes.Pair) },
+                            onOpenPair = { nav.navigate(Routes.PhoneLink) },
                             // The address field exists in debug builds only.
                             server = if (BuildConfig.DEBUG) {
                                 ServerAddress(state.settings.serverUrl) { url -> repository.updateSettings { it.copy(serverUrl = url) } }
                             } else {
                                 null
                             },
+                        )
+                    }
+                    composable(Routes.PhoneLink) {
+                        // Parked only (the gate leaves for C5 when the car moves, so no QR is ever drawn while driving); each visit asks for a fresh code.
+                        PhoneLinkRoute(
+                            state = state.companion,
+                            commands = graph.companion,
+                            parked = state.isParked,
+                            onBack = { nav.popBackStack() },
                         )
                     }
                     composable(Routes.Memory) {
