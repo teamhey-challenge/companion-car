@@ -49,7 +49,7 @@ private class FakeSocketClient : OkHttpClient() {
 
 private class FakeApi : TalkApi {
     var sessions = 0
-    override suspend fun register(serverUrl: String, installId: String, provisionSecret: String) = "tok"
+    override suspend fun register(serverUrl: String, installId: String) = "tok"
     override suspend fun session(serverUrl: String, carToken: String): TalkSession = TalkSession("s${++sessions}", "t$sessions")
     override fun socketUrl(serverUrl: String, ticket: String) = "http://localhost/v1/talk?ticket=$ticket"
 }
@@ -74,7 +74,7 @@ class HalfOpenSocketTest {
     }
 
     private fun kotlinx.coroutines.test.TestScope.link(client: FakeSocketClient, api: FakeApi, rec: Rec) = TalkLink(
-        api, client, InMemoryCarStorage().also { }, backgroundScope, rec, "t", { "secret" },
+        api, client, InMemoryCarStorage().also { }, backgroundScope, rec, "t",
         ReconnectPacer({ currentTime }, IdleConnectivity()), { currentTime },
     )
 

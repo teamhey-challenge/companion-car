@@ -46,8 +46,6 @@ android {
             enableV3Signing = true
         }
     } else null
-    // The registration secret is NOT built into the APK (the debug APK is public at /download/latest.apk): the device reads it
-    // from a 600 file at run time, see readProvisionSecret in HeyApp.kt.
     // Companion server: https only (main network_security.xml). Override with -PserverUrl=https://...
     val serverUrl = providers.gradleProperty("serverUrl").getOrElse("https://hey.lastmile.ltd/api")
     require(serverUrl.startsWith("https://")) { "serverUrl must be https" }
