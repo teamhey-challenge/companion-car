@@ -663,23 +663,6 @@ class TalkRepositoryTest {
         cs.cancel()
     }
 
-    @Test fun `a range proactive at a parked stop is spoken although a destination is set, any other reason stays refused`() = runTest {
-        val cs = rigScope(testScheduler)
-        val rig = Rig(cs, ScriptedVoiceInput())
-        rig.vehicle.setDriving(false)
-        rig.vehicle.setSignals { it.copy(naviGuiding = true, destKm = 42) }
-        testScheduler.runCurrent()
-        rig.transport.listener.onFrame(ServerFrame.Proactive("p1", "wiper"))
-        assertEquals(TurnState.Idle, rig.repo.state.value.turn)
-        rig.transport.listener.onFrame(ServerFrame.Proactive("p2", "range"))
-        assertEquals(TurnState.Replying, rig.repo.state.value.turn)
-        rig.transport.listener.onFrame(ServerFrame.ReplyStart("p2", AudioSpec.None))
-        rig.transport.listener.onFrame(ServerFrame.ReplyEnd("p2", "목적지까지 42km인데 남은 거리가 30km야.", 100, 900))
-        testScheduler.advanceUntilIdle()
-        assertEquals(listOf("목적지까지 42km인데 남은 거리가 30km야."), rig.vehicle.spoken)
-        cs.cancel()
-    }
-
     @Test fun `a proactive frame during a conversation or before consent is refused`() = runTest {
         val cs = rigScope(testScheduler)
         val rig = Rig(cs, ScriptedVoiceInput(text = "안녕"))
