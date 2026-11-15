@@ -358,7 +358,7 @@ class TalkRepository(
         val why = when {
             s.needsOnboarding -> "consent not recorded"
             !s.online -> "offline"
-            // Parked with a route set (scenario 2 asks "충전 들를래?" and listens): no guidance voice runs while the car stands.
+            // A route can be set while parked: no guidance voice runs while the car stands, so listening is allowed.
             vehicle.signals.value.naviGuiding && s.driving != DrivingStatus.Parked -> "navigation guiding"
             !voiceInput.hasPermission() -> "no microphone permission"
             else -> null
@@ -377,9 +377,8 @@ class TalkRepository(
             s.needsOnboarding -> "consent not recorded"
             s.onboardingStep != OnboardingStep.Done -> "onboarding is running"
             s.turn != TurnState.Idle -> "busy (${s.turn})"
-            // D-14: no new line while navigation guides. The one exception is scenario 2 (range vs the destination) at a parked stop:
-            // a destination is set but the car stands still, so no guidance voice is running.
-            vehicle.signals.value.naviGuiding && !(frame.reason == "range" && s.driving == DrivingStatus.Parked) -> "navigation guiding"
+            // D-14: no new line while navigation guides.
+            vehicle.signals.value.naviGuiding -> "navigation guiding"
             otherAudio?.otherAppPlaying() == true -> "another app is playing audio"
             else -> null
         }
