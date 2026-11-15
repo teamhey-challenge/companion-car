@@ -110,7 +110,7 @@ fun HeyButton(
         HStack(
             gap = HeyGap.G8,
             modifier = Modifier.padding(
-                horizontal = if (header) 30.dp else HeyTokens.Space.s24,
+                horizontal = if (header) 32.dp else HeyTokens.Space.s24,
                 vertical = if (header) 18.dp else HeyTokens.Space.s8,
             ),
         ) {

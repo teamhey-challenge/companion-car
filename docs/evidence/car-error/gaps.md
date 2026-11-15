@@ -10,7 +10,7 @@ Studio 4dc8ad3. Elements of the studio screen with no counterpart in the app dum
 ## App text with no matching studio text
 
 - "잠시 뒤에 다시 이야기해요" @80,325
-- "다시 연결" @210,768
+- "다시 연결" @210,767
 
 ## Studio boxes, buttons, images (not measurable by the text dump; check them in diff.png)
 

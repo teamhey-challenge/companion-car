@@ -2,8 +2,8 @@
  "screen": "car/error",
  "pass": false,
  "shas": {
-  "app": "e2fbccd5c50090dd659ef8acae2edabec2d4fa63",
-  "appDirty": false,
+  "app": "c8618ce333f0f2b4c61bb36a7bea827a71fdd4f5",
+  "appDirty": true,
   "studio": "4dc8ad3",
   "sharedTag": "v0.5.2"
  },
@@ -22,7 +22,7 @@
   "color": "exact"
  },
  "pixel": {
-  "badPixels": 83860,
+  "badPixels": 83946,
   "total": 1440000
  },
  "failingValues": 39,
@@ -183,8 +183,8 @@
     {
      "name": "x",
      "design": "1164",
-     "app": "1074",
-     "delta": "-90",
+     "app": "1064",
+     "delta": "-100",
      "ok": false
     },
     {
@@ -258,8 +258,8 @@
     {
      "name": "x",
      "design": "1318",
-     "app": "1254",
-     "delta": "-64",
+     "app": "1248",
+     "delta": "-70",
      "ok": false
     },
     {
@@ -333,8 +333,8 @@
     {
      "name": "x",
      "design": "1472",
-     "app": "1434",
-     "delta": "-38",
+     "app": "1432",
+     "delta": "-40",
      "ok": false
     },
     {

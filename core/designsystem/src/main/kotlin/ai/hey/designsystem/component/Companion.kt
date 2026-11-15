@@ -396,7 +396,7 @@ private fun TalkPill(
                 label, ink.content,
                 modifier = if (icon != null) Modifier.padding(start = 4.dp) else Modifier,
                 maxLines = 2, align = HeyTextAlign.Center,
-                weight = androidx.compose.ui.text.font.FontWeight.SemiBold, metrics = HeyTextMetrics(28.sp, 40.sp),
+                weight = androidx.compose.ui.text.font.FontWeight.SemiBold, metrics = HeyTextMetrics(28.sp, 42.sp),
             )
         }
     }
@@ -483,7 +483,7 @@ fun PageHeading(
             title, HeyTheme.colors.fgDefault,
             variant = if (hero) HeyTextVariant.Hero else HeyTextVariant.Title,
             maxLines = if (hero) 3 else 2,
-            weight = androidx.compose.ui.text.font.FontWeight.Normal,
+            weight = androidx.compose.ui.text.font.FontWeight(450),
             trackingEm = -0.055f,
             // Mockup `.car[data-layout=parked] .welcome h1`: 72px at line-height 1.35 (the token's 84 is too tight).
             lineHeight = if (hero) 97.sp else null,
