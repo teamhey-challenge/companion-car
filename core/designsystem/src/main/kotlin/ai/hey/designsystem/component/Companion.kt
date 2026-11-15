@@ -473,20 +473,21 @@ fun PageHeading(
     subtitle: String? = null,
     hero: Boolean = false,
 ) {
-    // Mockup C1/C2/C6/C7: title→subtitle 32 dp and subtitle→content +16 dp; the hero greeting keeps its tight stack.
+    // Studio 4dc8ad3 `.page-heading h1` (car-settings/car-memory @1600x900): 52px/600, line 67.6, -0.04em. The hero greeting
+    // keeps its tight stack.
     VStack(
         if (hero) HeyGap.G8 else HeyGap.G24,
-        modifier = if (hero) modifier else modifier.padding(bottom = HeyTokens.Space.s8 - 2.dp),
+        modifier = if (hero || subtitle == null) modifier else modifier.padding(bottom = HeyTokens.Space.s8 - 2.dp),
     ) {
-        // Design: headings are regular weight (450) with -0.055em tracking (`.welcome h1`, `.page-heading h1`).
         InkText(
             title, HeyTheme.colors.fgDefault,
             variant = if (hero) HeyTextVariant.Hero else HeyTextVariant.Title,
             maxLines = if (hero) 3 else 2,
-            weight = androidx.compose.ui.text.font.FontWeight(450),
-            trackingEm = -0.055f,
+            weight = if (hero) androidx.compose.ui.text.font.FontWeight(450) else androidx.compose.ui.text.font.FontWeight.SemiBold,
+            trackingEm = if (hero) -0.055f else -0.04f,
             // Mockup `.car[data-layout=parked] .welcome h1`: 72px at line-height 1.35 (the token's 84 is too tight).
             lineHeight = if (hero) 97.sp else null,
+            metrics = if (hero) null else HeyTextMetrics(52.sp, 67.6.sp),
         )
         if (subtitle != null) HeyText(subtitle, tone = HeyTone.Muted, maxLines = 3)
     }

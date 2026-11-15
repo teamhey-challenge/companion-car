@@ -42,6 +42,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -95,6 +97,61 @@ fun HeyCard(
             .padding(HeyTokens.Space.s24),
         content = content,
     )
+}
+
+/**
+ * Studio white list card (`.mk-card`, car-settings/car-memory @1600x900): white surface, 32 radius, 28/32 padding, no border.
+ * Put one [HeyCardRow] (or any content) inside; stack several in a [HeyCardList]. [onClick] makes the whole card a press target.
+ */
+@Composable
+fun HeyListCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable HeyStackScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(32.dp)
+    VStack(
+        gap = HeyGap.G8,
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(HeyTheme.colors.bgRaised, shape)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+            .padding(horizontal = 32.dp, vertical = 28.dp),
+        content = content,
+    )
+}
+
+/** Vertical list of [HeyListCard]s (studio gap 18, closest token 16). */
+@Composable
+fun HeyCardList(modifier: Modifier = Modifier, content: @Composable HeyStackScope.() -> Unit) {
+    VStack(gap = HeyGap.G16, modifier = modifier.fillMaxWidth(), content = content)
+}
+
+/**
+ * Title (30/600, -0.025em) with an optional muted line (22) and optional leading/trailing slots (face, switch, chevron, button)
+ * centred vertically; the content of a [HeyListCard].
+ */
+@Composable
+fun HeyCardRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    line: String? = null,
+    leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    HStack(gap = HeyGap.G24, align = HeyAlign.Center, modifier = modifier.fillMaxWidth()) {
+        if (leading != null) leading()
+        VStack(gap = HeyGap.G8, modifier = Modifier.grow(1f)) {
+            InkText(
+                title, HeyTheme.colors.fgDefault, maxLines = 2,
+                weight = androidx.compose.ui.text.font.FontWeight.SemiBold, trackingEm = -0.025f,
+                metrics = HeyTextMetrics(30.sp, 43.5.sp),
+            )
+            if (line != null) InkText(line, HeyTheme.colors.fgMuted, maxLines = 3, metrics = HeyTextMetrics(22.sp, 37.4.sp))
+        }
+        if (trailing != null) trailing()
+    }
 }
 
 @Composable
