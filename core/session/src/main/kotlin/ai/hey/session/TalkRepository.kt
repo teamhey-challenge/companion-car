@@ -110,6 +110,7 @@ class TalkRepository(
     @Volatile private var speakingId: String? = null
     private var watchdog: Job? = null
     private var noteJob: Job? = null
+    private var tripJob: Job? = null
 
     @OptIn(FlowPreview::class)
     fun start() {
@@ -146,6 +147,7 @@ class TalkRepository(
                         driving = d,
                         panel = if (d == DrivingStatus.Parked) it.panel else Panel.None,
                         friendNote = if (d == DrivingStatus.Parked) it.friendNote else null,
+                        tripNote = if (d == DrivingStatus.Parked) it.tripNote else null,
                     )
                 }
             }
@@ -252,7 +254,7 @@ class TalkRepository(
                 is ServerFrame.Proactive -> onProactive(frame)
                 is ServerFrame.FriendMessage -> onFriend(frame.id, frame.fromName, frame.text, showText = true)
                 is ServerFrame.FriendArrived -> onFriend(frame.id, frame.fromName, "", showText = false)
-                is ServerFrame.TripDone -> Unit // the notification centre ([FrameNotifier]) reads it; the repository has nothing to do
+                is ServerFrame.TripDone -> onTripDone(frame.carLine ?: frame.text) // the notification centre ([FrameNotifier]) reads it too
                 is ServerFrame.Settings -> companion?.onServerSettings(frame.settings)
                 is ServerFrame.Pairing -> companion?.onServerPairing(frame.phase, frame.googleName)
                 is ServerFrame.Onboarding -> onOnboardingFrame(frame)
@@ -394,6 +396,18 @@ class TalkRepository(
         turnEndSentAt = clock()
         _state.update { it.copy(turn = TurnState.Replying, source = TurnSource.Proactive, heard = null, reply = "", error = null, audioFailed = false) }
         armWatchdog(frame.id, REPLY_START_TIMEOUT_MILLIS)
+    }
+
+    /** Trip end: the line the server chose for the car (`carLine`: diary written / no phone / memory off) shows on the parked home (never while driving, D-25) for [TRIP_NOTE_MILLIS]. */
+    private fun onTripDone(text: String) {
+        val line = text.trim()
+        if (line.isEmpty() || !_state.value.isParked) return
+        _state.update { it.copy(tripNote = line) }
+        tripJob?.cancel()
+        tripJob = scope.launch {
+            delay(TRIP_NOTE_MILLIS)
+            _state.update { if (it.tripNote == line) it.copy(tripNote = null) else it }
+        }
     }
 
     /**
@@ -899,6 +913,9 @@ private const val ONBOARDING_OFFLINE_GRACE_MILLIS = 4_000L
 private const val ONBOARDING_OFFLINE_HOLD_MILLIS = 3_000L
 private const val ONBOARDING_ANSWER_MAX_CHARS = 40
 const val CTX_DEBOUNCE_MILLIS = 1_000L
+
+/** How long the trip-end farewell stays on the parked home. */
+const val TRIP_NOTE_MILLIS = 60_000L
 
 /** How long a friend's message text stays on C3 after it arrived. */
 const val FRIEND_NOTE_MILLIS = 8_000L

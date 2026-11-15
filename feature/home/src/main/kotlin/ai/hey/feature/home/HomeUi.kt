@@ -29,6 +29,12 @@ data class HomeUi(
     val friendNote: String? = null,
     /** §6.1: O8 was skipped; the home says once "폰 연결하면 일기를 볼 수 있어" (parked only). */
     val phoneHint: Boolean = false,
+    /** Trip end (`car/home#trip-end`, parked only): the character's one-line farewell from the server's `trip_done` frame. */
+    val tripNote: String? = null,
+    /** True when today's diary will be written (memory saving on), so the trip-end card says it goes to the phone. */
+    val tripDiary: Boolean = false,
+    /** True once the diary-writing moment is over (the screen sets its own timer; previews and snapshots can start after it). */
+    val tripMomentDone: Boolean = false,
 ) {
     /** C4 is C3 with a turn on it. */
     val inTalk: Boolean get() = phase != HomePhase.Idle || reply.isNotEmpty() || heard != null
@@ -58,5 +64,7 @@ fun homeUi(s: CarUiState): HomeUi {
         look = CharacterLook(s.companion.settings.bodyColor, s.companion.settings.hat, s.companion.settings.neck),
         friendNote = s.friendNote?.takeIf { s.isParked }?.let { "${it.fromName}: ${it.text}" },
         phoneHint = s.phoneHint && s.isParked && !s.companion.paired,
+        tripNote = s.tripNote?.takeIf { s.isParked },
+        tripDiary = s.companion.settings.memoryEnabled && s.companion.paired,
     )
 }

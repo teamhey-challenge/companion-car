@@ -108,6 +108,8 @@ data class CarUiState(
     val reply: String = "",
     /** The friend message on screen (parked only, cleared a few seconds after it was read or when the car moves). */
     val friendNote: FriendNote? = null,
+    /** Trip end (`trip_done`): the character's one-line farewell, parked only; cleared after [TRIP_NOTE_MILLIS] or when the car moves. */
+    val tripNote: String? = null,
     /** Where the first-run flow is (D-48); [OnboardingStep.Done] when it is over or was never started. */
     val onboardingStep: ai.hey.model.OnboardingStep = ai.hey.model.OnboardingStep.Done,
     /** What the first-run screens draw besides the step (D-48): the spoken line, whose voice, the answers. */

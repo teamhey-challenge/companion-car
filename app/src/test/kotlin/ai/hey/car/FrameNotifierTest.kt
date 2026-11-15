@@ -57,6 +57,11 @@ class FrameNotifierTest {
         assertEquals(null, parseServerFrame("""{"type":"trip_done","text":"x"}"""))
     }
 
+    @Test fun `trip_done carries the car line the server chose`() {
+        val f = parseServerFrame("""{"type":"trip_done","id":"t9","at":"a","text":"x","date":"d","carLine":"폰을 연결하면 일기를 볼 수 있어"}""")
+        assertEquals("폰을 연결하면 일기를 볼 수 있어", (f as ServerFrame.TripDone).carLine)
+    }
+
     @Test fun `final consonant detection`() {
         assertTrue(FrameNotifier.endsWithFinalConsonant("민준"))
         assertFalse(FrameNotifier.endsWithFinalConsonant("지아"))

@@ -92,7 +92,7 @@ sealed interface ServerFrame {
     data class FriendMessage(val id: String, val fromName: String, val text: String) : ServerFrame
 
     /** The trip ended (D-52 2): only the car notification centre uses it; [text] is the server's one-line farewell. */
-    data class TripDone(val id: String, val text: String, val date: String, val at: String) : ServerFrame
+    data class TripDone(val id: String, val text: String, val date: String, val at: String, val carLine: String? = null) : ServerFrame
 
     /** A friend arrived (spoken only): same audio path as [FriendMessage]. D-52: the frame never carries, and the app never reads, a place. */
     data class FriendArrived(val id: String, val fromName: String) : ServerFrame
@@ -151,7 +151,7 @@ private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
         )
         "proactive" -> ServerFrame.Proactive(s("id") ?: return null, s("reason").orEmpty())
         "friend_message" -> ServerFrame.FriendMessage(s("id") ?: return null, s("fromName").orEmpty(), s("text") ?: return null)
-        "trip_done" -> ServerFrame.TripDone(s("id") ?: return null, s("text") ?: return null, s("date").orEmpty(), s("at").orEmpty())
+        "trip_done" -> ServerFrame.TripDone(s("id") ?: return null, s("text") ?: return null, s("date").orEmpty(), s("at").orEmpty(), s("carLine")?.takeIf { it.isNotBlank() })
         "friend_arrived" -> ServerFrame.FriendArrived(s("id") ?: return null, s("fromName").orEmpty())
         "onboarding" -> ServerFrame.Onboarding(s("step") ?: return null, s("id") ?: return null, s("text").orEmpty(), whale = s("voice") == "whale")
         "onboarding.ack" -> ServerFrame.OnboardingAck(

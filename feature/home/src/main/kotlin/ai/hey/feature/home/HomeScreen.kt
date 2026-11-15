@@ -12,6 +12,11 @@ import ai.hey.designsystem.component.HeyButtonSize
 import ai.hey.designsystem.component.HeyButtonVariant
 import ai.hey.designsystem.component.HeyConnection
 import ai.hey.designsystem.component.HeyText
+import ai.hey.designsystem.component.AssetSlot
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import ai.hey.designsystem.component.HeyStatusPill
+import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyTextAlign
 import ai.hey.designsystem.component.OceanBackground
 import ai.hey.designsystem.component.PageHeading
@@ -132,7 +137,7 @@ fun HomeScreen(
                 if (compact) {
                     VStack(HeyGap.G24, modifier = Modifier.fillSize(), align = HeyAlign.Center) {
                         VStack(HeyGap.G8, modifier = Modifier.grow().fillWidth(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
-                            HomeCharacter(
+                            HomeStage(
                                 ui = ui,
                                 reducedMotion = reducedMotion,
                                 size = CharacterSize.Compact,
@@ -150,7 +155,7 @@ fun HomeScreen(
                             HomeLeft(ui, onTalk, onEndConversation, onFaultAction)
                         }
                         VStack(HeyGap.G8, modifier = Modifier.carSideColumn(maxWidth).fillHeight(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
-                            HomeCharacter(
+                            HomeStage(
                                 ui = ui,
                                 reducedMotion = reducedMotion,
                                 size = CharacterSize.Stage,
@@ -163,6 +168,27 @@ fun HomeScreen(
             }
         }
     }
+}
+
+/** How long the diary-writing moment of the trip end lasts before the farewell line is shown (screens-and-flows 2: 2~3 s). */
+const val TRIP_DIARY_MOMENT_MILLIS = 2_500L
+
+/**
+ * The character column. At the trip end with a diary (memory saving on) it first shows the diary-writing moment for
+ * [TRIP_DIARY_MOMENT_MILLIS] as a named, empty asset slot (D-49: the art comes later, no stand-in picture), then the
+ * character again with the farewell line beside it.
+ */
+@Composable
+private fun HomeStage(ui: HomeUi, reducedMotion: Boolean, size: CharacterSize, description: String) {
+    var writing by remember(ui.tripNote) { mutableStateOf(ui.tripNote != null && ui.tripDiary && !ui.tripMomentDone) }
+    LaunchedEffect(ui.tripNote) {
+        if (writing) {
+            delay(TRIP_DIARY_MOMENT_MILLIS)
+            writing = false
+        }
+    }
+    if (writing) AssetSlot(name = "heyri-writing-diary", size = size, contentDescription = stringResource(R.string.trip_end_writing))
+    else HomeCharacter(ui = ui, reducedMotion = reducedMotion, size = size, description = description)
 }
 
 @Composable
@@ -206,7 +232,12 @@ private fun ai.hey.designsystem.layout.HeyStackScope.HomeLeft(
         }
         else -> {
             VStack(HeyGap.G8) {
-                PageHeading(title = stringResource(R.string.home_hint), hero = true, modifier = Modifier.heroWidth())
+                if (ui.tripNote != null) {
+                    Subtitle(text = ui.tripNote)
+                    if (ui.tripDiary) HeyStatusPill(stringResource(R.string.trip_end_diary), HeyStatusTone.Accent)
+                } else {
+                    PageHeading(title = stringResource(R.string.home_hint), hero = true, modifier = Modifier.heroWidth())
+                }
                 ui.friendNote?.let { Subtitle(text = it) }
                 if (ui.phoneHint) Subtitle(text = stringResource(R.string.home_phone_hint))
                 if (!ui.online) StatusBadge(phase = TalkPhase.Idle, connection = HeyConnection.Reconnecting)

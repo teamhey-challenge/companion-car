@@ -62,6 +62,7 @@ fun DriveScreen(
                     ui.phase == HomePhase.Listening || ui.phase == HomePhase.Speaking ->
                         StatusBadge(phase = ui.phase.toTalk(), driving = true, animated = !reducedMotion)
                     waiting -> StatusBadge(phase = TalkPhase.Thinking, driving = true, animated = !reducedMotion)
+                    ui.fault != null -> DriveFaultIcon(ui.fault)
                 }
             }
             TalkButton(
