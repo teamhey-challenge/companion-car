@@ -44,7 +44,7 @@ class FrameNotifierTest {
     }
 
     @Test fun `other frames never post a notification (two kinds only)`() {
-        notifier.onFrame(ServerFrame.FriendArrived("a1", "지아", "회사"))
+        notifier.onFrame(ServerFrame.FriendArrived("a1", "지아"))
         notifier.onFrame(ServerFrame.Proactive("p1", "greet"))
         notifier.onFrame(ServerFrame.Error("x", null, null))
         assertTrue(posted.isEmpty())
