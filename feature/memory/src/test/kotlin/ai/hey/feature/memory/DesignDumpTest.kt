@@ -22,9 +22,9 @@ private fun device(w: Int, h: Int) = DeviceConfig.PIXEL_C.copy(
 
 private fun Paparazzi.dumpScreens(w: Int, h: Int) {
     val rows = listOf(
-        MemoryRowUi("1", MemoryKindUi.Fact, "비 오는 날, 잔잔한 음악을 좋아해요.", "11월 13일"),
-        MemoryRowUi("2", MemoryKindUi.Summary, "퇴근길에는 조용한 대화를 좋아해요.", "11월 12일"),
-        MemoryRowUi("3", MemoryKindUi.Fact, "금요일에 중요한 발표가 있어요.", "11월 11일"),
+        MemoryRowUi("1", MemoryKindUi.Fact, "비 오는 날 잔잔한 음악을 좋아해요.", "11월 15일"),
+        MemoryRowUi("2", MemoryKindUi.Summary, "출퇴근길에 함께 다녀요.", "11월 14일"),
+        MemoryRowUi("3", MemoryKindUi.Fact, "캠핑 이야기를 좋아해요.", "11월 13일"),
     )
     val dump = DesignDump("car-memory@${w}x$h", w, h, dark = false)
     snapshot("car-memory@${w}x$h") {
