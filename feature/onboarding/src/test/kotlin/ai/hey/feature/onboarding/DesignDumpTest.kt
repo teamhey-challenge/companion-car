@@ -1,6 +1,7 @@
 package ai.hey.feature.onboarding
 
 import ai.hey.designsystem.component.CharacterLook
+import ai.hey.designsystem.component.PhoneLinkUi
 import ai.hey.designsystem.component.TalkPhase
 import ai.hey.designsystem.gallery.DesignDump
 import ai.hey.designsystem.theme.HeyTheme
@@ -42,7 +43,7 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
     dump("car-onboarding-5") { SpokenStepScreen(SpokenStepUi(OnboardingStep.Greeting, line = "반가워, 민수! 난 헤이리야.")) }
     dump("car-onboarding-6") { KnownCardsScreen(answers = answers) }
     dump("car-onboarding-7") { FirstLookScreen(look = CharacterLook(), onLook = {}, onDone = {}) }
-    dump("car-onboarding-8") { PairScreen(PairUi.Pending("K7M2QX9P"), {}, {}, {}) }
+    dump("car-onboarding-8") { QrStepScreen(PhoneLinkUi.Code("K7M2QX9P"), onLater = {}, onDone = {}, onRetry = {}) }
 }
 
 class OnboardingDesignDump1600Test {

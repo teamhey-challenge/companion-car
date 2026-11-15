@@ -1,8 +1,5 @@
 <resources>
-    <string name="onboard_title_bar">헤이리</string>
-    <string name="onboard_title">우리, 이야기 나눠요.</string>
     <string name="onboard_promise_title">약속하고 시작할까?</string>
-    <string name="onboard_subtitle">목소리로 대화하고, 기억하고 싶은 이야기를 함께 간직해요.</string>
     <string name="onboard_point_voice_title">목소리로 이야기해요</string>
     <string name="onboard_point_voice_body">대화할 때만 음성을 받아 답을 만들어요.</string>
     <string name="onboard_point_memory_title">기억은 내가 정해요</string>
@@ -10,9 +7,7 @@
     <string name="onboard_toggle_memory">이야기 기억하기 · 선택</string>
     <string name="onboard_toggle_memory_body">대화 원문 대신 요약과 사실을 기억해요</string>
     <string name="onboard_notice_title">개인정보 안내</string>
-    <string name="onboard_caption">당신의 이야기가 머무는 곳</string>
     <string name="onboard_character">헤이리 캐릭터</string>
-    <string name="onboard_header">정차 중</string>
 
     <string name="onboard_notice_collect">수집: 말한 내용(마이크 소리는 차 안에서 글자로만 바꾸고 차 밖으로 나가지 않아요), 대화 요약과 기억, 친구 메시지, 운행 일기, 내비게이션 목적지 이름, 차량 신호</string>
     <string name="onboard_notice_purpose">목적: 대화하고, 기억을 바탕으로 먼저 말 걸기</string>
@@ -28,19 +23,7 @@
     <string name="onboard_error_voice_required">필수 항목에 동의해야 대화할 수 있어요</string>
     <string name="onboard_error_network">연결이 안 돼요. 다시 눌러 주세요</string>
 
-    <string name="pair_header_back">뒤로</string>
-    <string name="pair_title">내 폰에서도 함께해요.</string>
-    <string name="pair_subtitle">기억을 확인하고 관리할 수 있도록 폰을 연결해 주세요.</string>
-    <string name="pair_guide">폰 카메라로 QR을 찍어 주세요</string>
-    <string name="pair_qr_description">폰 연결 QR 코드</string>
-    <string name="pair_status_waiting">기다리는 중…</string>
-    <string name="pair_status_partial">폰에서 동의를 기다리는 중…</string>
-    <string name="pair_status_claimed">연결됐어요!</string>
-    <string name="pair_status_expired">QR이 만료됐어요</string>
-    <string name="pair_status_failed">QR을 만들지 못했어요</string>
-    <string name="pair_code_label">연결 코드 %1$s</string>
-    <string name="pair_retry">새 QR 만들기</string>
-    <string name="pair_later">나중에</string>
+    <string name="pair_retry">다시 시도</string>
 
     <string name="step_title_name">Hey</string>
     <string name="step_title_subtitle">길 위의 단짝, 헤이리를 만나러 가요</string>
