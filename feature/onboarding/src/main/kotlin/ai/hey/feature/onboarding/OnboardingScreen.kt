@@ -5,7 +5,9 @@ import ai.hey.designsystem.component.OnbSpace
 import ai.hey.designsystem.component.OnbBullet
 import ai.hey.designsystem.component.OnbCheckRow
 import ai.hey.designsystem.component.OnbGap
+import ai.hey.designsystem.component.OnbGhostButton
 import ai.hey.designsystem.component.OnbLink
+import ai.hey.designsystem.component.OnbPanelText
 import ai.hey.designsystem.component.OnbPanelTitle
 import ai.hey.designsystem.component.OnbPrimaryButton
 import ai.hey.designsystem.component.OnbScene
@@ -20,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import ai.hey.designsystem.component.OnbNoticeScroll
 
 /**
  * The C1 form. [voice] and [memory] both start off (PRD 4.1: nothing is pre-ticked); the screen owner keeps them so
@@ -41,7 +44,9 @@ data class ConsentFormUi(
  * 1/3 window the panel takes the whole width. Pure UI: every press is a callback. Pressing start without the required
  * consent calls [onStartWithoutVoice] (the owner only shows the message; nothing is asked or sent), otherwise [onStart].
  * The studio shows the three promises and the two ticks; the full notice (collection, purpose, retention, refusal, providers)
- * is behind "개인정보처리방침" ([onPolicy]). Declining is leaving the screen (Back): there is no decline button.
+ * is behind "개인정보처리방침" ([onPolicy]). The law needs the four items visible without a link and the full notice readable
+ * inside the panel (it scrolls), so both sit below the promises. The only consent is the required tick plus start;
+ * "동의하지 않기" ([onDecline]) records nothing; Back is not consent.
  */
 @Composable
 fun OnboardingScreen(
@@ -50,6 +55,7 @@ fun OnboardingScreen(
     onMemoryChange: (Boolean) -> Unit,
     onStart: () -> Unit,
     onStartWithoutVoice: () -> Unit,
+    onDecline: () -> Unit,
     onPolicy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -64,6 +70,21 @@ fun OnboardingScreen(
                 OnbBullet(stringResource(R.string.onboard_point_use))
                 OnbGap(OnbSpace.S8)
                 OnbBullet(stringResource(R.string.onboard_point_memory))
+                OnbGap(OnbSpace.S24)
+                OnbPanelText(stringResource(R.string.onboard_notice_title))
+                OnbGap(OnbSpace.S8)
+                OnbPanelText(stringResource(R.string.onboard_short_collect))
+                OnbPanelText(stringResource(R.string.onboard_short_purpose))
+                OnbPanelText(stringResource(R.string.onboard_short_retention))
+                OnbPanelText(stringResource(R.string.onboard_short_refuse))
+                OnbGap(OnbSpace.S16)
+                OnbNoticeScroll {
+                    OnbPanelText(stringResource(R.string.onboard_notice_collect))
+                    OnbPanelText(stringResource(R.string.onboard_notice_purpose))
+                    OnbPanelText(stringResource(R.string.onboard_notice_retention))
+                    OnbPanelText(stringResource(R.string.onboard_notice_refuse))
+                    OnbPanelText(stringResource(R.string.onboard_notice_providers))
+                }
                 OnbGap(OnbSpace.S28)
                 OnbCheckRow(
                     label = stringResource(R.string.onboard_check_voice),
@@ -90,6 +111,8 @@ fun OnboardingScreen(
                     enabled = !ui.saving,
                     dimmed = !ui.voice,
                 )
+                OnbGap(OnbSpace.S16)
+                OnbGhostButton(stringResource(R.string.onboard_decline), onDecline, enabled = !ui.saving)
             }
         }
     }

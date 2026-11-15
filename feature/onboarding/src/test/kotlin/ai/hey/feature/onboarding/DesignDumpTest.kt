@@ -35,7 +35,7 @@ private fun Paparazzi.dumpScreens(w: Int, h: Int) {
         dump.write()
     }
     dump("car-onboarding-1") { TitleScreen(onNext = {}) }
-    dump("car-onboarding-2") { OnboardingScreen(ConsentFormUi(), {}, {}, {}, {}, {}) }
+    dump("car-onboarding-2") { OnboardingScreen(ConsentFormUi(), {}, {}, {}, {}, {}, {}) }
     dump("car-onboarding-3") {
         SpokenStepScreen(SpokenStepUi(OnboardingStep.Lights, line = "여기 빛 하나하나가 너의 헤이리가 될 수 있어. 이제 너에 대해 알려 줘."))
     }

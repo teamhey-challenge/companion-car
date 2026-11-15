@@ -716,6 +716,16 @@ fun OnbGap(space: OnbSpace) {
     Spacer(Modifier.height(space.value))
 }
 
+/** The full legal notice inside the panel: a bounded, scrollable block (the panel itself scrolls too, so the notice is never cut off). */
+@Composable
+fun OnbNoticeScroll(modifier: Modifier = Modifier, content: @Composable HeyStackScope.() -> Unit) {
+    Box(modifier.fillMaxWidth().heightIn(max = 160.dp)) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OnbColumnScope(this).content()
+        }
+    }
+}
+
 /** One line of a panel's promise list: a dot, then 26 sp muted text. */
 @Composable
 fun OnbBullet(text: String, modifier: Modifier = Modifier) {
