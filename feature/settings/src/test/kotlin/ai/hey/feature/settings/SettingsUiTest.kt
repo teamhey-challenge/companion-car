@@ -76,4 +76,22 @@ class SettingsUiTest {
         assertEquals(SettingsPending.None, settingsUi(CompanionState(settingsAction = SettingsAction.Unpairing), null).pending)
         assertEquals(SettingsPending.Withdraw, settingsUi(CompanionState(settingsAction = SettingsAction.Withdrawing), null).pending)
     }
+
+    @Test fun `the name row shows the one server name and its PATCH carries nickname only`() {
+        assertEquals("민수", settingsUi(CompanionState(settings = CompanionSettings(nickname = "민수")), null).name)
+        assertEquals(null, settingsUi(CompanionState(), null).name)
+        assertEquals("""{"nickname":"하늘"}""", ai.hey.model.settingsPatch(CompanionSettings(nickname = "민수"), CompanionSettings(nickname = "하늘")).toString())
+        // a read-only displayName in the server answer never becomes a second name
+        val o = ai.hey.model.HeyJson.parseToJsonElement("""{"proactive":"normal","memoryEnabled":true,"speech":"banmal","nickname":"민수","displayName":"민수"}""")
+        assertEquals("민수", ai.hey.model.parseCompanionSettings(o as kotlinx.serialization.json.JsonObject)!!.nickname)
+    }
+
+    @Test fun `a name is 1 to 10 characters and not digits only`() {
+        assertTrue(validName("민수"))
+        assertTrue(validName("가".repeat(10)))
+        assertTrue(validName("민수2"))
+        assertFalse(validName(""))
+        assertFalse(validName("가".repeat(11)))
+        assertFalse(validName("12345"))
+    }
 }

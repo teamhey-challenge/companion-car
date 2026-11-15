@@ -15,6 +15,13 @@
     <string name="settings_speech">말투</string>
     <string name="settings_speech_banmal">반말</string>
     <string name="settings_speech_jondaetmal">존댓말</string>
+    <string name="settings_name">부를 이름</string>
+    <string name="settings_name_none">아직 이름을 몰라요</string>
+    <string name="settings_name_edit">이름 바꾸기</string>
+    <string name="settings_name_label">헤이리가 부를 이름</string>
+    <string name="settings_name_save">저장</string>
+    <string name="settings_name_error">1~10자로 써 주세요. 숫자만은 안 돼요</string>
+    <string name="settings_name_voice">“나를 ○○라고 불러 줘”라고 말해도 바꿀 수 있어요</string>
     <string name="settings_look">꾸미기</string>
     <string name="settings_look_preview">지금 헤이리 모습</string>
     <string name="settings_look_body">몸 색</string>
