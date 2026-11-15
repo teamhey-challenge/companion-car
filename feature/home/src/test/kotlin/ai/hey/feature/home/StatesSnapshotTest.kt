@@ -1,23 +1,12 @@
 package ai.hey.feature.home
 
+import ai.hey.designsystem.testing.CarPaparazzi
+import ai.hey.designsystem.testing.CarWindow
 import ai.hey.designsystem.theme.HeyTheme
 import ai.hey.session.CarFault
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
-import com.android.ide.common.rendering.api.SessionParams.RenderingMode
-import com.android.resources.Density
-import com.android.resources.ScreenOrientation
 import org.junit.Rule
 import org.junit.Test
 
-private fun device(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
-    screenWidth = width,
-    screenHeight = height,
-    xdpi = 160,
-    ydpi = 160,
-    density = Density.MEDIUM,
-    orientation = ScreenOrientation.LANDSCAPE,
-)
 
 private val online = HomeUi(online = true)
 
@@ -41,7 +30,7 @@ private val drivingShots: List<Pair<String, HomeUi>> = listOf(
     "s-drive-err-audio" to online.copy(fault = CarFault.Audio),
 )
 
-private fun Paparazzi.recordStates() {
+private fun CarPaparazzi.recordStates() {
     listOf(true, false).forEach { dark ->
         val theme = if (dark) "dark" else "light"
         parkedShots.forEach { (name, ui) ->
@@ -60,20 +49,26 @@ private fun Paparazzi.recordStates() {
 }
 
 class States1600SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Full1600)
+
+    @Test fun screens() = paparazzi.recordStates()
+}
+
+class States840SnapshotTest {
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Half840)
 
     @Test fun screens() = paparazzi.recordStates()
 }
 
 class States560SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(560, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Third560)
 
     @Test fun screens() = paparazzi.recordStates()
 }
 
 /** The real car window: 1682x1210 px at designScale 1.3444 = 1251x900 dp. */
 class States1251SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1251, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Car1251)
 
     @Test fun screens() = paparazzi.recordStates()
 }

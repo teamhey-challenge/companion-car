@@ -1,22 +1,11 @@
 package ai.hey.feature.settings
 
+import ai.hey.designsystem.testing.CarPaparazzi
+import ai.hey.designsystem.testing.CarWindow
 import ai.hey.designsystem.theme.HeyTheme
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
-import com.android.ide.common.rendering.api.SessionParams.RenderingMode
-import com.android.resources.Density
-import com.android.resources.ScreenOrientation
 import org.junit.Rule
 import org.junit.Test
 
-private fun friendsDevice(width: Int, height: Int) = DeviceConfig.PIXEL_C.copy(
-    screenWidth = width,
-    screenHeight = height,
-    xdpi = 160,
-    ydpi = 160,
-    density = Density.MEDIUM,
-    orientation = ScreenOrientation.LANDSCAPE,
-)
 
 private const val LONG_120 = "오늘 발표 잘할 거야. 끝나고 맛있는 거 먹자. 응원할게! 그리고 저녁에는 같이 모여서 이야기하자. 집에 돌아가는 길에 비가 오니까 우산 꼭 챙기고 조심해."
 
@@ -57,7 +46,7 @@ private val friendShots: List<Pair<String, FriendShot>> = listOf(
     "friends-message-gone" to FriendShot(ready, FriendsView.Message("gone")),
 )
 
-private fun Paparazzi.recordFriends() {
+private fun CarPaparazzi.recordFriends() {
     friendShots.forEach { (name, shot) ->
         listOf(true, false).forEach { dark ->
             snapshot("$name-${if (dark) "dark" else "light"}") {
@@ -74,19 +63,31 @@ private fun Paparazzi.recordFriends() {
 }
 
 class Friends1600SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = friendsDevice(1600, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Full1600)
 
     @Test fun screens() = paparazzi.recordFriends()
 }
 
 class Friends840SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = friendsDevice(840, 900), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Half840)
+
+    @Test fun screens() = paparazzi.recordFriends()
+}
+
+class Friends560SnapshotTest {
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Third560)
+
+    @Test fun screens() = paparazzi.recordFriends()
+}
+
+class Friends1251SnapshotTest {
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Car1251)
 
     @Test fun screens() = paparazzi.recordFriends()
 }
 
 class Friends1280SnapshotTest {
-    @get:Rule val paparazzi = Paparazzi(deviceConfig = friendsDevice(1280, 720), renderingMode = RenderingMode.NORMAL)
+    @get:Rule val paparazzi = CarPaparazzi(CarWindow.Small1280)
 
     @Test fun screens() = paparazzi.recordFriends()
 }
