@@ -1,7 +1,9 @@
 package ai.hey.car
 
 import ai.hey.designsystem.layout.designDensity
+import ai.hey.designsystem.layout.WideCanvas
 import ai.hey.designsystem.theme.HeyTheme
+import ai.hey.designsystem.token.HeyDarkColors
 import ai.hey.feature.home.DriveScreen
 import ai.hey.feature.home.FaultAnnouncer
 import ai.hey.session.CarFault
@@ -133,12 +135,15 @@ class MainActivity : ComponentActivity() {
                         DriveScreen(ui, onTalk = repository::startTalk, onEndConversation = repository::cancelTalk, reducedMotion = drivingStill())
                     }
                     composable(Routes.Flow) {
-                        OnboardingFlowRoute(
-                            companion = graph.companion,
-                            talk = repository,
-                            onMicDenied = repository::microphoneDeniedAtOnboarding,
-                            onExit = { finish() },
-                        )
+                        // Onboarding exists only as the 16:9 mockup (no 1/2, 1/3 variants in the studio): fixed 1600x900 canvas, letterboxed.
+                        WideCanvas(HeyDarkColors.bgPage) {
+                            OnboardingFlowRoute(
+                                companion = graph.companion,
+                                talk = repository,
+                                onMicDenied = repository::microphoneDeniedAtOnboarding,
+                                onExit = { finish() },
+                            )
+                        }
                     }
                     composable(Routes.Home) {
                         // §6.1: after a skipped O8 the home says once that a linked phone shows the diary; it stays 8 s, or until the phone is linked.
