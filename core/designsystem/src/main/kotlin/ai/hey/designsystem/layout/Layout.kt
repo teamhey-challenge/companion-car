@@ -23,6 +23,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.unit.Density
+
+/** Width in dp of the 1600x900 design canvas every car mockup (hey-companion-ui) is drawn on. */
+private const val DESIGN_WIDTH_DP = 1600f
+private const val DESIGN_HEIGHT_DP = 900f
+
+/** Pixels per design dp relative to the system dp: full width for 16:9 and wider windows, full 900 dp height for narrower ones. */
+fun designScale(widthDp: Int, heightDp: Int): Float =
+    if (widthDp * DESIGN_HEIGHT_DP >= heightDp * DESIGN_WIDTH_DP) widthDp / DESIGN_WIDTH_DP else heightDp / DESIGN_HEIGHT_DP
+
+/**
+ * The density every car screen is drawn with in a window of [widthDp] x [heightDp] system dp. The one definition: MainActivity
+ * provides it to the app and the Paparazzi helper provides it to snapshots, so a snapshot is the window the car shows.
+ */
+fun designDensity(system: Density, widthDp: Int, heightDp: Int): Density =
+    Density(density = designScale(widthDp, heightDp) * system.density, fontScale = 1f)
 
 /** The window's own size in dp (as seen by the design scale), for screens that switch layout in Pleos multi-window. */
 @Composable

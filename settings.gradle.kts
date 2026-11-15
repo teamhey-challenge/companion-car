@@ -26,6 +26,7 @@ include(
     ":app",
     ":core:designsystem",
     ":core:model",
+    ":core:testing",
     ":core:session",
     ":core:vehicle",
     ":feature:memory",
