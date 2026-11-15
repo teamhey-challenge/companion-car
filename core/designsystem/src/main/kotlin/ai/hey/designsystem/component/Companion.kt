@@ -504,11 +504,12 @@ fun HeaderBar(
     HStack(
         gap = HeyGap.G24,
         arrange = HeyArrange.SpaceBetween,
-        modifier = modifier.fillMaxWidth().heightIn(min = HeaderTouch),
+        modifier = modifier.fillMaxWidth().heightIn(min = HeaderTouch).then(if (onBack != null) Modifier.padding(bottom = 32.dp) else Modifier),
     ) {
         // Mockup `.app-header .identity`: 42px/600 title, 24 gap, 12 margin + hairline + 36 padding, 33px mode tag.
         HStack(HeyGap.G24) {
-            if (onBack != null) HeyBackButton(backLabel, onBack)
+            // Studio 713edb4 `.car .app-header .identity:has(.back-button){gap:40px}` + `padding-bottom:32px`: 24 gap + 16 here.
+            if (onBack != null) Box(Modifier.padding(end = 16.dp)) { HeyBackButton(backLabel, onBack) }
             InkText(
                 title, HeyTheme.colors.fgDefault, variant = HeyTextVariant.Title, maxLines = 1,
                 weight = androidx.compose.ui.text.font.FontWeight.SemiBold, metrics = HeyTextMetrics(42.sp, 63.sp),
