@@ -56,6 +56,9 @@ object ClientFrames {
                 s.fuelType?.let { put("fuelType", it) }
                 s.headlight?.let { put("headlight", it) }
                 s.destKm?.let { put("destKm", it) }
+                s.charging?.let { put("charging", it) }
+                s.destinationName?.let { put("destinationName", it) }
+                put("arrived", s.arrived)
                 put("naviGuiding", s.naviGuiding)
             },
         )
@@ -76,6 +79,12 @@ sealed interface ServerFrame {
     data class ReplyDelta(val turnId: String, val text: String) : ServerFrame
     data class ReplyEnd(val turnId: String, val text: String, val firstTokenMs: Long?, val totalMs: Long) : ServerFrame
     data class Proactive(val id: String, val reason: String) : ServerFrame
+
+    /** A friend's message: the spoken line follows as `reply.*` + PCM with turn id [id]; [text] is only shown when parked. */
+    data class FriendMessage(val id: String, val fromName: String, val text: String) : ServerFrame
+
+    /** A friend arrived (spoken only): same audio path as [FriendMessage]. */
+    data class FriendArrived(val id: String, val fromName: String, val place: String?) : ServerFrame
     data class Settings(val settings: CompanionSettings) : ServerFrame
 
     /** The pairing status changed on the server (a phone or the car ended it: [phase] None). */
@@ -116,6 +125,8 @@ private fun parseServerFrameOrThrow(raw: String): ServerFrame? {
             totalMs = o["totalMs"]?.jsonPrimitive?.longOrNull ?: 0,
         )
         "proactive" -> ServerFrame.Proactive(s("id") ?: return null, s("reason").orEmpty())
+        "friend_message" -> ServerFrame.FriendMessage(s("id") ?: return null, s("fromName").orEmpty(), s("text") ?: return null)
+        "friend_arrived" -> ServerFrame.FriendArrived(s("id") ?: return null, s("fromName").orEmpty(), s("place"))
         "settings" -> ServerFrame.Settings(parseCompanionSettings(o["settings"]?.jsonObject ?: return null) ?: return null)
         "pairing" -> ServerFrame.Pairing(
             when (s("status")) {

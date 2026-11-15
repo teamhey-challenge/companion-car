@@ -35,6 +35,13 @@ private val shots: List<Pair<String, Shot>> = listOf(
     "c7-withdraw-failed" to Shot(SettingsUi(phonePaired = true, accountFailure = AccountFailureUi.Withdraw)),
     "c7-unpair-failed" to Shot(SettingsUi(phonePaired = true, accountFailure = AccountFailureUi.Unpair)),
     "c7-debug-server" to Shot(SettingsUi(), server = ServerAddress("https://hey.lastmile.ltd/api") {}),
+    "c7-friends" to Shot(
+        SettingsUi(
+            phonePaired = true,
+            friends = listOf(FriendRowUi("f1", "민수", false), FriendRowUi("f2", "지은", true), FriendRowUi("f3", "하준", true, saving = true)),
+        ),
+    ),
+    "c7-friends-code" to Shot(SettingsUi(friendCode = FriendCodeUi.Shown("K7M2QX", "https://hey.lastmile.ltd/f/K7M2QX"))),
 )
 
 private val lookShots: List<Pair<String, CharacterLook>> = listOf(
@@ -83,6 +90,19 @@ private fun Screen(shot: Shot) {
 
 class Settings1600SnapshotTest {
     @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 900), renderingMode = RenderingMode.NORMAL)
+
+    @Test fun screens() = paparazzi.recordAll()
+}
+
+/** Pleos multi-window, 1/2 width (840 dp) and 1/3 width (560 dp) at the 900 dp design height. */
+class Settings840SnapshotTest {
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(840, 900), renderingMode = RenderingMode.NORMAL)
+
+    @Test fun screens() = paparazzi.recordAll()
+}
+
+class Settings560SnapshotTest {
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(560, 900), renderingMode = RenderingMode.NORMAL)
 
     @Test fun screens() = paparazzi.recordAll()
 }

@@ -318,11 +318,11 @@ object Stories {
         })
         add(part("header-bar") {
             VStack(HeyGap.G24) {
-                HeaderBar("헤이파리", stateLabel = "정차 중", trailing = {
+                HeaderBar("헤이리", stateLabel = "정차 중", trailing = {
                     HeyButton("기억", {}, variant = HeyButtonVariant.Soft, icon = HeyIcons.Book)
                     HeyButton("설정", {}, variant = HeyButtonVariant.Soft, icon = HeyIcons.Gear)
                 })
-                HeaderBar("헤이파리", onBack = {}, backLabel = "뒤로", stateLabel = "정차 중")
+                HeaderBar("헤이리", onBack = {}, backLabel = "뒤로", stateLabel = "정차 중")
             }
         })
         // ---- PR2 components
@@ -413,7 +413,7 @@ object Stories {
 private fun HomeSheet(phase: TalkPhase) {
     OceanBackground(Modifier.fillMaxSize(), animated = false) {
         VStack(HeyGap.G24, modifier = Modifier.fillMaxSize().padding(horizontal = 80.dp, vertical = 40.dp)) {
-            HeaderBar("헤이파리", stateLabel = "정차 중", trailing = {
+            HeaderBar("헤이리", stateLabel = "정차 중", trailing = {
                 HeyButton("기억", {}, variant = HeyButtonVariant.Soft, icon = HeyIcons.Book)
                 HeyButton("설정", {}, variant = HeyButtonVariant.Soft, icon = HeyIcons.Gear)
             })

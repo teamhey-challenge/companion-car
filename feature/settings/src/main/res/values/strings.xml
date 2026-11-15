@@ -1,5 +1,5 @@
 <resources>
-    <string name="settings_app_name">헤이파리</string>
+    <string name="settings_app_name">헤이리</string>
     <string name="settings_back">뒤로</string>
     <string name="settings_parked">정차 중</string>
     <string name="settings_title">설정</string>
@@ -16,7 +16,7 @@
     <string name="settings_speech_banmal">반말</string>
     <string name="settings_speech_jondaetmal">존댓말</string>
     <string name="settings_look">꾸미기</string>
-    <string name="settings_look_preview">지금 헤이파리 모습</string>
+    <string name="settings_look_preview">지금 헤이리 모습</string>
     <string name="settings_look_body">몸 색</string>
     <string name="settings_look_body_aqua">아쿠아</string>
     <string name="settings_look_body_peach">살구</string>
@@ -26,6 +26,16 @@
     <string name="settings_look_neck">목도리</string>
     <string name="settings_look_neck_scarf">스카프</string>
     <string name="settings_look_none">없음</string>
+    <string name="settings_friends">친구</string>
+    <string name="settings_friend_code">내 친구 코드</string>
+    <string name="settings_friend_code_status">친구 앱에서 코드를 넣거나 QR을 찍어 줘. 24시간 동안 쓸 수 있어</string>
+    <string name="settings_friend_code_creating">코드를 만드는 중이야</string>
+    <string name="settings_friend_code_failed">코드를 만들지 못했어. 잠시 뒤에 다시 해 줘</string>
+    <string name="settings_friend_code_close">닫기</string>
+    <string name="settings_friend_none">아직 친구가 없어. 코드를 나눠 줘</string>
+    <string name="settings_friend_arrival">도착 알리기</string>
+    <string name="settings_friend_arrival_desc">%1$s에게 내가 도착하면 알려 줘</string>
+    <string name="settings_friends_failed">친구 목록을 불러오지 못했어</string>
     <string name="settings_open_memory">기억 보기</string>
     <string name="settings_unpair">폰 연결 해제</string>
     <string name="settings_pair">폰 연결</string>

@@ -54,6 +54,7 @@ private const val TAG = "PleosVehicle"
 private const val TRIP_TIMEOUT_MS = 5_000L
 private const val SPEECH_TIMEOUT_MS = 30_000L
 private const val TTS_RETRY_BACKOFF_MS = 5_000L
+private const val CHARGE_POLL_MS = 10_000L
 private val AUDIO_ATTRIBUTES = AudioTrackSink.ASSISTANT
 
 /**
@@ -109,7 +110,9 @@ class PleosVehicleGateway(
     private val tripMutex = Mutex()
     private val pendingTrip = AtomicReference<CompletableDeferred<TripInfo?>?>(null)
 
-    private val guidance = NaviGuidance { g -> signal { it.copy(naviGuiding = g, destKm = if (g) it.destKm else null) } }
+    private val guidance = NaviGuidance { g ->
+        signal { it.copy(naviGuiding = g, destKm = if (g) it.destKm else null, destinationName = if (g || it.arrived) it.destinationName else null) }
+    }
 
     private val naviListener = object : NaviHelperEventListener {
 
@@ -126,11 +129,14 @@ class PleosVehicleGateway(
         }
 
         override fun onDestinationArrived(destinationArrivedInfo: DestinationArrivedInfo) {
+            // Set before the route stops so the destination name survives for this one report.
+            signal { it.copy(arrived = true) }
             guidance.routeStopped("onDestinationArrived")
             _events.tryEmit(VehicleEvent.Arrived)
         }
 
         override fun onRouteStarted(info: ai.pleos.playground.navi.data.RouteStartInfo) {
+            signal { it.copy(arrived = false) }
             guidance.routeStarted()
             // The callback alone proves nothing: ask whether a destination is really set.
             guard("destination query") { navi?.getDestinationInfo() }
@@ -142,7 +148,7 @@ class PleosVehicleGateway(
             guidance.destination(present)
             // Meters left to the destination, as whole km for the range comparison (scenario 2); no destination = no key.
             val km = destinationInfo.remainDistance.toLong().takeIf { present && it > 0 }?.let { ((it + 500) / 1000).toInt() }
-            signal { it.copy(destKm = km) }
+            signal { it.copy(destKm = km, destinationName = destinationInfo.name.takeIf { n -> present && n.isNotBlank() }) }
         }
 
         override fun onRouteStateInfo(routeStateInfo: ai.pleos.playground.navi.data.RouteStateInfo) {
@@ -283,6 +289,21 @@ class PleosVehicleGateway(
                     override fun onFailed(e: Exception) = HeyLog.d(TAG, "range listener failed: ${e.message}")
                 },
             )
+        }
+        guard("charge") {
+            // No listener exists for the charge switch in the SDK: poll it. The emulator Virtual Console toggles it.
+            val battery = v.getEvBattery()
+            scope.launch {
+                while (true) {
+                    guard("charge read") {
+                        battery.getEvChargeSwitchState(
+                            { on -> signal { it.copy(charging = on) } },
+                            { e -> HeyLog.d(TAG, "charge read failed: ${e.message}") },
+                        )
+                    }
+                    kotlinx.coroutines.delay(CHARGE_POLL_MS)
+                }
+            }
         }
     }
 

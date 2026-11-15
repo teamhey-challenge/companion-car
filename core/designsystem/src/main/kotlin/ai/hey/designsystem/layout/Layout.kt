@@ -19,7 +19,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.BoxWithConstraints
+
+/** The window's own size in dp (as seen by the design scale), for screens that switch layout in Pleos multi-window. */
+@Composable
+fun HeyWindow(modifier: Modifier = Modifier, content: @Composable (width: Dp, height: Dp) -> Unit) {
+    BoxWithConstraints(modifier) { content(maxWidth, maxHeight) }
+}
+
+/** Multi-window outer margin (1/2 and 1/3 width): 32 all round instead of the 80/64 of the full-width mockup. */
+fun Modifier.carMarginCompact(): Modifier = padding(32.dp)
 
 /** Cross-axis alignment for [VStack] (horizontal) and [HStack] (vertical). */
 enum class HeyAlign { Start, Center, End }

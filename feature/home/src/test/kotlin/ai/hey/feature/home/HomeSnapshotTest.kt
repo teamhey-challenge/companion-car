@@ -69,3 +69,62 @@ class Home1600SnapshotTest {
 
     @Test fun screens() = paparazzi.recordAll()
 }
+
+/** Pleos multi-window: C3/C4/C5 at 1/2 (840 dp) and 1/3 (560 dp) of the screen width, at the 900 dp design height. */
+private val multiShots: List<Pair<String, HomeUi>> = listOf(
+    "c3-idle" to online,
+    "c3-friend-note" to online.copy(friendNote = "민수: 오늘 저녁에 같이 밥 먹자"),
+    "c4-speaking" to online.copy(phase = HomePhase.Speaking, heard = "오늘 날씨 어때?", reply = "비가 올 것 같아. 우산 챙겼어?", mouth = 2),
+    "c4-long" to online.copy(phase = HomePhase.Speaking, heard = "오늘 너무 힘들었어", reply = LONG_REPLY, mouth = 1),
+    "c8-offline" to HomeUi(online = false, fault = CarFault.Offline),
+)
+
+private fun Paparazzi.recordMulti() {
+    listOf(true, false).forEach { dark ->
+        val theme = if (dark) "dark" else "light"
+        multiShots.forEach { (name, ui) ->
+            snapshot("$name-$theme") {
+                HeyTheme(dark) {
+                    HomeScreen(ui, reducedMotion = true, onTalk = {}, onEndListening = {}, onMemory = {}, onSettings = {}, onFaultAction = {})
+                }
+            }
+        }
+        driveShots.forEach { (name, ui) ->
+            snapshot("$name-$theme") {
+                HeyTheme(dark) { DriveScreen(ui, onTalk = {}, onEndListening = {}) }
+            }
+        }
+    }
+}
+
+/** The 1/2 width window next to navigation (2560 px Connect-S half). */
+class Home840SnapshotTest {
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(840, 900), renderingMode = RenderingMode.NORMAL)
+
+    @Test fun screens() = paparazzi.recordMulti()
+}
+
+/** The 1/3 width window (Connect-W). */
+class Home560SnapshotTest {
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(560, 900), renderingMode = RenderingMode.NORMAL)
+
+    @Test fun screens() = paparazzi.recordMulti()
+}
+
+/** A friend's message is a parked subtitle on C3 at the full width too. */
+class HomeFriendNoteSnapshotTest {
+    @get:Rule val paparazzi = Paparazzi(deviceConfig = device(1600, 900), renderingMode = RenderingMode.NORMAL)
+
+    @Test fun screens() {
+        listOf(true, false).forEach { dark ->
+            paparazzi.snapshot("c3-friend-note-${if (dark) "dark" else "light"}") {
+                HeyTheme(dark) {
+                    HomeScreen(
+                        online.copy(friendNote = "민수: 오늘 저녁에 같이 밥 먹자"),
+                        reducedMotion = true, onTalk = {}, onEndListening = {}, onMemory = {}, onSettings = {}, onFaultAction = {},
+                    )
+                }
+            }
+        }
+    }
+}
