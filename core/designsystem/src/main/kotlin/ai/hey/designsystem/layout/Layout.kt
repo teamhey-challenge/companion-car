@@ -32,6 +32,16 @@ fun HeyWindow(modifier: Modifier = Modifier, content: @Composable (width: Dp, he
 /** Multi-window outer margin (1/2 and 1/3 width): 32 all round instead of the 80/64 of the full-width mockup. */
 fun Modifier.carMarginCompact(): Modifier = padding(32.dp)
 
+/** Window sizes (dp, after the design scale) under which screens switch to the stacked multi-window layout. */
+private val CompactBelow = 1000.dp
+private val NarrowBelow = 700.dp
+
+/** Compact = narrower than 1000 dp, or clearly portrait-ish (taller than 0.8 x its width, e.g. a 1/3 width window). */
+fun isCompactWindow(width: Dp, height: Dp): Boolean = width < CompactBelow || height > width * 0.8f
+
+/** Narrower than 700 dp: headers drop their state label. */
+fun isNarrowWindow(width: Dp): Boolean = width < NarrowBelow
+
 /** Cross-axis alignment for [VStack] (horizontal) and [HStack] (vertical). */
 enum class HeyAlign { Start, Center, End }
 

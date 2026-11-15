@@ -304,7 +304,6 @@ internal fun FriendsSection(
                     code = code.code,
                     status = stringResource(R.string.settings_friend_code_status),
                     modifier = Modifier.fillWidth(),
-                    qrSize = 240.dp,
                 )
                 HeyButton(stringResource(R.string.settings_friend_code_close), onCloseFriendCode, variant = HeyButtonVariant.Soft)
             }

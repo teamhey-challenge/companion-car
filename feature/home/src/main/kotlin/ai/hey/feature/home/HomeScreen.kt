@@ -39,8 +39,9 @@ import ai.hey.designsystem.theme.HeyTone
 import ai.hey.designsystem.layout.HeyWindow
 import ai.hey.designsystem.layout.carMarginCompact
 import ai.hey.designsystem.layout.fillWidth
+import ai.hey.designsystem.layout.isCompactWindow
+import ai.hey.designsystem.layout.isNarrowWindow
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,13 +65,6 @@ internal fun CarFault.toKind(): ErrorKind = when (this) {
     CarFault.Audio -> ErrorKind.Audio
 }
 
-/** Window sizes (dp, after the design scale) under which C3/C4 switch to the stacked multi-window layout. */
-internal val COMPACT_BELOW = 1000.dp
-internal val NARROW_BELOW = 700.dp
-
-/** Compact = narrower than 1000 dp, or clearly portrait-ish (taller than 0.8 x its width, e.g. a 1/3 width window). */
-internal fun isCompact(width: androidx.compose.ui.unit.Dp, height: androidx.compose.ui.unit.Dp): Boolean =
-    width < COMPACT_BELOW || height > width * 0.8f
 
 /** The character on C3/C4: the live Rive rig, or the still image while it loads, fails, or motion is reduced. */
 @Composable
@@ -113,8 +107,8 @@ fun HomeScreen(
         // Multi-window (Pleos 1/2 and 1/3 width next to navigation): below ~1000 dp the two columns stack, and below ~700 dp the
         // header drops its state label and uses the regular button size. The full-width layout (1600 dp mockup grid) is unchanged.
         HeyWindow(Modifier.fillSize()) { maxWidth, maxHeight ->
-            val compact = isCompact(maxWidth, maxHeight)
-            val narrow = maxWidth < NARROW_BELOW
+            val compact = isCompactWindow(maxWidth, maxHeight)
+            val narrow = isNarrowWindow(maxWidth)
             VStack(HeyGap.G24, modifier = Modifier.fillSize().then(if (compact) Modifier.carMarginCompact() else Modifier.carMargin())) {
                 HeaderBar(
                     title = stringResource(R.string.home_title),
