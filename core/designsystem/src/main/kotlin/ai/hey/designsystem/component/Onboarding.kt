@@ -78,6 +78,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlin.math.PI
 import kotlin.math.cos
@@ -158,28 +159,35 @@ private class CoverVideoView(context: Context, @RawRes private val res: Int, pri
     }
 
     private fun start(surface: Surface) {
+        // One decoder at a time: a cut that starts while the old one fades out takes the codec over (the old view keeps its last frame).
+        active?.takeIf { it !== this }?.release()
+        release()
+        active = this
         runCatching {
             val mp = MediaPlayer()
             player = mp
+            this.surface = surface
             context.resources.openRawResourceFd(res).use { mp.setDataSource(it.fileDescriptor, it.startOffset, it.length) }
             mp.setSurface(surface)
             mp.isLooping = loop
             mp.setVolume(0f, 0f)
             mp.setOnVideoSizeChangedListener { _, w, h ->
+                if (player !== mp) return@setOnVideoSizeChangedListener
                 videoW = w
                 videoH = h
                 requestLayout()
             }
             mp.setOnInfoListener { _, what, _ ->
-                if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) onShown()
+                // The still stays until the first frame is really on screen.
+                if (player === mp && what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) onShown()
                 false
             }
-            mp.setOnCompletionListener { if (!loop) onEnded() }
+            mp.setOnCompletionListener { if (player === mp && !loop) onEnded() }
             mp.setOnErrorListener { _, _, _ ->
-                onFailed()
+                if (player === mp) onFailed()
                 true
             }
-            mp.setOnPreparedListener { it.start() }
+            mp.setOnPreparedListener { if (player === mp) it.start() }
             mp.prepareAsync()
         }.onFailure { onFailed() }
     }
@@ -187,6 +195,16 @@ private class CoverVideoView(context: Context, @RawRes private val res: Int, pri
     fun release() {
         player?.let { runCatching { it.release() } }
         player = null
+        surface?.let { runCatching { it.release() } }
+        surface = null
+        if (active === this) active = null
+    }
+
+    private var surface: Surface? = null
+
+    private companion object {
+        /** The view whose MediaPlayer is alive; at most one exists. */
+        var active: CoverVideoView? = null
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -222,7 +240,8 @@ private fun SceneLayer(shot: OnbShot, fadeIn: Boolean, onEnded: () -> Unit) {
     Box(Modifier.fillMaxSize().alpha(appear.value)) {
         Image(painterResource(shot.still), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         val video = shot.video
-        if (video != null && !preview && !rememberReducedMotion()) {
+        val lowRam = LocalContext.current.let { (it.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.isLowRamDevice == true }
+        if (video != null && !preview && !lowRam && !rememberReducedMotion()) {
             var shown by remember { mutableStateOf(false) }
             var failed by remember { mutableStateOf(false) }
             val videoAlpha by animateFloatAsState(if (shown) 1f else 0f, tween(400), label = "videoFade")
