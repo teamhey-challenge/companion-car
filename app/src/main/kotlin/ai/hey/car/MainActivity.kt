@@ -11,6 +11,7 @@ import ai.hey.feature.home.homeUi
 import ai.hey.feature.memory.MemoryRoute
 import ai.hey.feature.settings.ServerAddress
 import ai.hey.feature.settings.SettingsRoute
+import ai.hey.model.OnboardingStep
 import ai.hey.model.SpeechPriority
 import ai.hey.session.TurnState
 import android.Manifest
@@ -78,8 +79,9 @@ class MainActivity : ComponentActivity() {
             val route = current?.destination?.route
 
             // The driving gate (PRD 3.5): the route follows the car, never the other way round. Unknown motion is "driving".
-            LaunchedEffect(route, parked, state.needsOnboarding) {
-                gateRoute(route, parked, needsOnboarding = state.needsOnboarding)?.let { target ->
+            val flowActive = state.onboardingStep != OnboardingStep.Done
+            LaunchedEffect(route, parked, state.needsOnboarding, flowActive) {
+                gateRoute(route, parked, needsOnboarding = state.needsOnboarding, flowActive = flowActive)?.let { target ->
                     nav.navigate(target) { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
                 }
             }
@@ -124,7 +126,16 @@ class MainActivity : ComponentActivity() {
                     composable(Routes.Drive) {
                         DriveScreen(ui, onTalk = repository::startTalk, onEndConversation = repository::cancelTalk, reducedMotion = drivingStill())
                     }
+                    composable(Routes.Flow) {
+                        OnboardingFlowRoute(
+                            companion = graph.companion,
+                            talk = repository,
+                            onMicDenied = repository::microphoneDeniedAtOnboarding,
+                            onExit = { finish() },
+                        )
+                    }
                     composable(Routes.Onboarding) {
+                        // Only a car that withdrew the consent lands here; a first run asks for it inside the flow.
                         OnboardingRoute(
                             companion = graph.companion,
                             talk = repository,

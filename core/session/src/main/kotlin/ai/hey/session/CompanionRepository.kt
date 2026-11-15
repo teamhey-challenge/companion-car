@@ -3,6 +3,7 @@ package ai.hey.session
 import ai.hey.model.CompanionSettings
 import ai.hey.model.Friend
 import ai.hey.model.ConsentType
+import ai.hey.model.OnboardingStep
 import ai.hey.model.HeyLog
 import ai.hey.model.MemoryItem
 import ai.hey.model.PairingPhase
@@ -267,6 +268,9 @@ class CompanionRepository(
                 val required = listOf(ConsentType.Terms, ConsentType.Privacy, ConsentType.Record, ConsentType.ExternalAi)
                 for (t in required) withRetry { api.postConsent(t, CONSENT_VERSION, true) }
                 withRetry { api.postConsent(ConsentType.Memory, CONSENT_VERSION, memory) }
+                // D-48: the consent sheet is a step of the first-run flow; with the server's yes the flow goes on to the whale's
+                // lights and questions. The step is stored before the consent flips needsOnboarding: no empty moment.
+                if (storage.onboardingStep.value == OnboardingStep.Consent) storage.setOnboardingStep(OnboardingStep.Lights)
                 for (t in required) storage.setConsent(t, true)
                 storage.setConsent(ConsentType.Memory, memory)
                 // AC-4.1-06: "기억 저장" off here is the same value as C7.

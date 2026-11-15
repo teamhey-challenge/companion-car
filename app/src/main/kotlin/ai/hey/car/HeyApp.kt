@@ -78,7 +78,7 @@ class AppGraph(private val app: Application) {
                     pacer = ReconnectPacer(clock = { System.nanoTime() / 1_000_000 }, connectivity = AndroidConnectivity(app)),
                 )
             },
-            audio = StreamingReplyAudio({ AudioTrackSink() }, AudioFocusGateAndroid(app)),
+            audio = StreamingReplyAudio({ voice -> AudioTrackSink(voice) }, AudioFocusGateAndroid(app)),
             companion = companion,
             speechFocus = AudioFocusGateAndroid(app),
             otherAudio = AndroidOtherAudioProbe(app),

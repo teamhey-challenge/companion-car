@@ -28,12 +28,15 @@ interface PlaybackListener {
     fun onEnded(reason: PlaybackEnd)
 }
 
+/** Whose voice a reply is. The onboarding whale gets a light reverb (planner request 506); heyri stays dry. */
+enum class ReplyVoice { Heyri, Whale }
+
 /** Sink for the server's PCM s16le mono reply audio (developer.md 6.2 / 6.5b). */
 interface ReplyAudio {
     var listener: PlaybackListener?
 
-    /** A reply with [spec] audio starts. Anything still playing from before is cut. */
-    fun begin(spec: AudioSpec)
+    /** A reply with [spec] audio starts in [voice]. Anything still playing from before is cut. */
+    fun begin(spec: AudioSpec, voice: ReplyVoice = ReplyVoice.Heyri)
     fun write(pcm: ByteArray)
 
     /** The server sent the last chunk: play what is queued, then [PlaybackListener.onEnded] with [PlaybackEnd.Completed]. */

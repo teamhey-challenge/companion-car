@@ -52,8 +52,28 @@ enum class TurnSource {
 
     /** A friend's message or arrival (`friend_message` / `friend_arrived`): spoken at once, never opens the microphone, text only when parked. */
     Friend,
+
+    /** D-48 onboarding: a spoken step (whale line, whale question, heyri's first greeting) and the listening for the answer to it. */
+    Onboarding,
 }
 
+/**
+ * The part of the first-run flow a screen cannot derive from the step: the text of the line being spoken (subtitle; it is shown
+ * while driving too only as the screen's own concern, the driving screen never shows subtitles), whose voice it is, and what the
+ * driver answered to the three questions (null = not answered; that polaroid and that part of the greeting are dropped).
+ */
+data class OnboardingView(
+    val line: String = "",
+    /** True while the whale speaks (the light ring around it), false for heyri. */
+    val whale: Boolean = false,
+    val answers: ai.hey.model.OnboardingAnswers = ai.hey.model.OnboardingAnswers(),
+)
+
+/** What the first-run runner is asked to do: which step, and whether the link is up. Internal to the repository. */
+internal data class OnboardingRun(val step: ai.hey.model.OnboardingStep, val run: Boolean, val offline: Boolean)
+
+/** The ids of the whale's short answer lines (`step: "ack"` after an accepted answer, `step: "skip"` after an unusable one). */
+internal val ANSWER_LINE_STEPS = setOf("ack", "skip")
 /** A friend's message as shown on C3 while parked (subtitle); never set while driving. */
 data class FriendNote(val fromName: String, val text: String)
 
@@ -88,6 +108,10 @@ data class CarUiState(
     val reply: String = "",
     /** The friend message on screen (parked only, cleared a few seconds after it was read or when the car moves). */
     val friendNote: FriendNote? = null,
+    /** Where the first-run flow is (D-48); [OnboardingStep.Done] when it is over or was never started. */
+    val onboardingStep: ai.hey.model.OnboardingStep = ai.hey.model.OnboardingStep.Done,
+    /** What the first-run screens draw besides the step (D-48): the spoken line, whose voice, the answers. */
+    val onboarding: OnboardingView = OnboardingView(),
     val error: TurnError? = null,
     /** Mouth openness 0..3 of the character while a voice plays (D-13). */
     val mouth: Int = 0,
