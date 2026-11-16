@@ -9,9 +9,9 @@ import ai.hey.designsystem.component.FriendNote
 import ai.hey.designsystem.component.FriendShortcut
 import ai.hey.designsystem.component.FriendsTitle
 import ai.hey.designsystem.component.FriendInviteButton
+import ai.hey.designsystem.component.FriendGap
 import ai.hey.designsystem.component.FriendSpacer
 import ai.hey.designsystem.component.FriendSlotFill
-import androidx.compose.ui.unit.dp
 import ai.hey.designsystem.component.ConfirmDialog
 import ai.hey.designsystem.component.EmptyPanel
 import ai.hey.designsystem.component.FriendRow
@@ -139,18 +139,18 @@ fun FriendsScreen(ui: FriendsUi, view: FriendsView, actions: FriendsActions, mod
                 heading = stringResource(R.string.friends_invite_heading),
             ) {
                 FriendBigAvatar()
-                FriendSpacer(28.dp)
+                FriendSpacer(FriendGap.Avatar)
                 FriendInviteCopy(
                     stringResource(R.string.friends_request_title, request.fromName),
                     stringResource(R.string.friends_request_message),
                 )
                 if (ui.accept is AcceptUi.Failed) {
-                    FriendSpacer(16.dp)
+                    FriendSpacer(FriendGap.Notice)
                     HeyNotice(stringResource(R.string.friends_invite_offline), HeyStatusTone.Danger, persistent = true)
                 }
-                FriendSpacer(24.dp)
+                FriendSpacer(FriendGap.Block)
                 FriendInviteButton(stringResource(R.string.friends_invite_accept), { actions.onAcceptRequest(request.id) }, primary = true)
-                FriendSpacer(24.dp)
+                FriendSpacer(FriendGap.Block)
                 FriendInviteButton(stringResource(R.string.friends_invite_later), { actions.onDeclineRequest(request.id) }, primary = false)
             }
         } else CarFrame(
