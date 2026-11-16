@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:CompanionPanels.kt$driving &amp;&amp; online &amp;&amp; (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)</ID>
+    <ID>ComplexCondition:CompanionPanels.kt$online &amp;&amp; !driving &amp;&amp; (phase == TalkPhase.Listening || phase == TalkPhase.Speaking)</ID>
+    <ID>ComplexCondition:Onboarding.kt$CoverVideoView$videoW &lt;= 0 || videoH &lt;= 0 || w &lt;= 0 || h &lt;= 0</ID>
+    <ID>ComplexCondition:Onboarding.kt$video != null &amp;&amp; !preview &amp;&amp; !lowRam &amp;&amp; !rememberReducedMotion()</ID>
+    <ID>ComplexCondition:PhoneLinkScreen.kt$confirm &amp;&amp; !unpairing &amp;&amp; (ui !is PhoneLinkUi.Linked || unpairFailed)</ID>
+    <ID>CyclomaticComplexMethod:MainActivity.kt$MainActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>CyclomaticComplexMethod:Messages.kt$private fun parseServerFrameOrThrow(raw: String): ServerFrame?</ID>
+    <ID>CyclomaticComplexMethod:SpeechQueue.kt$SpeechQueue$fun enqueue(text: String, priority: SpeechPriority, id: String?, force: Boolean = false)</ID>
+    <ID>CyclomaticComplexMethod:SpeechQueue.kt$SpeechQueue$private suspend fun loop()</ID>
+    <ID>CyclomaticComplexMethod:StreamingReplyAudio.kt$StreamingReplyAudio$private fun runWriter(s: Session)</ID>
+    <ID>CyclomaticComplexMethod:TalkLink.kt$TalkLink$private suspend fun run(serverUrl: String)</ID>
+    <ID>CyclomaticComplexMethod:TalkRepository.kt$TalkRepository$@OptIn(FlowPreview::class) fun start()</ID>
+    <ID>CyclomaticComplexMethod:TalkRepository.kt$TalkRepository$override fun startTalk()</ID>
+    <ID>CyclomaticComplexMethod:TalkRepository.kt$TalkRepository.LinkListener$override fun onFrame(frame: ServerFrame)</ID>
+    <ID>EmptyCatchBlock:AndroidAudio.kt$AudioTrackSink${ }</ID>
+    <ID>EmptyFunctionBlock:HalfOpenSocketTest.kt$FakeSocket${}</ID>
+    <ID>EmptyFunctionBlock:HalfOpenSocketTest.kt$HalfOpenSocketTest.Rec${}</ID>
+    <ID>FunctionOnlyReturningConstant:DemoVoice.kt$internal fun demoVoiceOrNull(app: Application): VoiceInput?</ID>
+    <ID>InstanceOfCheckForException:CompanionRepository.kt$e is HttpFailure</ID>
+    <ID>LargeClass:TalkRepository.kt$TalkRepository : CarCommands</ID>
+    <ID>LargeClass:TalkRepositoryTest.kt$TalkRepositoryTest</ID>
+    <ID>LongMethod:MainActivity.kt$MainActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>LongMethod:OnboardingStories.kt$internal fun onboardingParts(): List&lt;Story&gt;</ID>
+    <ID>LongMethod:TalkRepository.kt$TalkRepository$@OptIn(FlowPreview::class) fun start()</ID>
+    <ID>LongParameterList:Basics.kt$HeyTextRecord$( val text: String, val x: Float, val y: Float, val w: Float, val baselineY: Float, val lines: Int, val fontSizeSp: Float, val fontWeight: Int, val letterSpacing: Float, val letterSpacingUnit: String, val lineHeightSp: Float, val colorHex: String, val maxLines: Int, )</ID>
+    <ID>LongParameterList:TalkRepository.kt$TalkRepository$( private val scope: CoroutineScope, private val vehicle: VehicleGateway, private val storage: CarStorage, private val voiceInput: VoiceInput, private val transport: (TalkTransport.Listener) -&gt; TalkTransport, private val newTurnId: () -&gt; String = { UUID.randomUUID().toString() }, /** Plays the server's PCM reply; null = no server voice in this build (the Pleos TTS reads everything). */ private val audio: ReplyAudio? = null, /** Focus held while the Pleos TTS reads; a loss stops it. Null in tests. */ private val speechFocus: FocusGate? = null, private val clock: () -&gt; Long = { System.nanoTime() / 1_000_000 }, /** REST side (consents, pairing, memory, server settings); its state is mirrored into [CarUiState.companion]. Null in tests that do not need it. */ val companion: CompanionRepository? = null, /** How long the microphone stays open by itself after a line that ends with a question mark (F4-F6). */ private val autoListenMillis: Long = AUTO_LISTEN_MILLIS, private val ctxDebounceMillis: Long = CTX_DEBOUNCE_MILLIS, /** Asked when the character wants to start a line by itself; true = another app is playing, so the line is dropped. Null in tests that do not need it. */ private val otherAudio: OtherAudioProbe? = null, )</ID>
+    <ID>LoopWithTooManyJumpStatements:SpeechQueue.kt$SpeechQueue$while</ID>
+    <ID>LoopWithTooManyJumpStatements:TalkLink.kt$TalkLink$while</ID>
+    <ID>MatchingDeclarationName:Input.kt$HeyKeyboard</ID>
+    <ID>MatchingDeclarationName:OnboardingScreen.kt$ConsentFormUi</ID>
+    <ID>MatchingDeclarationName:Settings.kt$CarSettings</ID>
+    <ID>NestedBlockDepth:DriveGateMatrixTest.kt$DriveGateMatrixTest$@Test fun `the invariants hold for every cell`()</ID>
+    <ID>NestedBlockDepth:SnapshotWidthsTest.kt$SnapshotWidthsTest$@Test fun everyFullWidthSnapshotHasCarHalfAndThird()</ID>
+    <ID>NestedBlockDepth:StreamingReplyAudio.kt$StreamingReplyAudio$private fun runWriter(s: Session)</ID>
+    <ID>UnusedParameter:DemoVoice.kt$app: Application</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,6 +1,8 @@
 package ai.hey.feature.home
 
+import ai.hey.model.OnboardingStep
 import ai.hey.session.CarFault
+import ai.hey.session.CarUiState
 
 /** The routes of PRD 3.2 that this app has. One NavHost, these names. */
 object Routes {
@@ -36,6 +38,12 @@ fun gateRoute(current: String?, parked: Boolean, flowActive: Boolean = false): S
     current == Routes.Drive || current == null || current == Routes.Flow -> Routes.Home
     else -> null
 }
+
+/** The first-run flow is wanted: a step is not done, or the record consent is missing (first run, withdrawn). */
+val CarUiState.flowActive: Boolean get() = onboardingStep != OnboardingStep.Done || needsOnboarding
+
+/** [gateRoute] straight from the UI state, so the gate's inputs (motion, consent, step) are decided in one tested place. */
+fun gateRoute(current: String?, state: CarUiState): String? = gateRoute(current, state.isParked, state.flowActive)
 
 /**
  * The driving voice announcement for a fault (PRD 4.8.4 `txt-error-voice`): spoken once per cause, never again for the

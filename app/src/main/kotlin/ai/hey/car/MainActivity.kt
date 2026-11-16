@@ -9,6 +9,7 @@ import ai.hey.feature.home.FaultAnnouncer
 import ai.hey.session.CarFault
 import ai.hey.feature.home.HomeScreen
 import ai.hey.feature.home.Routes
+import ai.hey.feature.home.flowActive
 import ai.hey.feature.home.gateRoute
 import ai.hey.feature.home.homeUi
 import ai.hey.feature.memory.MemoryRoute
@@ -123,7 +124,7 @@ class MainActivity : ComponentActivity() {
 
             // The driving gate (PRD 3.5): the route follows the car, never the other way round. Unknown motion is "driving".
             // a car without the record consent is in the flow too (it lands on the O2 consent sheet), there is no other screen.
-            val flowActive = state.onboardingStep != OnboardingStep.Done || state.needsOnboarding
+            val flowActive = state.flowActive
             LaunchedEffect(route, parked, flowActive) {
                 gateRoute(route, parked, flowActive = flowActive)?.let { target ->
                     nav.navigate(target) { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
