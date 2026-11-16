@@ -18,8 +18,8 @@
     <string name="hey_status_offline">오프라인</string>
 
     <string name="hey_error_offline_title">연결이 끊겼어요</string>
-    <string name="hey_error_offline_message">잠시 뒤에 다시 이야기해요</string>
-    <string name="hey_error_offline_action">다시 연결</string>
+    <string name="hey_error_offline_message">잠시 뒤에 다시 이야기해요.</string>
+    <string name="hey_error_offline_action">다시 시도</string>
     <string name="hey_error_connecting_title">다시 연결하고 있어요</string>
     <string name="hey_error_connecting_message">잠시만 기다려 주세요. 연결되면 이야기를 이어가요.</string>
     <string name="hey_error_connecting_action">연결 중</string>

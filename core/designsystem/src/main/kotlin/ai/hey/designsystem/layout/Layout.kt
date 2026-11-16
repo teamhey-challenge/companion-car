@@ -194,6 +194,13 @@ fun Modifier.carCharacterBand(): Modifier = padding(top = 192.dp)
 /** Mockup car outer margin (ui-spec "차량 외곽", styles.css `--ui-shell-pad:80px;--ui-edge-y:64px`): 80 left/right, 64 top/bottom at 1600x900. */
 fun Modifier.carMargin(): Modifier = padding(horizontal = 80.dp, vertical = 64.dp)
 
+/** Studio `car/home#talk` and `car/error`: 56 side margin, 36 top/bottom. */
+fun Modifier.carStateMargin(): Modifier =
+    padding(horizontal = HeyTokens.Space.s32 + HeyTokens.Space.s24, vertical = HeyTokens.Space.s32 + HeyTokens.Space.s4)
+
+/** Studio talk/error left column sits 8 further in than the gutter-only column. */
+fun Modifier.carStateInset(): Modifier = padding(start = HeyTokens.Space.s8)
+
 /** Mockup `.conversation` padding-top: the C3/C4/C8 body starts 54 below the 24 row gap under the header (measured: hero ink top at 236 on C3). */
 fun Modifier.carBodyTop(): Modifier = padding(top = 54.dp)
 
