@@ -13,7 +13,6 @@ import ai.hey.designsystem.component.HeyNotice
 import ai.hey.designsystem.component.HeyScrollColumn
 import ai.hey.designsystem.component.HeyStatusTone
 import ai.hey.designsystem.component.HeyText
-import ai.hey.designsystem.component.MemoryRow
 import ai.hey.designsystem.component.PageHeading
 import ai.hey.designsystem.component.SkeletonRow
 import ai.hey.designsystem.icon.HeyIcons
@@ -26,6 +25,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import ai.hey.designsystem.component.HeyCardList
+import ai.hey.designsystem.component.HeyCardRow
+import ai.hey.designsystem.component.HeyIconButton
+import ai.hey.designsystem.component.HeyListCard
+import ai.hey.designsystem.layout.carCardTrailing
+import ai.hey.designsystem.layout.carStudioHeader
+import ai.hey.designsystem.layout.carStudioPage
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 
@@ -111,17 +117,21 @@ fun MemoryScreen(
     ) {
         CarFrame(
             statusStrip = {
+                // Studio 4dc8ad3 car-memory: the header row sits 45.5 dp higher than the shared frame's top margin gives.
                 HeaderBar(
                     title = stringResource(R.string.memory_app_name),
                     onBack = onBack,
                     backLabel = stringResource(R.string.memory_back),
                     stateLabel = stringResource(R.string.memory_parked),
+                    modifier = Modifier.carStudioHeader(),
                 )
             },
             driving = false,
         ) {
-            HeyScrollColumn(HeyGap.G32, modifier = Modifier.fillSize()) {
-                PageHeading(stringResource(R.string.memory_title), subtitle = stringResource(R.string.memory_guide))
+            // Studio page margin is 64 and the cards end at 1536: widen the scroll viewport 16 left and 40 right
+            // (the scroll column keeps its own 24 end padding for the scrollbar).
+            HeyScrollColumn(HeyGap.G32, modifier = Modifier.fillSize().carStudioPage()) {
+                PageHeading(stringResource(R.string.memory_title))
                 // The failure line sits in the page flow: the header and the back button stay visible.
                 if (notice != null) HeyNotice(notice, HeyStatusTone.Danger, persistent = true)
                 when (list) {
@@ -146,18 +156,24 @@ fun MemoryScreen(
                         if (list.savingOff) HeyText(stringResource(R.string.memory_off), tone = HeyTone.Muted)
                     }
                     is MemoryListUi.Items -> {
-                        list.rows.forEachIndexed { index, row ->
-                            val kind = stringResource(if (row.kind == MemoryKindUi.Fact) R.string.memory_kind_fact else R.string.memory_kind_summary)
-                            MemoryRow(
-                                kind = kind,
-                                text = row.text,
-                                date = row.date,
-                                onDelete = { pendingId = row.id },
-                                deleteLabel = stringResource(R.string.memory_delete_label),
-                                tint = index % 3,
-                                enabled = row.id !in list.busyIds && !list.allBusy,
-                                modifier = Modifier.fillWidth(),
-                            )
+                        HeyCardList {
+                            list.rows.forEach { row ->
+                                val enabled = row.id !in list.busyIds && !list.allBusy
+                                val deleteLabel = stringResource(R.string.memory_delete_label)
+                                HeyListCard {
+                                    HeyCardRow(
+                                        title = row.text,
+                                        line = row.date?.let { stringResource(R.string.memory_date_line, it) },
+                                        trailing = {
+                                            // Studio glyph is 28 dp at the card's right padding; the 76 dp touch target is centred on it.
+                                            HeyIconButton(
+                                                HeyIcons.Trash, deleteLabel, { pendingId = row.id },
+                                                modifier = Modifier.carCardTrailing(), enabled = enabled, bare = true, compactGlyph = true,
+                                            )
+                                        },
+                                    )
+                                }
+                            }
                         }
                         if (list.hasMore) {
                             HeyButton(
@@ -170,8 +186,7 @@ fun MemoryScreen(
                         HeyButton(
                             stringResource(R.string.memory_delete_all),
                             { pendingAll = true },
-                            variant = HeyButtonVariant.Danger,
-                            icon = HeyIcons.Trash,
+                            variant = HeyButtonVariant.Soft,
                         )
                     }
                 }
