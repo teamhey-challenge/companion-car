@@ -363,23 +363,24 @@ fun ErrorPanel(
     val copy = kind.copy()
     val alertMode = if (kind == ErrorKind.Connecting) LiveRegionMode.Polite else LiveRegionMode.Assertive
     if (parked) {
-        // Mockup parked C8: title 48/450 (-0.05em, line 1.4), message 24 under it (+24, line 1.6), the one button bottom-aligned.
-        VStack(HeyGap.G24, modifier = modifier, arrange = HeyArrange.SpaceBetween) {
+        // Studio 4dc8ad3 `car/error`: title 64/600 (-0.05em), message 30/400 in the default ink, the one action a filled primary
+        // pill under them; the group is centred in the column.
+        VStack(HeyGap.G24, modifier = modifier, arrange = HeyArrange.Center) {
             VStack(HeyGap.G24, modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = alertMode }) {
                 InkText(
                     title ?: stringResource(copy.title), HeyTheme.colors.fgDefault, maxLines = 3,
-                    weight = androidx.compose.ui.text.font.FontWeight.Normal, trackingEm = -0.055f, metrics = HeyTextMetrics(48.sp, 67.sp),
+                    weight = androidx.compose.ui.text.font.FontWeight.SemiBold, trackingEm = -0.05f, metrics = HeyTextMetrics(64.sp, 83.sp),
                 )
                 InkText(
-                    message ?: stringResource(copy.message), HeyTheme.colors.fgMuted, Modifier.padding(top = 8.dp), maxLines = 4,
-                    weight = androidx.compose.ui.text.font.FontWeight.Normal, metrics = HeyTextMetrics(24.sp, 38.sp),
+                    message ?: stringResource(copy.message), HeyTheme.colors.fgDefault, maxLines = 4,
+                    weight = androidx.compose.ui.text.font.FontWeight.Normal, metrics = HeyTextMetrics(30.sp, 54.sp),
                 )
             }
             if (onAction != null || kind == ErrorKind.Connecting) {
-                GlassButton(
+                HeyButton(
                     actionLabel ?: stringResource(copy.action),
                     onAction ?: {},
-                    icon = if (kind == ErrorKind.Microphone) HeyIcons.Mic else HeyIcons.Link,
+                    variant = HeyButtonVariant.Primary,
                     enabled = onAction != null && kind != ErrorKind.Connecting,
                 )
             }

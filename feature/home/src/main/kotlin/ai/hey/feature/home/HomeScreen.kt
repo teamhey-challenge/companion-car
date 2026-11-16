@@ -54,6 +54,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import ai.hey.designsystem.layout.carStateInset
+import ai.hey.designsystem.layout.carStateMargin
 import androidx.compose.ui.res.stringResource
 
 internal fun HomePhase.toTalk(): TalkPhase = when (this) {
@@ -125,7 +127,16 @@ fun HomeScreen(
         HeyWindow(Modifier.fillSize()) { maxWidth, maxHeight ->
             val compact = isCompactWindow(maxWidth, maxHeight)
             val narrow = isNarrowWindow(maxWidth)
-            VStack(HeyGap.G24, modifier = Modifier.fillSize().then(if (compact) Modifier.carMarginCompact() else Modifier.carMargin())) {
+            // Studio `car/home#talk` and `car/error`: 56 side margin and 36 top/bottom, the body vertically centred between header and bottom.
+            val studioState = !compact && (ui.inTalk || ui.fault != null)
+            VStack(
+                HeyGap.G24,
+                modifier = Modifier.fillSize().then(
+                    if (compact) Modifier.carMarginCompact()
+                    else if (studioState) Modifier.carStateMargin()
+                    else Modifier.carMargin(),
+                ),
+            ) {
                 HeaderBar(
                     title = stringResource(R.string.home_title),
                     stateLabel = if (narrow) null else stringResource(R.string.home_parked),
@@ -152,8 +163,12 @@ fun HomeScreen(
                     }
                 } else {
                     // Mockup grid: the body starts 48 under the header row gap; left column 713 wide, right column 679, 48 between.
-                    HStack(HeyGap.G32, modifier = Modifier.fillSize().carBodyTop()) {
-                        VStack(HeyGap.G24, modifier = Modifier.grow().fillSize().carGutter(), arrange = HeyArrange.SpaceBetween) {
+                    HStack(HeyGap.G32, modifier = Modifier.fillSize().then(if (studioState) Modifier else Modifier.carBodyTop())) {
+                        VStack(
+                            HeyGap.G24,
+                            modifier = Modifier.grow().fillSize().carGutter().then(if (studioState) Modifier.carStateInset() else Modifier),
+                            arrange = if (studioState) HeyArrange.Center else HeyArrange.SpaceBetween,
+                        ) {
                             HomeLeft(ui, onTalk, onEndConversation, onFaultAction)
                         }
                         VStack(HeyGap.G8, modifier = Modifier.carSideColumn(maxWidth).fillHeight(), align = HeyAlign.Center, arrange = HeyArrange.Center) {
