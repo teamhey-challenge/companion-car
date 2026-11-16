@@ -1,5 +1,6 @@
 package ai.hey.designsystem.layout
 
+import ai.hey.designsystem.token.HeyTokens
 import ai.hey.designsystem.theme.HeyGap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.layout
 
 /** Width in dp of the 1600x900 design canvas every car mockup (hey-companion-ui) is drawn on. */
 private const val DESIGN_WIDTH_DP = 1600f
@@ -217,3 +219,28 @@ fun Modifier.driveTop(): Modifier = padding(top = 87.dp)
 
 /** Studio C5: canvas bottom 567 to button top 661 is 94 = 4 gap + this 86 dp status slot + 4 gap, so the button stays at 661; the label sits 33 into it. */
 fun Modifier.driveStatusSlot(): Modifier = height(106.dp).padding(top = 33.dp)
+
+/**
+ * Studio list pages (car-memory @1600x900): content starts 91 under the frame's content top (title at y 145), runs from x 64 to 1536
+ * (the frame gives 80), and keeps the viewport size the frame gave. Apply to the scroll column.
+ */
+fun Modifier.carStudioPage(): Modifier = layout { m, c ->
+    val left = HeyTokens.Space.s16.roundToPx()
+    val up = (HeyTokens.Space.s32 * 3 - HeyTokens.Space.s4 - HeyTokens.Border.hairline).roundToPx()
+    val w = c.maxWidth + left + (HeyTokens.Space.s32 + HeyTokens.Space.s8).roundToPx()
+    val h = c.maxHeight + up
+    val p = m.measure(c.copy(minWidth = w, maxWidth = w, minHeight = h, maxHeight = h))
+    layout(c.maxWidth, c.maxHeight) { p.place(-left, -up) }
+}
+
+/** The studio header row sits 45.5 above where the frame's top margin puts it. */
+fun Modifier.carStudioHeader(): Modifier = layout { m, c ->
+    val p = m.measure(c)
+    layout(p.width, p.height) { p.place(0, (-45.5f).dp.roundToPx()) }
+}
+
+/** A trailing glyph of a list card sits 24 right of its 76 dp touch target's slot, on the card's inner edge. */
+fun Modifier.carCardTrailing(): Modifier = layout { m, c ->
+    val p = m.measure(c)
+    layout(p.width, p.height) { p.place(HeyTokens.Space.s24.roundToPx(), 0) }
+}
