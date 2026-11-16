@@ -296,18 +296,24 @@ class PleosVehicleGateway(
             )
         }
         guard("charge") {
-            // No listener exists for the charge switch in the SDK: poll it. The emulator Virtual Console toggles it.
+            // The SDK has no listener for the charge switch (EvBattery only listens for the charge port, the level and
+            // efficiency), so it is polled — only while parked, see ChargeWatch. The emulator Virtual Console toggles it.
             val battery = v.getEvBattery()
             scope.launch {
-                while (true) {
-                    guard("charge read") {
-                        battery.getEvChargeSwitchState(
-                            { on -> signal { it.copy(charging = on) } },
-                            { e -> HeyLog.d(TAG, "charge read failed: ${e.message}") },
-                        )
-                    }
-                    kotlinx.coroutines.delay(CHARGE_POLL_MS)
-                }
+                ChargeWatch(
+                    intervalMs = CHARGE_POLL_MS,
+                    gear = _gear,
+                    driving = _driving,
+                    read = { onResult ->
+                        guard("charge read") {
+                            battery.getEvChargeSwitchState(
+                                { on -> if (on != null) onResult(on) },
+                                { e -> HeyLog.d(TAG, "charge read failed: ${e.message}") },
+                            )
+                        }
+                    },
+                    onChange = { on -> signal { it.copy(charging = on) } },
+                ).run()
             }
         }
     }
