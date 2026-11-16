@@ -73,6 +73,31 @@ class PermissionSequenceTest {
         assertEquals(listOf("ask SPEED"), log)
     }
 
+    @Test fun `process killed while a dialog is open resumes at that step with a new sequence`() = runTest {
+        val gate = CompletableDeferred<PermissionResult>()
+        val first = PermissionSequence(
+            steps = listOf(mic, notif, speed), microphone = mic, isGranted = { it in granted }, progress = progress,
+            awaitParked = {},
+            ask = { p ->
+                log += "ask $p"
+                if (p == notif) gate.await() else { granted += p; PermissionResult.Granted }
+            },
+        )
+        val run = launch { first.run() }
+        runCurrent()
+        assertEquals(listOf("ask MIC", "ask NOTIF"), log)
+        run.cancel() // the process dies here: only `granted` (the system) and `progress` (prefs) survive
+        runCurrent()
+        log.clear()
+        // the next launch builds a brand new sequence over the same stored state and asks exactly the unanswered steps
+        assertTrue(sequence().run())
+        assertEquals(listOf("ask NOTIF", "ask SPEED"), log)
+        // and a third launch has nothing left to ask
+        log.clear()
+        assertTrue(sequence().run())
+        assertEquals(emptyList<String>(), log)
+    }
+
     @Test fun `already finished sequence asks nothing`() = runTest {
         granted += listOf(mic, notif, speed)
         assertTrue(sequence().run())
