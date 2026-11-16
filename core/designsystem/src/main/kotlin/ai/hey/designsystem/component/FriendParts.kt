@@ -186,9 +186,16 @@ fun FriendInviteButton(text: String, onClick: () -> Unit, primary: Boolean, modi
 @Composable
 fun ai.hey.designsystem.layout.HeyStackScope.FriendSlotFill() = Box(Modifier.grow())
 
+/** Vertical gap steps between the parts of [CompactCarPage]'s centred body (studio `.mk-copy` rhythm: 28 / 16 / 24), built from space tokens. */
+enum class FriendGap(internal val size: androidx.compose.ui.unit.Dp) {
+    Avatar(HeyTokens.Space.s24 + HeyTokens.Space.s4),
+    Notice(HeyTokens.Space.s16),
+    Block(HeyTokens.Space.s24),
+}
+
 /** Vertical gap between the parts of [CompactCarPage]'s centred body. */
 @Composable
-fun FriendSpacer(height: androidx.compose.ui.unit.Dp) = androidx.compose.foundation.layout.Spacer(Modifier.height(height))
+fun FriendSpacer(gap: FriendGap) = androidx.compose.foundation.layout.Spacer(Modifier.height(gap.size))
 
 /** The big round person mark of the invite mockup (100, icon 32). */
 @Composable
